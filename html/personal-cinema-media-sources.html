@@ -1,0 +1,679 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>媒体来源 · Personal Cinema</title>
+  <style>
+    :root{
+      --bg:#0a0a0b;--surface:#141416;--panel:#1c1c1e;--fg:#f5f5f7;--muted:#a1a1a6;--accent:#73a9b7;
+      --border:#f5f5f7;--line:color-mix(in oklch,var(--border) 7%,transparent);--line-strong:color-mix(in oklch,var(--border) 13%,transparent);
+      --weak:#6e6e73;--icon-default:#afafb6;--icon-hover:#d7d7dc;--icon-active:#f5f5f7;
+      --font-display:-apple-system,BlinkMacSystemFont,'SF Pro Display','PingFang SC','Segoe UI',sans-serif;
+      --font-body:-apple-system,BlinkMacSystemFont,'SF Pro Text','PingFang SC','Segoe UI',sans-serif;
+      --font-mono:'SFMono-Regular',Consolas,monospace;--sidebar:220px;
+      --radius-xs:8px;--radius-poster:10px;--radius-nav:10px;--radius-sm:12px;--radius-editorial:14px;
+      --radius-md:16px;--radius-lg:20px;--radius-pill:9999px;--radius-circle:50%;
+      --text-primary:rgba(255,255,255,.92);--text-secondary:rgba(255,255,255,.62);--text-tertiary:rgba(255,255,255,.46);
+    }
+    *,*::before,*::after{box-sizing:border-box}
+    html{height:100%;overflow:hidden;background:var(--bg);-webkit-text-size-adjust:100%}
+    body{height:100%;margin:0;min-width:0;overflow:hidden;background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+    button,input,textarea{font:inherit}button{color:inherit;cursor:pointer}img,svg{display:block;max-width:100%}h1,h2,h3,p{margin:0}[hidden]{display:none!important}
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}.icon-sprite{position:absolute;width:0;height:0;overflow:hidden}.icon{width:20px;height:20px;flex:0 0 auto}
+    button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+    .app-shell{display:contents}
+    .sidebar{position:fixed;inset:0 auto 0 0;z-index:20;width:var(--sidebar);padding:20px 14px 16px;border-right:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column;gap:20px}
+    .brand{display:flex;align-items:center;gap:11px;min-height:40px;padding:0 9px;color:var(--fg);text-decoration:none;font-size:11px;font-weight:650;letter-spacing:.075em}
+    .brand-mark{display:grid;place-items:center;width:27px;height:27px;border:0;border-radius:var(--radius-xs);background:var(--fg);color:var(--bg);box-shadow:inset 0 0 0 1px color-mix(in oklch,var(--bg) 14%,transparent)}.brand-mark svg{width:16px;height:16px}
+    .sidebar-search{display:flex;align-items:center;gap:10px;width:100%;min-height:38px;padding:0 11px;border:1px solid rgba(255,255,255,.08);border-radius:var(--radius-sm);background:rgba(28,28,30,.72);color:var(--muted);font-size:13px;text-align:left;box-shadow:inset 0 1px 0 rgba(255,255,255,.035);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);transition:background .2s ease-out,color .2s ease-out,border-color .2s ease-out}
+    .sidebar-search:hover{border-color:rgba(255,255,255,.12);background:rgba(34,34,37,.82);color:var(--fg)}
+    .sidebar-nav{display:flex;flex:1;min-height:0;flex-direction:column;gap:27px;overflow-y:auto}.nav-group{display:grid;gap:5px}.library-group{margin-top:2px}.nav-label{padding:0 12px 8px;color:var(--weak);font-size:11px;font-weight:600;letter-spacing:.06em}
+    .sidebar-link{display:flex;align-items:center;gap:10px;min-height:38px;padding:0 11px;border:0;border-radius:var(--radius-nav);background:transparent;color:var(--muted);font-size:13px;font-weight:500;text-align:left;transition:background .2s ease-out,color .2s ease-out}.sidebar-link:hover{background:color-mix(in oklch,var(--panel) 72%,transparent);color:var(--fg)}
+    .sidebar-link[aria-current="page"]{background:rgba(255,255,255,.075);color:var(--fg);font-weight:600;box-shadow:inset 0 0 0 1px rgba(255,255,255,.075),0 4px 14px rgba(0,0,0,.14);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+    .sidebar .icon{fill:currentColor;opacity:1}.sidebar-link .icon,.sidebar-search .icon,.user-button>.icon{width:17px;height:17px;color:var(--icon-default);opacity:1}.sidebar-link:hover .icon,.sidebar-search:hover .icon,.user-button:hover>.icon,.user-wrap[data-open="true"] .user-button>.icon{color:var(--icon-hover)}.sidebar-link[aria-current="page"] .icon{color:var(--icon-active)}.sidebar-link .icon-selected{display:none}.sidebar-link[aria-current="page"] .icon-regular{display:none}.sidebar-link[aria-current="page"] .icon-selected{display:block}
+    .sidebar-bottom{display:grid;gap:9px;border-top:1px solid var(--line);padding-top:14px}.user-wrap{position:relative}.user-button{display:grid;grid-template-columns:32px minmax(0,1fr) 16px;align-items:center;gap:10px;width:100%;min-height:48px;padding:6px 8px;border:0;border-radius:var(--radius-sm);background:transparent;text-align:left;transition:background .2s ease-out}.user-button:hover{background:var(--panel)}
+    .avatar{display:grid;place-items:center;width:32px;height:32px;border-radius:var(--radius-circle);background:var(--fg);color:var(--bg);font-size:12px;font-weight:700}.user-copy{display:grid;min-width:0}.user-copy strong{font-size:13px;font-weight:600}.user-copy small{color:var(--weak);font-size:11px}
+    .account-menu{position:absolute;left:0;bottom:calc(100% + 8px);z-index:35;width:190px;padding:7px;border:1px solid rgba(255,255,255,.1);border-radius:var(--radius-md);background:rgba(28,28,30,.76);box-shadow:0 18px 50px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.045);opacity:0;pointer-events:none;transform:translateY(6px);-webkit-backdrop-filter:blur(18px) saturate(115%);backdrop-filter:blur(18px) saturate(115%);transition:.2s ease-out}.user-wrap[data-open="true"] .account-menu{opacity:1;pointer-events:auto;transform:none}.menu-action{display:flex;align-items:center;gap:9px;width:100%;min-height:38px;padding:0 10px;border:0;border-radius:var(--radius-sm);background:transparent;color:var(--fg);font-size:13px}.menu-action:hover{background:var(--surface)}
+
+    .app-main{height:100vh;min-height:0;margin-left:var(--sidebar);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;-ms-overflow-style:none}.app-main::-webkit-scrollbar{display:none;width:0;height:0}body[data-locked="true"] .app-main{overflow:hidden}
+    .content{width:100%;padding:36px clamp(32px,3vw,64px) 76px}
+    .content-inner{width:min(100%,1600px);margin-inline:auto}
+    .page-heading{display:flex;align-items:center;justify-content:space-between;gap:24px;width:100%;max-width:none;margin-bottom:38px}
+    .page-title{margin:0;color:var(--text-primary);font-family:var(--font-display);font-size:32px;line-height:1.15;font-weight:700;letter-spacing:-.025em}
+    .add-source-button,.empty-action{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:40px;padding:0 15px;border:1px solid rgba(255,255,255,.12);border-radius:var(--radius-nav);background:var(--fg);color:var(--bg);font-size:13px;font-weight:650;cursor:pointer;transition:background .18s,transform .18s}
+    .add-source-button:hover,.empty-action:hover{background:#d7d7dc}
+    .add-source-button:active,.empty-action:active{transform:scale(.98)}
+    .add-source-button svg{width:16px;height:16px}
+    .add-source-button svg,
+    .source-icon svg,
+    .source-status svg,
+    .source-more svg,
+    .empty-icon svg,
+    .scan-icon svg,
+    .scan-chevron,
+    .source-menu button svg,
+    .dialog-icon-button svg,
+    .type-icon svg,
+    .type-chevron{fill:currentColor}
+    .sources-workspace{width:100%;max-width:none}
+    .sources-section + .sources-section{margin-top:46px}
+    .section-title{margin:0 0 15px;color:var(--text-primary);font-family:var(--font-display);font-size:18px;line-height:1.3;font-weight:650}
+
+    .source-list{display:grid;grid-template-columns:1fr;gap:12px}
+    .source-item{position:relative;display:grid;grid-template-columns:44px minmax(0,1fr) auto 36px;grid-template-rows:auto auto;align-items:center;gap:8px 14px;min-height:112px;padding:16px;border:1px solid var(--line);border-radius:var(--radius-md);background:rgba(255,255,255,.025);transition:background .18s,border-color .18s}
+    .source-item:hover{background:rgba(255,255,255,.045);border-color:var(--line-strong)}
+    .source-hit{position:absolute;inset:0;z-index:1;border:0;border-radius:inherit;background:transparent;cursor:pointer}
+    .source-hit:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+    .source-icon,.source-copy,.source-status,.source-footer,.source-more{position:relative;z-index:2;pointer-events:none}
+    .source-icon{grid-column:1;grid-row:1/3;display:grid;place-items:center;width:44px;height:44px;border:1px solid var(--line);border-radius:var(--radius-sm);background:rgba(255,255,255,.045);color:var(--icon-default)}
+    .source-icon svg{width:22px;height:22px}
+    .source-copy{grid-column:2;grid-row:1;display:grid;gap:3px;min-width:0}
+    .source-name{overflow:hidden;color:var(--text-primary);font-size:16px;line-height:1.25;font-weight:600;text-overflow:ellipsis;white-space:nowrap}
+    .source-type,.source-location,.source-count,.source-last-scan{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .source-type{color:var(--text-secondary);font-size:13px;line-height:1.35}
+    .source-location{color:var(--text-tertiary);font-size:12px;line-height:1.35}
+    .source-footer{grid-column:2/5;grid-row:2;display:flex;align-items:center;gap:7px;min-width:0;color:var(--text-tertiary);font-size:12px;line-height:1.35}
+    .source-footer .meta-divider{color:var(--weak)}
+    .source-status{grid-column:3;grid-row:1;display:inline-flex;align-items:center;gap:6px;color:var(--text-secondary);font-size:12px;white-space:nowrap}
+    .source-status svg{width:16px;height:16px;color:var(--accent)}
+    .source-more{grid-column:4;grid-row:1;display:grid;place-items:center;width:36px;height:36px;border:0;border-radius:var(--radius-xs);background:transparent;color:var(--icon-default);cursor:pointer;pointer-events:auto;transition:background .18s,color .18s}
+    .source-more:hover{background:rgba(255,255,255,.075);color:var(--fg)}
+    .source-more svg{width:18px;height:18px}
+    .spinner{display:inline-block;width:14px;height:14px;border:1.5px solid rgba(255,255,255,.22);border-top-color:var(--accent);border-radius:50%;animation:spin .72s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    .source-empty{display:grid;justify-items:center;padding:56px 24px;border:1px dashed var(--line-strong);border-radius:var(--radius-md);text-align:center}
+    .empty-icon{display:grid;place-items:center;width:52px;height:52px;margin-bottom:17px;border:1px solid var(--line);border-radius:var(--radius-md);background:rgba(255,255,255,.035);color:var(--icon-default)}
+    .empty-icon svg{width:25px;height:25px}.source-empty h3{margin:0;color:var(--text-primary);font-size:17px}.source-empty p{max-width:360px;margin:9px 0 20px;color:var(--text-secondary);font-size:13px;line-height:1.65}
+    .empty-action{height:38px;font-size:12px}
+
+    .scan-list{border-top:1px solid var(--line)}
+    .scan-item{position:relative;display:grid;grid-template-columns:26px minmax(0,1fr) auto 18px;align-items:center;gap:12px;min-height:64px;padding:10px 4px;border-bottom:1px solid var(--line)}
+    .scan-item:last-child{border-bottom:0}
+    .scan-hit{position:absolute;inset:0;border:0;background:transparent;cursor:pointer}
+    .scan-item:hover{background:transparent}
+    .scan-icon,.scan-copy,.scan-time,.scan-chevron{position:relative;z-index:1;pointer-events:none}
+    .scan-icon{display:grid;place-items:center;width:24px;height:24px;color:var(--accent)}.scan-icon svg{width:17px;height:17px}
+    .scan-copy{min-width:0}.scan-copy strong,.scan-copy span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.scan-copy strong{color:var(--text-primary);font-size:13px;font-weight:600;transition:color .16s ease-out}.scan-item:hover .scan-copy strong{color:var(--fg)}.scan-copy span{margin-top:4px;color:var(--text-secondary);font-size:12px}
+    .scan-time{color:var(--text-tertiary);font-size:12px;white-space:nowrap}.scan-chevron{width:16px;height:16px;color:var(--weak);transition:color .16s ease-out}.scan-item:hover .scan-chevron{color:var(--icon-hover)}
+
+    .section-heading-row{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:15px}
+    .section-heading-row .section-title{margin-bottom:0}
+    .section-action{display:inline-flex;align-items:center;gap:4px;min-height:32px;padding:0;border:0;background:transparent;color:var(--text-tertiary);font-size:12px;text-decoration:none;transition:color .16s ease-out}
+    .section-action:hover{color:var(--text-primary)}
+    .section-action svg{width:14px;height:14px;fill:currentColor}
+    .recent-media-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px 14px}
+    .recent-media-item{display:block;min-width:0;color:inherit;text-decoration:none}
+    .recent-poster{display:block;position:relative;width:100%;aspect-ratio:2/3;overflow:hidden;border-radius:var(--radius-poster);background:var(--panel);box-shadow:0 8px 22px color-mix(in oklch,var(--bg) 46%,transparent)}
+    .recent-poster img{display:block;width:100%;height:100%;border-radius:inherit;object-fit:cover}
+    .recent-poster::after{content:"";position:absolute;inset:0;border-radius:inherit;background:rgba(0,0,0,.34);opacity:0;pointer-events:none;transition:opacity 110ms ease-in}
+    .recent-media-item:hover .recent-poster::after{opacity:1}
+    .recent-media-copy{display:grid;grid-template-rows:16px 15px;gap:2px;height:41px;padding-top:8px}
+    .recent-media-title,.recent-media-source{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .recent-media-title{color:var(--text-primary);font-size:13px;font-weight:500;line-height:16px}
+    .recent-media-source{color:var(--text-tertiary);font-size:12px;font-weight:400;line-height:15px}
+
+    .source-menu-scrim{position:fixed;inset:0;z-index:58;background:transparent;opacity:0;visibility:hidden}.source-menu-scrim[data-open="true"]{opacity:1;visibility:visible}
+    .source-menu{position:fixed;z-index:60;width:176px;padding:6px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);background:rgba(28,28,30,.96);box-shadow:0 20px 52px rgba(0,0,0,.45);opacity:0;visibility:hidden;transform:translateY(6px);transition:opacity .15s,transform .15s,visibility .15s}
+    .source-menu[data-open="true"]{opacity:1;visibility:visible;transform:none}
+    .source-menu-handle{display:none}
+    .source-menu button{display:flex;align-items:center;gap:10px;width:100%;height:38px;padding:0 10px;border:0;border-radius:var(--radius-xs);background:transparent;color:var(--text-secondary);cursor:pointer;text-align:left}
+    .source-menu button:hover{background:rgba(255,255,255,.075);color:var(--fg)}.source-menu button svg{width:16px;height:16px}.source-menu button span{font-size:12px}
+    .source-menu .menu-divider{height:1px;margin:5px 4px;background:var(--line)}.source-menu .remove-source{color:var(--text-tertiary)}.source-menu .remove-source:hover{color:var(--fg)}
+
+    .dialog-scrim{position:fixed;inset:0;z-index:70;display:grid;place-items:center;padding:22px;background:rgba(0,0,0,.62);opacity:0;visibility:hidden;transition:opacity .2s,visibility .2s}
+    .dialog-scrim[data-open="true"]{opacity:1;visibility:visible}
+    .source-dialog{width:min(560px,100%);max-height:min(760px,calc(100dvh - 44px));overflow:auto;border:1px solid var(--line-strong);border-radius:var(--radius-lg);background:rgba(28,28,30,.88);box-shadow:0 32px 80px rgba(0,0,0,.55);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);transform:translateY(12px) scale(.985);transition:transform .2s}
+    .dialog-scrim[data-open="true"] .source-dialog{transform:none}
+    .dialog-header{display:grid;grid-template-columns:36px minmax(0,1fr) 36px;align-items:center;gap:8px;padding:18px 18px 12px}
+    .dialog-header h2{margin:0;color:var(--text-primary);font-family:var(--font-display);font-size:20px;line-height:1.25;font-weight:650;text-align:center}
+    .dialog-icon-button{display:grid;place-items:center;width:36px;height:36px;border:0;border-radius:var(--radius-xs);background:transparent;color:var(--icon-default);cursor:pointer}.dialog-icon-button:hover{background:rgba(255,255,255,.07);color:var(--fg)}.dialog-icon-button svg{width:18px;height:18px}
+    .dialog-body{padding:10px 22px 24px}.dialog-kicker{margin:0 0 12px;color:var(--text-secondary);font-size:13px;font-weight:600}
+    .source-type-list{display:grid;gap:10px}.source-type-option{display:grid;grid-template-columns:42px minmax(0,1fr) 18px;align-items:center;gap:13px;min-height:74px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--radius-sm);background:rgba(255,255,255,.025);color:var(--fg);cursor:pointer;text-align:left;transition:background .18s,border-color .18s}.source-type-option:hover{background:rgba(255,255,255,.05);border-color:var(--line-strong)}
+    .type-icon{display:grid;place-items:center;width:42px;height:42px;border:1px solid var(--line);border-radius:var(--radius-nav);background:rgba(255,255,255,.04);color:var(--icon-default)}.type-icon svg{width:21px;height:21px}.type-copy{min-width:0}.type-copy strong,.type-copy span{display:block}.type-copy strong{color:var(--text-primary);font-size:14px;font-weight:600}.type-copy span{margin-top:4px;color:var(--text-secondary);font-size:12px;line-height:1.45}.type-chevron{width:16px;height:16px;color:var(--weak)}
+    .form-grid{display:grid;gap:14px}.form-field{display:grid;gap:7px}.form-field label{color:var(--text-secondary);font-size:12px;font-weight:600}.form-field input{width:100%;height:42px;padding:0 12px;border:1px solid var(--line-strong);border-radius:var(--radius-nav);background:rgba(10,10,11,.48);color:var(--fg);font-size:13px;outline:none;transition:border-color .18s,background .18s}.form-field input:hover{background:rgba(10,10,11,.64)}.form-field input:focus{border-color:var(--accent)}.form-field input::placeholder{color:var(--text-tertiary)}
+    .form-help{margin:-2px 0 0;color:var(--text-tertiary);font-size:11px;line-height:1.5}.connection-feedback{min-height:20px;margin-top:2px;color:var(--text-secondary);font-size:12px}.connection-feedback[data-success="true"]{color:var(--accent)}
+    .dialog-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:18px}.secondary-action,.primary-action{height:40px;padding:0 15px;border-radius:var(--radius-nav);font-size:13px;font-weight:600;cursor:pointer}.secondary-action{border:1px solid var(--line-strong);background:rgba(255,255,255,.035);color:var(--text-primary)}.secondary-action:hover{background:rgba(255,255,255,.065)}.primary-action{border:1px solid rgba(255,255,255,.12);background:var(--fg);color:var(--bg)}.primary-action:hover{background:#d7d7dc}.primary-action:disabled,.secondary-action:disabled{opacity:.42;cursor:not-allowed}
+
+    .search-scrim{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.38);opacity:0;pointer-events:none;-webkit-backdrop-filter:blur(2px) saturate(92%);backdrop-filter:blur(2px) saturate(92%);transition:opacity .2s ease-out}.search-scrim[data-open="true"]{opacity:1;pointer-events:auto}
+    .search-dialog{position:fixed;z-index:45;left:50%;top:10vh;display:flex;width:min(760px,calc(100% - 40px));max-height:74vh;overflow:hidden;flex-direction:column;border:1px solid rgba(255,255,255,.11);border-radius:var(--radius-lg);background:rgba(28,28,30,.82);box-shadow:0 32px 90px rgba(0,0,0,.56),inset 0 1px 0 rgba(255,255,255,.055);opacity:0;pointer-events:none;-webkit-backdrop-filter:blur(26px) saturate(120%);backdrop-filter:blur(26px) saturate(120%);transform:translate(-50%,-10px) scale(.992);transition:opacity .2s ease-out,transform .2s ease-out}.search-dialog[data-open="true"]{opacity:1;pointer-events:auto;transform:translate(-50%,0) scale(1)}
+    .search-field{display:grid;grid-template-columns:22px minmax(0,1fr) 30px auto;align-items:center;gap:12px;margin:15px 15px 7px;padding:12px 15px;border:1px solid rgba(255,255,255,.09);border-radius:var(--radius-md);background:rgba(255,255,255,.055)}.search-field>svg{width:20px;height:20px;color:var(--icon-default);fill:currentColor}.search-input{width:100%;border:0;outline:0;background:transparent;color:var(--fg);font-size:17px}.search-input::placeholder{color:var(--muted)}.search-input:focus-visible{outline:0}.search-clear{display:grid;place-items:center;width:30px;height:30px;padding:0;border:0;border-radius:var(--radius-circle);background:transparent;color:var(--muted)}.search-clear:hover{background:rgba(255,255,255,.07);color:var(--fg)}.search-clear svg{width:17px;height:17px;fill:currentColor}.search-key{padding:3px 7px;border:1px solid rgba(255,255,255,.11);border-radius:var(--radius-xs);background:rgba(255,255,255,.035);color:var(--weak);font:10px var(--font-mono)}
+    .search-results{min-height:0;max-height:calc(74vh - 82px);overflow-y:auto;padding:8px 12px 13px}.search-caption{padding:5px 8px 8px;color:var(--text-secondary);font-size:12px;font-weight:600}.search-result-list{display:grid}.search-result{display:grid;grid-template-columns:42px minmax(0,1fr) 24px;align-items:center;gap:12px;width:100%;min-height:68px;padding:7px 9px;border:0;border-radius:var(--radius-sm);background:transparent;text-align:left}.search-result:hover,.search-result:focus-visible,.search-result[data-active="true"]{background:rgba(255,255,255,.055)}.search-result:focus-visible{outline:1px solid rgba(255,255,255,.2);outline-offset:-1px}.search-thumb{width:40px;aspect-ratio:2/3;border-radius:var(--radius-xs);object-fit:cover}.search-result span:nth-child(2){display:grid}.search-result strong{color:var(--text-primary);font-size:14px;font-weight:600}.search-result small{margin-top:2px;color:var(--muted);font-size:12px}.search-result-caret{color:var(--weak);opacity:.42}.search-result-caret svg{width:15px;height:15px;fill:currentColor}.search-empty{display:grid;gap:4px;padding:28px 10px 32px;color:var(--muted);font-size:12px;text-align:center}.search-empty strong{color:var(--fg);font-size:14px}
+
+    @media(min-width:901px){
+      .sidebar{inset:8px auto 8px 8px;border:1px solid rgba(255,255,255,.06);border-radius:var(--radius-lg);background:rgba(20,20,22,.78);box-shadow:0 8px 28px rgba(0,0,0,.16);-webkit-backdrop-filter:blur(16px) saturate(118%);backdrop-filter:blur(16px) saturate(118%)}.app-main{margin-left:calc(var(--sidebar) + 16px)}
+      .source-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+      .source-item{grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto 1fr auto;align-items:start;min-height:198px;padding:20px;gap:0 14px}
+      .source-icon{grid-column:1;grid-row:1;width:44px;height:44px}
+      .source-status{grid-column:2;grid-row:1;align-self:center}
+      .source-copy{grid-column:1/3;grid-row:2;margin-top:20px;gap:4px}
+      .source-name{margin-bottom:3px}
+      .source-footer{grid-column:1;grid-row:4;display:grid;align-self:end;gap:3px;margin-top:22px}
+      .source-footer .meta-divider{display:none}
+      .source-more{grid-column:2;grid-row:4;align-self:end}
+      .scan-list{padding:0 16px;border:1px solid var(--line);border-radius:var(--radius-md);background:rgba(255,255,255,.018)}
+      .scan-item{grid-template-columns:26px minmax(0,1fr) auto 18px;min-height:68px;padding:11px 0}
+      .scan-copy{display:grid;grid-template-columns:minmax(150px,168px) minmax(0,1fr);align-items:center;gap:clamp(12px,.8vw,16px)}
+      .scan-copy span{margin-top:0;color:var(--text-tertiary)}
+      .recent-media-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:22px 18px}
+    }
+    @media(min-width:1200px){
+      .recent-media-grid{grid-template-columns:repeat(5,minmax(0,1fr))}
+    }
+    @media(min-width:1400px){
+      .source-list{grid-template-columns:repeat(3,minmax(0,1fr))}
+      .recent-media-grid{grid-template-columns:repeat(6,minmax(0,1fr))}
+    }
+    @media(min-width:2560px){
+      .content{padding-inline:clamp(64px,3.2vw,96px)}
+    }
+    @media (max-width:900px){
+      html,body{height:auto;overflow:auto;scrollbar-width:none}body[data-locked="true"]{overflow:hidden}.sidebar{position:sticky;inset:auto;top:0;width:100%;height:70px;padding:10px 14px;flex-direction:row;align-items:center;gap:8px}.brand{padding:0 4px}.brand>span:last-child,.nav-label,.library-group,.sidebar-bottom>.sidebar-link,.user-copy{display:none}.sidebar-search{width:42px;min-height:42px;padding:0;justify-content:center}.sidebar-search span{display:none}.sidebar-nav{flex-direction:row;overflow:hidden}.nav-group{display:flex;min-width:0;gap:2px}.sidebar-link{padding:0 10px;white-space:nowrap}.sidebar-bottom{display:block;border:0;padding:0}.user-button{grid-template-columns:34px;width:42px;min-height:42px;padding:4px}.user-button>.icon{display:none}.account-menu{left:auto;right:0;bottom:auto;top:calc(100% + 8px)}.app-main{height:auto;min-height:100vh;margin-left:0;overflow:visible}.content{padding-top:28px;padding-inline:28px}.page-heading{margin-bottom:32px}.page-title{font-size:30px}
+      .source-menu{left:12px!important;right:12px!important;top:auto!important;bottom:max(12px,env(safe-area-inset-bottom));width:auto;padding:8px 8px calc(8px + env(safe-area-inset-bottom));border-radius:24px;transform:translateY(22px)}.source-menu[data-open="true"]{transform:none}.source-menu-handle{display:block;width:36px;height:4px;margin:2px auto 8px;border-radius:var(--radius-pill);background:rgba(255,255,255,.18)}.source-menu button{height:46px}.source-menu-scrim[data-open="true"]{background:rgba(0,0,0,.52)}
+      .dialog-scrim{align-items:end;padding:12px;padding-bottom:max(12px,env(safe-area-inset-bottom))}.source-dialog{width:100%;max-height:calc(100dvh - 24px);border-radius:24px;transform:translateY(26px)}.dialog-body{padding-bottom:calc(24px + env(safe-area-inset-bottom))}
+    }
+    @media(max-width:680px){.brand{width:40px}.brand-mark{flex:0 0 auto}.top-group .sidebar-link{font-size:0;padding:0 10px}.top-group .sidebar-link .icon{width:20px}.content{padding-inline:18px}.search-dialog{top:7vh;width:calc(100% - 24px)}.search-key{display:none}}
+    @media(min-width:560px) and (max-width:900px){.recent-media-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:20px 16px}}
+    @media (max-width:620px){
+      .content{padding-inline:16px}.page-heading{gap:14px}.add-source-button{height:38px;padding:0 12px}.add-source-button span{font-size:12px}
+      .source-item{grid-template-columns:44px minmax(0,1fr) 36px;grid-template-rows:auto auto auto;align-items:start;gap:8px 12px;min-height:132px;padding:14px}.source-icon{grid-column:1;grid-row:1/4}.source-copy{grid-column:2;grid-row:1}.source-status{grid-column:2;grid-row:2;justify-self:start}.source-footer{grid-column:2/4;grid-row:3}.source-more{grid-column:3;grid-row:1;align-self:start}.source-location{font-size:12px}
+      .scan-item{grid-template-columns:24px minmax(0,1fr) auto 16px;gap:9px}.scan-copy span{white-space:normal;line-height:1.4}.scan-time{font-size:11px}.dialog-header{padding-inline:14px}.dialog-body{padding-inline:16px}.dialog-actions{display:grid;grid-template-columns:1fr 1fr}.secondary-action,.primary-action{width:100%}
+    }
+  </style>
+</head>
+<body>
+  <svg class="icon-sprite" fill="currentColor" aria-hidden="true">
+    <symbol id="ph-film-reel-fill" viewBox="0 0 256 256"><path d="M232,216H183.36A103.95,103.95,0,1,0,128,232H232a8,8,0,0,0,0-16ZM80,148a20,20,0,1,1,20-20A20,20,0,0,1,80,148Zm48,48a20,20,0,1,1,20-20A20,20,0,0,1,128,196Zm0-96a20,20,0,1,1,20-20A20,20,0,0,1,128,100Zm28,28a20,20,0,1,1,20,20A20,20,0,0,1,156,128Z"/></symbol>
+    <symbol id="ph-magnifying-glass" viewBox="0 0 256 256"><path d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"/></symbol>
+    <symbol id="ph-x" viewBox="0 0 256 256"><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"/></symbol>
+    <symbol id="ph-house" viewBox="0 0 256 256"><path d="M219.31,108.68l-80-80a16,16,0,0,0-22.62,0l-80,80A15.87,15.87,0,0,0,32,120v96a8,8,0,0,0,8,8h64a8,8,0,0,0,8-8V160h32v56a8,8,0,0,0,8,8h64a8,8,0,0,0,8-8V120A15.87,15.87,0,0,0,219.31,108.68ZM208,208H160V152a8,8,0,0,0-8-8H104a8,8,0,0,0-8,8v56H48V120l80-80,80,80Z"/></symbol>
+    <symbol id="ph-house-fill" viewBox="0 0 256 256"><path d="M224,120v96a8,8,0,0,1-8,8H160a8,8,0,0,1-8-8V164a4,4,0,0,0-4-4H108a4,4,0,0,0-4,4v52a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V120a16,16,0,0,1,4.69-11.31l80-80a16,16,0,0,1,22.62,0l80,80A16,16,0,0,1,224,120Z"/></symbol>
+    <symbol id="ph-film-slate" viewBox="0 0 256 256"><path d="M216,104H102.09L210,75.51a8,8,0,0,0,5.68-9.84l-8.16-30a15.93,15.93,0,0,0-19.42-11.13L35.81,64.74a15.75,15.75,0,0,0-9.7,7.4,15.51,15.51,0,0,0-1.55,12L32,111.56c0,.14,0,.29,0,.44v88a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V112A8,8,0,0,0,216,104ZM192.16,40l6,22.07-22.62,6L147.42,51.83Zm-66.69,17.6,28.12,16.24-36.94,9.75L88.53,67.37Zm-79.4,44.62-6-22.08,26.5-7L94.69,89.4ZM208,200H48V120H208v80Z"/></symbol>
+    <symbol id="ph-sparkle" viewBox="0 0 256 256"><path d="M197.58,129.06,146,110l-19-51.62a15.92,15.92,0,0,0-29.88,0L78,110l-51.62,19a15.92,15.92,0,0,0,0,29.88L78,178l19,51.62a15.92,15.92,0,0,0,29.88,0L146,178l51.62-19a15.92,15.92,0,0,0,0-29.88ZM137,164.22a8,8,0,0,0-4.74,4.74L112,223.85,91.78,169A8,8,0,0,0,87,164.22L32.15,144,87,123.78A8,8,0,0,0,91.78,119L112,64.15,132.22,119a8,8,0,0,0,4.74,4.74L191.85,144ZM144,40a8,8,0,0,1,8-8h16V16a8,8,0,0,1,16,0V32h16a8,8,0,0,1,0,16H184V64a8,8,0,0,1-16,0V48H152A8,8,0,0,1,144,40ZM248,88a8,8,0,0,1-8,8h-8v8a8,8,0,0,1-16,0V96h-8a8,8,0,0,1,0-16h8V72a8,8,0,0,1,16,0v8h8A8,8,0,0,1,248,88Z"/></symbol>
+    <symbol id="ph-hard-drives" viewBox="0 0 256 256"><path d="M208,136H48a16,16,0,0,0-16,16v48a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V152A16,16,0,0,0,208,136Zm0,64H48V152H208v48Zm0-160H48A16,16,0,0,0,32,56v48a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V56A16,16,0,0,0,208,40Zm0,64H48V56H208v48ZM192,80a12,12,0,1,1-12-12A12,12,0,0,1,192,80Zm0,96a12,12,0,1,1-12-12A12,12,0,0,1,192,176Z"/></symbol>
+    <symbol id="ph-cloud" viewBox="0 0 256 256"><path fill="currentColor" d="M160 208H72a56 56 0 0 1-8.3-111.4A72 72 0 0 1 202 113a48 48 0 0 1-42 95Zm0-16a32 32 0 0 0 32-32c0-18.7-16.1-33.5-34.8-31.9a8 8 0 0 1-8.4-6.2A56 56 0 0 0 39.5 135a40 40 0 0 0 32.5 57Z"/></symbol>
+    <symbol id="ph-folder" viewBox="0 0 256 256"><path fill="currentColor" d="M216 56h-84.7l-24-24H40a16 16 0 0 0-16 16v160a16 16 0 0 0 16 16h176a16 16 0 0 0 16-16V72a16 16 0 0 0-16-16Zm0 152H40V48h60.7l24 24H216Z"/></symbol>
+    <symbol id="ph-clock-counter-clockwise" viewBox="0 0 256 256"><path d="M136,80v43.47l36.12,21.67a8,8,0,0,1-8.24,13.72l-40-24A8,8,0,0,1,120,128V80a8,8,0,0,1,16,0Zm-8-48A95.44,95.44,0,0,0,60.08,60.15C52.81,67.51,46.35,74.59,40,82V64a8,8,0,0,0-16,0v40a8,8,0,0,0,8,8H72a8,8,0,0,0,0-16H49c7.15-8.42,14.27-16.35,22.39-24.57a80,80,0,1,1,1.66,114.75,8,8,0,1,0-11,11.64A96,96,0,1,0,128,32Z"/></symbol>
+    <symbol id="ph-heart" viewBox="0 0 256 256"><path d="M178,40c-20.65,0-38.73,8.88-50,23.89C116.73,48.88,98.65,40,78,40a62.07,62.07,0,0,0-62,62c0,70,103.79,126.66,108.21,129a8,8,0,0,0,7.58,0C136.21,228.66,240,172,240,102A62.07,62.07,0,0,0,178,40ZM128,214.8C109.74,204.16,32,155.69,32,102A46.06,46.06,0,0,1,78,56c19.45,0,35.78,10.36,42.6,27a8,8,0,0,0,14.8,0c6.82-16.67,23.15-27,42.6-27a46.06,46.06,0,0,1,46,46C224,155.61,146.24,204.15,128,214.8Z"/></symbol>
+    <symbol id="ph-eye-slash" viewBox="0 0 256 256"><path d="M53.92,34.62A8,8,0,1,0,42.08,45.38L61.32,66.55C25,88.84,9.38,123.2,8.69,124.76a8,8,0,0,0,0,6.5c.35.79,8.82,19.57,27.65,38.4C61.43,194.74,93.12,208,128,208a127.11,127.11,0,0,0,52.07-10.83l22,24.21a8,8,0,1,0,11.84-10.76Zm47.33,75.84,41.67,45.85a32,32,0,0,1-41.67-45.85ZM128,192c-30.78,0-57.67-11.19-79.93-33.25A133.16,133.16,0,0,1,25,128c4.69-8.79,19.66-33.39,47.35-49.38l18,19.75a48,48,0,0,0,63.66,70l14.73,16.2A112,112,0,0,1,128,192Zm6-95.43a8,8,0,0,1,3-15.72,48.16,48.16,0,0,1,38.77,42.64,8,8,0,0,1-7.22,8.71,6.39,6.39,0,0,1-.75,0,8,8,0,0,1-8-7.26A32.09,32.09,0,0,0,134,96.57Zm113.28,34.69c-.42.94-10.55,23.37-33.36,43.8a8,8,0,1,1-10.67-11.92A132.77,132.77,0,0,0,231.05,128a133.15,133.15,0,0,0-23.12-30.77C185.67,75.19,158.78,64,128,64a118.37,118.37,0,0,0-19.36,1.57A8,8,0,1,1,106,49.79,134,134,0,0,1,128,48c34.88,0,66.57,13.26,91.66,38.35,18.83,18.83,27.3,37.62,27.65,38.41A8,8,0,0,1,247.31,131.26Z"/></symbol>
+    <symbol id="ph-check-circle" viewBox="0 0 256 256"><path d="M173.66,98.34a8,8,0,0,1,0,11.32l-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35A8,8,0,0,1,173.66,98.34ZM232,128A104,104,0,1,1,128,24,104.11,104.11,0,0,1,232,128Zm-16,0a88,88,0,1,0-88,88A88.1,88.1,0,0,0,216,128Z"/></symbol>
+    <symbol id="ph-gear-six" viewBox="0 0 256 256"><path d="M128,80a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Zm109.94-52.79a8,8,0,0,0-3.89-5.4l-29.83-17-.12-33.62a8,8,0,0,0-2.83-6.08,111.91,111.91,0,0,0-36.72-20.67,8,8,0,0,0-6.46.59L128,41.85,97.88,25a8,8,0,0,0-6.47-.6A112.1,112.1,0,0,0,54.73,45.15a8,8,0,0,0-2.83,6.07l-.15,33.65-29.83,17a8,8,0,0,0-3.89,5.4,106.47,106.47,0,0,0,0,41.56,8,8,0,0,0,3.89,5.4l29.83,17,.12,33.62a8,8,0,0,0,2.83,6.08,111.91,111.91,0,0,0,36.72,20.67,8,8,0,0,0,6.46-.59L128,214.15,158.12,231a7.91,7.91,0,0,0,3.9,1,8.09,8.09,0,0,0,2.57-.42,112.1,112.1,0,0,0,36.68-20.73,8,8,0,0,0,2.83-6.07l.15-33.65,29.83-17a8,8,0,0,0,3.89-5.4A106.47,106.47,0,0,0,237.94,107.21Zm-15,34.91-28.57,16.25a8,8,0,0,0-3,3c-.58,1-1.19,2.06-1.81,3.06a7.94,7.94,0,0,0-1.22,4.21l-.15,32.25a95.89,95.89,0,0,1-25.37,14.3L134,199.13a8,8,0,0,0-3.91-1h-.19c-1.21,0-2.43,0-3.64,0a8.08,8.08,0,0,0-4.1,1l-28.84,16.1A96,96,0,0,1,67.88,201l-.11-32.2a8,8,0,0,0-1.22-4.22c-.62-1-1.23-2-1.8-3.06a8.09,8.09,0,0,0-3-3.06l-28.6-16.29a90.49,90.49,0,0,1,0-28.26L61.67,97.63a8,8,0,0,0,3-3c.58-1,1.19-2.06,1.81-3.06a7.94,7.94,0,0,0,1.22-4.21l.15-32.25a95.89,95.89,0,0,1,25.37-14.3L122,56.87a8,8,0,0,0,4.1,1c1.21,0,2.43,0,3.64,0a8.08,8.08,0,0,0,4.1-1l28.84-16.1A96,96,0,0,1,188.12,55l.11,32.2a8,8,0,0,0,1.22,4.22c.62,1,1.23,2,1.8,3.06a8.09,8.09,0,0,0,3,3.06l28.6,16.29A90.49,90.49,0,0,1,222.9,142.12Z"/></symbol>
+    <symbol id="ph-caret-right" viewBox="0 0 256 256"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></symbol>
+    <symbol id="ph-dots-three-bold" viewBox="0 0 256 256"><path fill="currentColor" d="M60 128a16 16 0 1 1-16-16 16 16 0 0 1 16 16Zm68-16a16 16 0 1 0 16 16 16 16 0 0 0-16-16Zm84 0a16 16 0 1 0 16 16 16 16 0 0 0-16-16Z"/></symbol>
+    <symbol id="ph-plus" viewBox="0 0 256 256"><path fill="currentColor" d="M216 128a8 8 0 0 1-8 8h-72v72a8 8 0 0 1-16 0v-72H48a8 8 0 0 1 0-16h72V48a8 8 0 0 1 16 0v72h72a8 8 0 0 1 8 8Z"/></symbol>
+    <symbol id="ph-pencil" viewBox="0 0 256 256"><path fill="currentColor" d="m227.3 73.4-44.7-44.7a16 16 0 0 0-22.6 0L32 156.7V224h67.3l128-128a16 16 0 0 0 0-22.6ZM92.7 208H48v-44.7l88-88 44.7 44.7Z"/></symbol>
+    <symbol id="ph-arrow-clockwise" viewBox="0 0 256 256"><path fill="currentColor" d="M240 56v48a8 8 0 0 1-8 8h-48a8 8 0 0 1 0-16h29.8A88 88 0 1 0 216 128a8 8 0 0 1 16 0 104 104 0 1 1-26.2-69L224 77.2V56a8 8 0 0 1 16 0Z"/></symbol>
+    <symbol id="ph-trash" viewBox="0 0 256 256"><path fill="currentColor" d="M216 48h-40V40a24 24 0 0 0-24-24h-48a24 24 0 0 0-24 24v8H40a8 8 0 0 0 0 16h8v144a16 16 0 0 0 16 16h128a16 16 0 0 0 16-16V64h8a8 8 0 0 0 0-16Zm-24 160H64V64h128Z"/></symbol>
+    <symbol id="ph-arrow-left" viewBox="0 0 256 256"><path fill="currentColor" d="m224 128a8 8 0 0 1-8 8H59.3l58.4 58.3a8 8 0 0 1-11.4 11.4l-72-72a8 8 0 0 1 0-11.4l72-72a8 8 0 0 1 11.4 11.4L59.3 120H216a8 8 0 0 1 8 8Z"/></symbol>
+  </svg>
+
+  <div class="app-shell">
+    <aside class="sidebar" data-od-id="app-sidebar">
+      <a class="brand" href="personal-cinema-app-shell-v2.html" data-od-id="product-identity" aria-label="Personal Cinema 主页"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 256 256"><use href="#ph-film-reel-fill"></use></svg></span><span>PERSONAL CINEMA</span></a>
+      <button class="sidebar-search" id="searchButton" data-od-id="global-search-button" type="button" aria-label="打开全局搜索" aria-expanded="false"><svg class="icon" aria-hidden="true"><use href="#ph-magnifying-glass"></use></svg><span>搜索</span></button>
+      <nav class="sidebar-nav" aria-label="主导航">
+        <div class="nav-group top-group">
+          <button class="sidebar-link" data-route="home" data-od-id="nav-home"><svg class="icon icon-regular" aria-hidden="true"><use href="#ph-house"></use></svg><svg class="icon icon-selected" aria-hidden="true"><use href="#ph-house-fill"></use></svg>主页</button>
+          <button class="sidebar-link" data-route="movies" data-od-id="nav-movies"><svg class="icon" aria-hidden="true"><use href="#ph-film-slate"></use></svg>电影</button>
+          <button class="sidebar-link" data-route="ai" data-od-id="nav-ai-discovery"><svg class="icon" aria-hidden="true"><use href="#ph-sparkle"></use></svg>AI 发现</button>
+          <button class="sidebar-link" data-route="sources" data-od-id="nav-media-sources" aria-current="page"><svg class="icon" aria-hidden="true"><use href="#ph-hard-drives"></use></svg>媒体来源</button>
+        </div>
+        <div class="nav-group library-group">
+          <p class="nav-label">资料库</p>
+          <button class="sidebar-link" data-route="recent" data-od-id="nav-recently-added"><svg class="icon" aria-hidden="true"><use href="#ph-clock-counter-clockwise"></use></svg>最近添加</button>
+          <button class="sidebar-link" data-route="favorites" data-od-id="nav-favorites"><svg class="icon" aria-hidden="true"><use href="#ph-heart"></use></svg>收藏</button>
+          <button class="sidebar-link" data-route="unwatched" data-od-id="nav-unwatched"><svg class="icon" aria-hidden="true"><use href="#ph-eye-slash"></use></svg>未看</button>
+          <button class="sidebar-link" data-route="watched" data-od-id="nav-watched"><svg class="icon" aria-hidden="true"><use href="#ph-check-circle"></use></svg>已看</button>
+        </div>
+      </nav>
+      <div class="sidebar-bottom">
+        <button class="sidebar-link" data-action="settings" data-od-id="settings-entry"><svg class="icon" aria-hidden="true"><use href="#ph-gear-six"></use></svg>设置</button>
+        <div class="user-wrap" id="accountWrap" data-open="false">
+          <button class="user-button" id="accountButton" data-od-id="user-menu-button" aria-label="打开用户菜单" aria-expanded="false"><span class="avatar">林</span><span class="user-copy"><strong>林默</strong><small>个人电影收藏</small></span><svg class="icon" aria-hidden="true"><use href="#ph-caret-right"></use></svg></button>
+          <div class="account-menu" role="menu" data-od-id="user-menu"><button class="menu-action" role="menuitem" data-action="profile">个人资料</button><button class="menu-action" role="menuitem" data-action="logout">退出登录</button></div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="app-main" data-od-id="media-sources-page">
+      <div class="content">
+        <div class="content-inner">
+          <header class="page-heading" data-od-id="media-sources-heading">
+            <h1 class="page-title" data-od-id="media-sources-title">媒体来源</h1>
+            <button class="add-source-button" id="addSourceButton" type="button" data-od-id="add-source-button"><svg aria-hidden="true"><use href="#ph-plus"></use></svg><span>添加来源</span></button>
+          </header>
+
+          <div class="sources-workspace">
+            <section class="sources-section" aria-labelledby="connectedTitle" data-od-id="connected-sources">
+              <h2 class="section-title" id="connectedTitle">已连接</h2>
+              <div class="source-list" id="sourceList"></div>
+              <div class="source-empty" id="sourceEmpty" hidden>
+                <div class="empty-icon"><svg aria-hidden="true"><use href="#ph-hard-drives"></use></svg></div>
+                <h3>还没有媒体来源</h3>
+                <p>添加 WebDAV 媒体来源，开始建立你的个人片库。支持 AList、NAS WebDAV、Nextcloud 等标准 WebDAV 服务。</p>
+                <button class="empty-action" id="emptyAddSource" type="button">添加媒体来源</button>
+              </div>
+            </section>
+
+            <section class="sources-section" aria-labelledby="recentScansTitle" data-od-id="recent-scans">
+              <h2 class="section-title" id="recentScansTitle">最近扫描</h2>
+              <div class="scan-list" id="scanList"></div>
+            </section>
+
+            <section class="sources-section" aria-labelledby="recentMediaTitle" data-od-id="recent-media">
+              <div class="section-heading-row">
+                <h2 class="section-title" id="recentMediaTitle">最近入库</h2>
+                <a class="section-action" href="personal-cinema-movie-library.html" data-od-id="recent-media-view-all">查看全部<svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></a>
+              </div>
+              <div class="recent-media-grid" id="recentMediaGrid"></div>
+              <img id="recentPosterParasiteSeed" src="assets/tmdb-poster-parasite.jpg" alt="" hidden />
+            </section>
+          </div>
+          <p class="sr-only" id="announcement" aria-live="polite"></p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="source-menu-scrim" id="sourceMenuScrim"></div>
+  <div class="source-menu" id="sourceMenu" role="menu" aria-label="来源操作" data-open="false">
+    <span class="source-menu-handle" aria-hidden="true"></span>
+    <button type="button" role="menuitem" data-source-action="detail"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg><span>查看详情</span></button>
+    <button type="button" role="menuitem" data-source-action="scan"><svg aria-hidden="true"><use href="#ph-arrow-clockwise"></use></svg><span>立即扫描</span></button>
+    <button type="button" role="menuitem" data-source-action="edit"><svg aria-hidden="true"><use href="#ph-pencil"></use></svg><span>编辑来源</span></button>
+    <div class="menu-divider" aria-hidden="true"></div>
+    <button class="remove-source" type="button" role="menuitem" data-source-action="remove"><svg aria-hidden="true"><use href="#ph-trash"></use></svg><span>移除来源</span></button>
+  </div>
+
+  <div class="dialog-scrim" id="sourceDialogScrim" data-open="false">
+    <section class="source-dialog" id="sourceDialog" role="dialog" aria-modal="true" aria-labelledby="sourceDialogTitle">
+      <header class="dialog-header">
+        <span id="dialogHeaderSpacer" aria-hidden="true"></span>
+        <h2 id="sourceDialogTitle">添加媒体来源</h2>
+        <button class="dialog-icon-button" id="dialogClose" type="button" aria-label="关闭添加媒体来源"><svg aria-hidden="true"><use href="#ph-x"></use></svg></button>
+      </header>
+      <div class="dialog-body">
+        <form id="sourceFormPanel">
+          <div class="form-grid" id="webdavFields">
+            <div class="form-field"><label for="sourceName">来源名称</label><input id="sourceName" name="name" placeholder="例如：AList · 迅雷云盘" autocomplete="off" /></div>
+            <div class="form-field"><label for="sourceAddress">WebDAV 地址</label><input id="sourceAddress" name="address" placeholder="https://example.com/dav" inputmode="url" autocomplete="url" /></div>
+            <div class="form-field"><label for="sourceUsername">用户名</label><input id="sourceUsername" name="username" value="user" autocomplete="username" /></div>
+            <div class="form-field"><label for="sourcePassword">密码 / 凭据</label><input id="sourcePassword" name="password" type="password" autocomplete="current-password" /></div>
+            <div class="form-field"><label for="sourcePath">扫描根路径</label><input id="sourcePath" name="path" value="/" autocomplete="off" /></div>
+            <p class="form-help">支持 AList、NAS WebDAV、Nextcloud 等提供的标准 WebDAV 服务。</p>
+          </div>
+          <p class="connection-feedback" id="connectionFeedback" aria-live="polite"></p>
+          <div class="dialog-actions">
+            <button class="secondary-action" id="testConnection" type="button">测试连接</button>
+            <button class="primary-action" id="saveSource" type="submit" disabled>添加来源</button>
+          </div>
+        </form>
+      </div>
+    </section>
+  </div>
+
+  <div class="search-scrim" id="searchScrim" data-open="false"></div>
+  <section class="search-dialog" id="searchDialog" data-open="false" role="dialog" aria-modal="true" aria-label="搜索影片" data-od-id="global-search-dialog">
+    <div class="search-field"><label class="sr-only" for="globalSearch">搜索片名、导演或演员</label><svg class="icon" aria-hidden="true"><use href="#ph-magnifying-glass"></use></svg><input class="search-input" id="globalSearch" type="search" autocomplete="off" placeholder="搜索片名、导演或演员" /><button class="search-clear" id="clearSearch" type="button" aria-label="清空搜索关键词" hidden><svg aria-hidden="true"><use href="#ph-x"></use></svg></button><span class="search-key">ESC</span></div>
+    <div class="search-results"><p class="search-caption" id="searchCaption">最近内容</p><div class="search-result-list" id="searchResultList" aria-live="polite">
+      <button class="search-result" type="button" data-search="星际穿越 2014 科幻" data-href="personal-cinema-movie-detail-interstellar.html"><img class="search-thumb" src="assets/tmdb-poster-interstellar.jpg" alt="星际穿越电影海报" /><span><strong>星际穿越</strong><small>2014 · 科幻 / 剧情 / 冒险 · 8.5</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
+      <button class="search-result" type="button" data-search="沙丘 2021 科幻" data-href="personal-cinema-movie-detail.html"><img class="search-thumb" src="assets/tmdb-poster-dune.jpg" alt="沙丘电影海报" /><span><strong>沙丘</strong><small>2021 · 科幻 / 冒险 · 7.8</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
+      <button class="search-result" type="button" data-search="奥本海默 2023 剧情 历史" data-href="personal-cinema-movie-detail-oppenheimer.html"><img class="search-thumb" src="assets/tmdb-poster-oppenheimer.jpg" alt="奥本海默电影海报" /><span><strong>奥本海默</strong><small>2023 · 剧情 / 历史 · 8.0</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
+      <button class="search-result" type="button" data-search="沙丘2 2024 科幻" data-href="personal-cinema-movie-detail-dune-part-two.html"><img class="search-thumb" src="assets/tmdb-poster-dune-part-two.jpg" alt="沙丘2电影海报" /><span><strong>沙丘2</strong><small>2024 · 科幻 / 冒险 · 8.1</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
+      <button class="search-result" type="button" data-search="降临 2016 科幻 悬疑"><img class="search-thumb" src="assets/tmdb-poster-arrival.jpg" alt="降临电影海报" /><span><strong>降临</strong><small>2016 · 剧情 / 科幻 / 悬疑 · 7.6</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
+    </div><div class="search-empty" id="searchEmpty" hidden><strong>没有找到匹配的影片</strong><span>尝试搜索片名、导演或演员</span></div></div>
+  </section>
+
+  <script>
+    const sources = [
+      {id:'source-home-nas',name:'家庭 NAS',type:'WebDAV',address:'https://nas.example.com/dav',location:'nas.example.com/dav · /Movies',rootPath:'/Movies',movieCount:126,status:'available',lastScan:'8 分钟前',icon:'ph-cloud'},
+      {id:'source-alist',name:'AList · 迅雷云盘',type:'WebDAV',address:'https://alist.example.com/dav',location:'alist.example.com/dav · /Movies',rootPath:'/Movies',movieCount:58,status:'available',lastScan:'23 分钟前',icon:'ph-cloud'},
+      {id:'source-nextcloud',name:'我的 Nextcloud',type:'WebDAV',address:'https://cloud.example.com/remote.php/dav/files/lin',location:'cloud.example.com · /Cinema',rootPath:'/Cinema',movieCount:84,status:'available',lastScan:'昨天',icon:'ph-cloud'}
+    ];
+
+    const scans = [
+      {id:'scan_20260903_1032',sourceId:'source-home-nas',name:'家庭 NAS',summary:'扫描完成 · 新增 119 部 · 待确认 3 个 · 跳过 2 个',time:'8 分钟前'},
+      {id:'scan-alist',sourceId:'source-alist',name:'AList · 迅雷云盘',summary:'扫描完成 · 没有发现变化',time:'23 分钟前'},
+      {id:'scan-nextcloud',sourceId:'source-nextcloud',name:'我的 Nextcloud',summary:'扫描完成 · 新增 1 部',time:'昨天'}
+    ];
+
+    const recentMedia = [
+      {id:'dune-part-two',title:'沙丘2',sourceName:'家庭 NAS',posterSourceTitle:'沙丘2',href:'personal-cinema-movie-detail-dune-part-two.html'},
+      {id:'oppenheimer',title:'奥本海默',sourceName:'我的 Nextcloud',posterSourceTitle:'奥本海默',href:'personal-cinema-movie-detail-oppenheimer.html'},
+      {id:'interstellar',title:'星际穿越',sourceName:'家庭 NAS',posterSourceTitle:'星际穿越',href:'personal-cinema-movie-detail-interstellar.html'},
+      {id:'dune',title:'沙丘',sourceName:'AList · 迅雷云盘',posterSourceTitle:'沙丘',href:'personal-cinema-movie-detail.html'},
+      {id:'arrival',title:'降临',sourceName:'AList · 迅雷云盘',posterSourceTitle:'降临',href:'personal-cinema-movie-library.html'},
+      {id:'parasite',title:'寄生虫',sourceName:'我的 Nextcloud',posterSourceTitle:'寄生虫',href:'personal-cinema-movie-library.html'}
+    ];
+
+    const sourceList = document.getElementById('sourceList');
+    const sourceEmpty = document.getElementById('sourceEmpty');
+    const scanList = document.getElementById('scanList');
+    const recentMediaGrid = document.getElementById('recentMediaGrid');
+    const announcement = document.getElementById('announcement');
+    const sourceMenu = document.getElementById('sourceMenu');
+    const sourceMenuScrim = document.getElementById('sourceMenuScrim');
+    let activeSourceId = '';
+    let sourceMenuButton = null;
+    let scanTimer = null;
+
+    function statusMarkup(source){
+      if(source.status === 'scanning') return '<span class="spinner" aria-hidden="true"></span><span>扫描中…</span>';
+      return '<svg aria-hidden="true"><use href="#ph-check-circle"></use></svg><span>可用</span>';
+    }
+
+    function renderSources(){
+      sourceList.innerHTML = sources.map(source => `
+        <article class="source-item" data-source-id="${source.id}" data-od-id="source-item-${source.id}">
+          <button class="source-hit" type="button" data-source-detail="${source.id}" data-route="source-detail" aria-label="查看${source.name}详情"></button>
+          <span class="source-icon"><svg aria-hidden="true"><use href="#${source.icon}"></use></svg></span>
+          <span class="source-copy">
+            <strong class="source-name">${source.name}</strong>
+            <span class="source-type">${source.type}</span>
+            <span class="source-location">${source.location}</span>
+          </span>
+          <span class="source-status" aria-live="polite">${statusMarkup(source)}</span>
+          <span class="source-footer"><span class="source-count">${source.movieCount} 部电影</span><span class="meta-divider" aria-hidden="true">·</span><span class="source-last-scan">上次扫描 · ${source.lastScan}</span></span>
+          <button class="source-more" type="button" data-source-more="${source.id}" aria-label="${source.name}更多操作" aria-haspopup="menu" aria-expanded="false"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button>
+        </article>
+      `).join('');
+      sourceList.hidden = sources.length === 0;
+      sourceEmpty.hidden = sources.length !== 0;
+    }
+
+    function renderScans(){
+      const currentIds = new Set(sources.map(source => source.id));
+      const visibleScans = scans.filter(scan => currentIds.has(scan.sourceId));
+      scanList.innerHTML = visibleScans.map(scan => `
+        <article class="scan-item" data-od-id="scan-item-${scan.sourceId}">
+          <button class="scan-hit" type="button" data-scan-detail="${scan.id}" data-scan-source="${scan.sourceId}" aria-label="查看${scan.name}扫描详情"></button>
+          <span class="scan-icon"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span>
+          <span class="scan-copy"><strong>${scan.name}</strong><span>${scan.summary}</span></span>
+          <time class="scan-time">${scan.time}</time>
+          <svg class="scan-chevron" aria-hidden="true"><use href="#ph-caret-right"></use></svg>
+        </article>
+      `).join('');
+      document.getElementById('recentScansTitle').parentElement.hidden = visibleScans.length === 0;
+    }
+
+    function hydrateRecentPosters(){
+      try{
+        const searchPosterUrls = new Map([...document.querySelectorAll('.search-result')].map(result => {
+          const title = result.querySelector('strong')?.textContent.trim();
+          const image = result.querySelector('.search-thumb');
+          return [title,image?.src];
+        }).filter(([title,url]) => title && url));
+        const parasiteSeed = document.getElementById('recentPosterParasiteSeed');
+        if(parasiteSeed?.src) searchPosterUrls.set('寄生虫',parasiteSeed.src);
+        const mediaById = new Map(recentMedia.map(movie => [movie.id,movie]));
+        recentMediaGrid.querySelectorAll('[data-poster-key]').forEach(image => {
+          const movie = mediaById.get(image.dataset.posterKey);
+          const posterUrl = movie && searchPosterUrls.get(movie.posterSourceTitle);
+          if(posterUrl) image.src = posterUrl;
+        });
+      }catch(error){
+        console.warn('Failed to hydrate recent posters:',error);
+      }
+    }
+
+    function renderRecentMedia(){
+      recentMediaGrid.innerHTML = recentMedia.map(movie => `
+        <a class="recent-media-item" href="${movie.href}" data-od-id="recent-media-${movie.id}" aria-label="查看${movie.title}">
+          <span class="recent-poster"><img data-poster-key="${movie.id}" alt="${movie.title}电影海报" /></span>
+          <span class="recent-media-copy"><strong class="recent-media-title">${movie.title}</strong><span class="recent-media-source">${movie.sourceName}</span></span>
+        </a>
+      `).join('');
+      hydrateRecentPosters();
+    }
+
+    function announce(message){
+      announcement.textContent = '';
+      requestAnimationFrame(() => announcement.textContent = message);
+    }
+
+    function openSourceMenu(button,id){
+      closeSourceMenu(false);
+      activeSourceId = id;
+      sourceMenuButton = button;
+      button.setAttribute('aria-expanded','true');
+      sourceMenu.dataset.open = 'true';
+      sourceMenuScrim.dataset.open = 'true';
+      if(window.innerWidth > 900){
+        const rect = button.getBoundingClientRect();
+        const menuWidth = 176;
+        const top = Math.min(rect.bottom + 6,window.innerHeight - sourceMenu.offsetHeight - 12);
+        const left = Math.min(rect.right - menuWidth,window.innerWidth - menuWidth - 12);
+        sourceMenu.style.top = `${Math.max(12,top)}px`;
+        sourceMenu.style.left = `${Math.max(12,left)}px`;
+      }
+      sourceMenu.querySelector('button').focus();
+    }
+
+    function closeSourceMenu(restoreFocus=true){
+      sourceMenu.dataset.open = 'false';
+      sourceMenuScrim.dataset.open = 'false';
+      if(sourceMenuButton){
+        sourceMenuButton.setAttribute('aria-expanded','false');
+        if(restoreFocus && document.contains(sourceMenuButton)) sourceMenuButton.focus();
+      }
+      sourceMenuButton = null;
+    }
+
+    function scanSource(id){
+      const source = sources.find(item => item.id === id);
+      if(!source) return;
+      source.status = 'scanning';
+      renderSources();
+      announce(`${source.name}正在扫描`);
+      clearTimeout(scanTimer);
+      scanTimer = setTimeout(() => {
+        window.location.href = `personal-cinema-scan-task.html?autostart=1&source=${encodeURIComponent(id)}`;
+      },120);
+    }
+
+    sourceList.addEventListener('click',event => {
+      const more = event.target.closest('[data-source-more]');
+      if(more){openSourceMenu(more,more.dataset.sourceMore);return;}
+      const detail = event.target.closest('[data-source-detail]');
+      if(detail){
+        const source = sources.find(item => item.id === detail.dataset.sourceDetail);
+        if(source) announce(`已准备查看${source.name}详情`);
+      }
+    });
+
+    scanList.addEventListener('click',event => {
+      const detail = event.target.closest('[data-scan-detail]');
+      if(!detail) return;
+      const source = sources.find(item => item.id === detail.dataset.scanSource);
+      if(source){
+        announce(`正在打开${source.name}的扫描详情`);
+        window.location.href = `personal-cinema-scan-task.html?state=complete&source=${encodeURIComponent(source.id)}&task=${encodeURIComponent(detail.dataset.scanDetail)}`;
+      }
+    });
+
+    sourceMenuScrim.addEventListener('click',() => closeSourceMenu());
+    sourceMenu.addEventListener('click',event => {
+      const action = event.target.closest('[data-source-action]');
+      if(!action) return;
+      const id = activeSourceId;
+      const source = sources.find(item => item.id === id);
+      closeSourceMenu(false);
+      if(!source) return;
+      if(action.dataset.sourceAction === 'detail') announce(`已准备查看${source.name}详情`);
+      if(action.dataset.sourceAction === 'scan') scanSource(id);
+      if(action.dataset.sourceAction === 'edit') openSourceDialog(source);
+      if(action.dataset.sourceAction === 'remove'){
+        const index = sources.findIndex(item => item.id === id);
+        if(index > -1) sources.splice(index,1);
+        renderSources();renderScans();announce(`已移除${source.name}`);
+      }
+    });
+
+    const sourceDialogScrim = document.getElementById('sourceDialogScrim');
+    const sourceDialog = document.getElementById('sourceDialog');
+    const sourceDialogTitle = document.getElementById('sourceDialogTitle');
+    const sourceFormPanel = document.getElementById('sourceFormPanel');
+    const dialogHeaderSpacer = document.getElementById('dialogHeaderSpacer');
+    const webdavFields = document.getElementById('webdavFields');
+    const testConnection = document.getElementById('testConnection');
+    const saveSource = document.getElementById('saveSource');
+    const connectionFeedback = document.getElementById('connectionFeedback');
+    let dialogState = 'closed';
+    let editingSourceId = '';
+    let dialogTrigger = null;
+    let connectionTimer = null;
+
+    function openSourceDialog(source=null){
+      dialogTrigger = document.activeElement;
+      sourceDialogScrim.dataset.open = 'true';
+      document.body.setAttribute('data-dialog-open','true');
+      editingSourceId = source ? source.id : '';
+      showSourceForm(source);
+      requestAnimationFrame(() => {
+        const target = sourceDialog.querySelector('button:not([hidden]),input:not([hidden])');
+        if(target) target.focus();
+      });
+    }
+
+    function showSourceForm(source=null){
+      dialogState = 'form';
+      sourceFormPanel.hidden = false;
+      dialogHeaderSpacer.hidden = false;
+      connectionFeedback.textContent = '';connectionFeedback.dataset.success = 'false';
+      sourceDialogTitle.textContent = source ? '编辑 WebDAV 来源' : '添加 WebDAV 来源';
+      webdavFields.hidden = false;testConnection.hidden = false;
+      document.getElementById('sourceName').value = source?.name || '';
+      document.getElementById('sourceAddress').value = source?.address || '';
+      document.getElementById('sourceUsername').value = source?.username || '';
+      document.getElementById('sourcePassword').value = '';
+      document.getElementById('sourcePath').value = source?.rootPath || '/';
+      testConnection.textContent = '测试连接';testConnection.disabled = false;
+      saveSource.disabled = !source;saveSource.textContent = source ? '保存更改' : '添加来源';
+      requestAnimationFrame(() => document.getElementById('sourceName').focus());
+    }
+
+    function closeSourceDialog(){
+      clearTimeout(connectionTimer);
+      sourceDialogScrim.dataset.open = 'false';
+      document.body.removeAttribute('data-dialog-open');
+      dialogState = 'closed';
+      if(dialogTrigger && document.contains(dialogTrigger)) dialogTrigger.focus();
+    }
+
+    document.getElementById('addSourceButton').addEventListener('click',() => openSourceDialog());
+    document.getElementById('emptyAddSource').addEventListener('click',() => openSourceDialog());
+    document.getElementById('dialogClose').addEventListener('click',closeSourceDialog);
+    sourceDialogScrim.addEventListener('click',event => {if(event.target === sourceDialogScrim) closeSourceDialog();});
+
+    testConnection.addEventListener('click',() => {
+      testConnection.disabled = true;saveSource.disabled = true;testConnection.textContent = '正在连接…';
+      connectionFeedback.textContent = '正在连接…';connectionFeedback.dataset.success = 'false';
+      clearTimeout(connectionTimer);
+      connectionTimer = setTimeout(() => {
+        testConnection.disabled = false;testConnection.textContent = '重新测试';saveSource.disabled = false;
+        connectionFeedback.textContent = '✓ 连接成功';connectionFeedback.dataset.success = 'true';
+      },850);
+    });
+
+    sourceFormPanel.addEventListener('submit',event => {
+      event.preventDefault();
+      const name = document.getElementById('sourceName').value.trim() || '我的 WebDAV';
+      const address = document.getElementById('sourceAddress').value.trim();
+      const username = document.getElementById('sourceUsername').value.trim();
+      const rootPath = document.getElementById('sourcePath').value.trim() || '/';
+      const host = address.replace(/^https?:\/\//,'').replace(/\/$/,'') || 'WebDAV';
+      const location = `${host} · ${rootPath}`;
+      const typeLabel = 'WebDAV';
+      const icon = 'ph-cloud';
+      const existing = editingSourceId ? sources.find(item => item.id === editingSourceId) : sources.find(item => item.name === name);
+      if(existing){Object.assign(existing,{name,address,username,rootPath,location,type:typeLabel,icon});}
+      else{
+        const id = `source-${Date.now()}`;
+        sources.push({id,name,address,username,rootPath,type:typeLabel,location,movieCount:0,status:'available',lastScan:'尚未扫描',icon});
+        scans.unshift({id:`scan-${id}`,sourceId:id,name,summary:'等待首次扫描',time:'刚刚'});
+      }
+      renderSources();renderScans();closeSourceDialog();announce(`${name}已添加`);
+    });
+
+    sourceDialog.addEventListener('keydown',event => {
+      if(event.key !== 'Tab') return;
+      const focusable = [...sourceDialog.querySelectorAll('button:not([hidden]):not(:disabled),input:not([hidden]):not(:disabled)')].filter(item => item.offsetParent !== null);
+      if(!focusable.length) return;
+      const first = focusable[0],last = focusable[focusable.length-1];
+      if(event.shiftKey && document.activeElement === first){event.preventDefault();last.focus();}
+      else if(!event.shiftKey && document.activeElement === last){event.preventDefault();first.focus();}
+    });
+
+    const accountWrap = document.getElementById('accountWrap');
+    const accountButton = document.getElementById('accountButton');
+    accountButton.addEventListener('click',event => {
+      event.stopPropagation();
+      const open = accountWrap.dataset.open !== 'true';accountWrap.dataset.open = String(open);accountButton.setAttribute('aria-expanded',String(open));
+    });
+    accountWrap.querySelectorAll('[data-action]').forEach(button => button.addEventListener('click',() => {accountWrap.dataset.open='false';accountButton.setAttribute('aria-expanded','false');announce(button.dataset.action === 'profile' ? '已准备打开个人资料' : '退出登录为演示操作');}));
+    document.addEventListener('click',event => {if(!accountWrap.contains(event.target)){accountWrap.dataset.open='false';accountButton.setAttribute('aria-expanded','false');}});
+
+    const routeFiles = {home:'personal-cinema-app-shell-v2.html',movies:'personal-cinema-movie-library.html',ai:'personal-cinema-ai-discovery.html'};
+    document.querySelectorAll('.sidebar-link[data-route]').forEach(button => button.addEventListener('click',() => {
+      const route = button.dataset.route;
+      if(routeFiles[route]) window.location.href = routeFiles[route];
+      else if(route !== 'sources') announce(`${button.textContent.trim()}页面入口已准备`);
+    }));
+
+    const searchButton = document.getElementById('searchButton');
+    const searchScrim = document.getElementById('searchScrim');
+    const searchDialog = document.getElementById('searchDialog');
+    const searchInput = document.getElementById('globalSearch');
+    const clearSearch = document.getElementById('clearSearch');
+    const searchCaption = document.getElementById('searchCaption');
+    const searchResultList = document.getElementById('searchResultList');
+    const searchEmpty = document.getElementById('searchEmpty');
+    const searchItems = [...searchResultList.querySelectorAll('.search-result')];
+    let searchIndex = -1;
+    function renderSearch(){
+      const query = searchInput.value.trim().toLowerCase();
+      let visible = 0;
+      clearSearch.hidden = !searchInput.value;
+      searchCaption.textContent = query ? '搜索结果' : '最近内容';
+      searchItems.forEach((item,index) => {
+        const match = query ? item.dataset.search.toLowerCase().includes(query) : index < 5;
+        item.hidden = !match;
+        if(match) visible += 1;
+        item.removeAttribute('data-active');
+      });
+      searchEmpty.hidden = visible > 0;
+      searchIndex = -1;
+    }
+    function openSearch(){
+      closeSourceMenu(false);renderSearch();searchDialog.dataset.open='true';searchScrim.dataset.open='true';searchButton.setAttribute('aria-expanded','true');document.body.dataset.locked='true';setTimeout(()=>searchInput.focus(),0);
+    }
+    function closeSearch(){searchDialog.dataset.open='false';searchScrim.dataset.open='false';searchButton.setAttribute('aria-expanded','false');document.body.dataset.locked='false';searchIndex=-1;}
+    searchButton.addEventListener('click',openSearch);
+    searchScrim.addEventListener('click',closeSearch);
+    searchInput.addEventListener('input',renderSearch);
+    clearSearch.addEventListener('click',()=>{searchInput.value='';renderSearch();searchInput.focus();});
+    searchResultList.addEventListener('click',event=>{const item=event.target.closest('.search-result');if(!item)return;if(item.dataset.href)window.location.href=item.dataset.href;else{announce(`已选择${item.querySelector('strong').textContent}`);closeSearch();}});
+    searchInput.addEventListener('keydown',event=>{if(!['ArrowDown','ArrowUp','Enter'].includes(event.key))return;const visible=searchItems.filter(item=>!item.hidden);if(!visible.length)return;if(event.key==='Enter'){if(searchIndex>=0){event.preventDefault();visible[searchIndex].click();}return;}event.preventDefault();searchIndex=event.key==='ArrowDown'?(searchIndex+1)%visible.length:searchIndex<=0?visible.length-1:searchIndex-1;searchItems.forEach(item=>item.removeAttribute('data-active'));visible[searchIndex].dataset.active='true';});
+
+    document.addEventListener('keydown',event => {
+      if(event.key === 'Escape'){
+        if(sourceDialogScrim.dataset.open === 'true') closeSourceDialog();
+        else if(searchDialog.dataset.open === 'true') closeSearch();
+        else if(sourceMenu.dataset.open === 'true') closeSourceMenu();
+        else if(accountWrap.dataset.open === 'true'){accountWrap.dataset.open='false';accountButton.setAttribute('aria-expanded','false');accountButton.focus();}
+      }
+      if(event.key === '/' && document.activeElement !== searchInput){event.preventDefault();openSearch();}
+    });
+
+    renderSources();
+    renderScans();
+    try{
+      renderRecentMedia();
+    }catch(error){
+      console.warn('Failed to render recent media:',error);
+    }
+  </script>
+</body>
+</html>

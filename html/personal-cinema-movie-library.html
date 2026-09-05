@@ -1,0 +1,902 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Personal Cinema · 电影</title>
+  <link rel="prefetch" href="personal-cinema-app-shell-v2.html" as="document" />
+  <!-- Movie metadata and imagery sourced from TMDB. This product uses TMDB data but is not endorsed or certified by TMDB. -->
+  <style>
+:root{
+  --bg:#0a0a0b;--surface:#141416;--panel:#1c1c1e;--fg:#f5f5f7;--muted:#a1a1a6;--accent:#73a9b7;--border:#f5f5f7;
+  --line:color-mix(in oklch,var(--border) 7%,transparent);
+  --weak:#6e6e73;--icon-default:#afafb6;--icon-hover:#d7d7dc;--icon-active:#f5f5f7;
+  --font-display:-apple-system,BlinkMacSystemFont,'SF Pro Display','PingFang SC','Segoe UI',sans-serif;
+  --font-body:-apple-system,BlinkMacSystemFont,'SF Pro Text','PingFang SC','Segoe UI',sans-serif;
+  --font-mono:'SFMono-Regular',Consolas,monospace;--sidebar:220px;--library-poster-min:clamp(150px,9vw,170px);
+  --radius-xs:8px;--radius-poster:10px;--radius-nav:10px;--radius-sm:12px;--radius-editorial:14px;--radius-md:16px;--radius-lg:20px;--radius-pill:9999px;--radius-circle:50%;
+  --text-primary:rgba(255,255,255,.92);--text-secondary:rgba(255,255,255,.62);--text-tertiary:rgba(255,255,255,.46);
+}
+
+/* Foundation */
+*,*::before,*::after{box-sizing:border-box}
+html{height:100%;overflow:hidden;background:var(--bg);-webkit-text-size-adjust:100%}
+body{height:100%;margin:0;min-width:0;overflow:hidden;background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+button,input{font:inherit}
+button{color:inherit;cursor:pointer}
+img,svg{display:block;max-width:100%}
+h1,h2,h3,p{margin:0}
+[hidden]{display:none!important}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.icon-sprite{position:absolute;width:0;height:0;overflow:hidden}
+.icon{width:20px;height:20px;flex:0 0 auto}
+button:focus-visible,a:focus-visible,.search-input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* App shell and sidebar */
+.sidebar{position:fixed;inset:0 auto 0 0;z-index:20;width:var(--sidebar);padding:20px 14px 16px;border-right:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column;gap:20px}
+.brand{display:flex;align-items:center;gap:11px;min-height:40px;padding:0 9px;color:var(--fg);text-decoration:none;font-size:11px;font-weight:650;letter-spacing:.075em}
+.brand-mark{display:grid;place-items:center;width:27px;height:27px;border:0;border-radius:var(--radius-xs);background:var(--fg);color:var(--bg);box-shadow:inset 0 0 0 1px color-mix(in oklch,var(--bg) 14%,transparent)}
+.brand-mark svg{width:16px;height:16px}
+.sidebar-search{display:flex;align-items:center;gap:10px;width:100%;min-height:38px;padding:0 11px;border:1px solid rgba(255,255,255,.08);border-radius:var(--radius-sm);background:rgba(28,28,30,.72);color:var(--muted);font-size:13px;text-align:left;box-shadow:inset 0 1px 0 rgba(255,255,255,.035);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);transition:background .2s ease-out,color .2s ease-out,border-color .2s ease-out}
+.sidebar-search:hover{border-color:rgba(255,255,255,.12);background:rgba(34,34,37,.82);color:var(--fg)}
+.sidebar-nav{display:flex;flex:1;min-height:0;flex-direction:column;gap:27px;overflow-y:auto}
+.nav-group{display:grid;gap:5px}
+.library-group{margin-top:2px}
+.nav-label{padding:0 12px 8px;color:var(--weak);font-size:11px;font-weight:600;letter-spacing:.06em}
+.sidebar-link{display:flex;align-items:center;gap:10px;min-height:38px;padding:0 11px;border:0;border-radius:var(--radius-nav);background:transparent;color:var(--muted);font-size:13px;font-weight:500;text-align:left;transition:background .2s ease-out,color .2s ease-out}
+.sidebar-link:hover{background:color-mix(in oklch,var(--panel) 72%,transparent);color:var(--fg)}
+.sidebar-link[aria-current="page"]{background:rgba(255,255,255,.075);color:var(--fg);font-weight:600;box-shadow:inset 0 0 0 1px rgba(255,255,255,.075),0 4px 14px rgba(0,0,0,.14);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.sidebar .icon{fill:currentColor;opacity:1}
+.sidebar-link .icon,.sidebar-search .icon,.user-button>.icon{width:17px;height:17px;color:var(--icon-default);opacity:1}
+.sidebar-link:hover .icon,.sidebar-search:hover .icon,.user-button:hover>.icon,.user-wrap[data-open="true"] .user-button>.icon{color:var(--icon-hover)}
+.sidebar-link[aria-current="page"] .icon{color:var(--icon-active);fill:currentColor;opacity:1;stroke-width:initial}
+.sidebar-link .icon-selected{display:none}
+.sidebar-link[aria-current="page"] .icon-regular{display:none}
+.sidebar-link[aria-current="page"] .icon-selected{display:block}
+.sidebar-bottom{display:grid;gap:9px;border-top:1px solid var(--line);padding-top:14px}
+.user-wrap{position:relative}
+.user-button{display:grid;grid-template-columns:32px minmax(0,1fr) 16px;align-items:center;gap:10px;width:100%;min-height:48px;padding:6px 8px;border:0;border-radius:var(--radius-sm);background:transparent;text-align:left;transition:background .2s ease-out}
+.user-button:hover{background:var(--panel)}
+.avatar{display:grid;place-items:center;width:32px;height:32px;border-radius:var(--radius-circle);background:var(--fg);color:var(--bg);font-size:12px;font-weight:700}
+.user-copy{display:grid;min-width:0}
+.user-copy strong{font-size:13px;font-weight:600}
+.user-copy small{color:var(--weak);font-size:11px}
+.account-menu{position:absolute;left:0;bottom:calc(100% + 8px);z-index:35;width:190px;padding:7px;border:1px solid rgba(255,255,255,.1);border-radius:var(--radius-md);background:rgba(28,28,30,.76);box-shadow:0 18px 50px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.045);opacity:0;pointer-events:none;transform:translateY(6px);-webkit-backdrop-filter:blur(18px) saturate(115%);backdrop-filter:blur(18px) saturate(115%);transition:.2s ease-out}
+.user-wrap[data-open="true"] .account-menu{opacity:1;pointer-events:auto;transform:none}
+.menu-action{display:flex;align-items:center;gap:9px;width:100%;min-height:38px;padding:0 10px;border:0;border-radius:var(--radius-sm);background:transparent;color:var(--fg);font-size:13px}
+.menu-action:hover{background:var(--surface)}
+
+/* Main content */
+.app-main{height:100vh;min-height:0;margin-left:var(--sidebar);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;-ms-overflow-style:none}
+.app-main::-webkit-scrollbar{display:none;width:0;height:0}
+body[data-locked="true"] .app-main{overflow:hidden}
+.content{width:100%;padding:36px 40px 76px}
+
+/* Movie page header */
+.movie-page-heading{display:flex;align-items:baseline;margin-bottom:22px}
+.page-title{font:700 clamp(30px,2vw,32px)/1.12 var(--font-display);letter-spacing:-.032em}
+
+/* Movie toolbar */
+.movie-toolbar{position:sticky;top:0;z-index:15;display:flex;align-items:center;justify-content:space-between;width:100%;margin:-4px 0 16px;padding:4px 0;background:color-mix(in oklch,var(--bg) 92%,transparent);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.toolbar-group{position:relative}
+.toolbar-button{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 11px;border:1px solid rgba(255,255,255,.08);border-radius:var(--radius-nav);background:rgba(255,255,255,.045);color:var(--text-secondary);font-size:13px;font-weight:500;transition:background .18s ease-out,border-color .18s ease-out,color .18s ease-out}
+.toolbar-button:hover,.toolbar-button[aria-expanded="true"]{border-color:rgba(255,255,255,.12);background:rgba(255,255,255,.07);color:var(--fg)}
+.toolbar-button[data-active="true"]{color:var(--text-primary)}
+.toolbar-button svg{width:15px;height:15px;fill:currentColor}
+.control-caret{width:13px!important;height:13px!important;transform:rotate(90deg)}
+
+/* Filter and sort popovers */
+.popover{position:absolute;top:calc(100% + 8px);z-index:32;padding:10px;border:1px solid rgba(255,255,255,.1);border-radius:var(--radius-md);background:rgba(28,28,30,.86);box-shadow:0 20px 54px rgba(0,0,0,.44),inset 0 1px 0 rgba(255,255,255,.045);opacity:0;pointer-events:none;-webkit-backdrop-filter:blur(18px) saturate(115%);backdrop-filter:blur(18px) saturate(115%);transform:translateY(-4px);transition:opacity .18s ease-out,transform .18s ease-out}
+.popover[data-open="true"]{opacity:1;pointer-events:auto;transform:none}
+.filter-popover{left:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px 22px;width:min(390px,calc(100vw - 36px));max-height:min(560px,72vh);overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.18) transparent}
+.sort-popover{right:0;width:188px}
+.filter-section{min-width:0}
+.filter-section-title{padding:4px 7px 6px;color:var(--text-tertiary);font-size:11px;font-weight:600;letter-spacing:.045em}
+.filter-list{display:grid}
+.option-row{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 18px;align-items:center;min-height:34px;padding:0 7px;border-radius:var(--radius-xs);color:var(--text-secondary);font-size:13px;cursor:pointer;transition:background .18s ease-out,color .18s ease-out}
+.option-row:hover{background:rgba(255,255,255,.055);color:var(--fg)}
+.option-row input{position:absolute;opacity:0;pointer-events:none}
+.option-check{display:grid;place-items:center;color:var(--icon-active);opacity:0}
+.option-check svg{width:15px;height:15px;fill:currentColor}
+.option-row input:checked~.option-check{opacity:1}
+.option-row:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:-1px}
+.filter-footer{grid-column:1/-1;display:flex;justify-content:flex-end;border-top:1px solid var(--line);padding:9px 5px 0}
+.quiet-action{min-height:32px;padding:0 8px;border:0;border-radius:var(--radius-xs);background:transparent;color:var(--muted);font-size:12px}
+.quiet-action:hover{background:rgba(255,255,255,.055);color:var(--fg)}
+.sort-option{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:36px;padding:0 9px;border:0;border-radius:var(--radius-xs);background:transparent;color:var(--text-secondary);font-size:13px;text-align:left}
+.sort-option:hover,.sort-option[aria-checked="true"]{background:rgba(255,255,255,.055);color:var(--fg)}
+.sort-option svg{width:15px;height:15px;fill:currentColor;opacity:0}
+.sort-option[aria-checked="true"] svg{opacity:1}
+
+/* Movie grid and cards */
+.movie-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--library-poster-min),1fr));gap:20px;width:100%;align-items:start}
+.movie-card{min-width:0}
+.movie-card[hidden]{display:none}
+.poster-art{position:relative;aspect-ratio:2/3;overflow:hidden;border-radius:var(--radius-poster);background:var(--panel);box-shadow:0 8px 22px color-mix(in oklch,var(--bg) 46%,transparent);transform:none;transition:box-shadow .2s ease-out}
+.poster-art>img{width:100%;height:100%;border-radius:inherit;object-fit:cover;opacity:1;filter:none;transform:none;transition:none}
+.poster-art::after{content:"";position:absolute;inset:0;z-index:2;border-radius:inherit;background:rgba(0,0,0,.38);opacity:0;pointer-events:none;transition:opacity 110ms ease-in}
+.movie-card:hover .poster-art::after,.movie-card:has(.play-mark:focus-visible) .poster-art::after,.movie-card:has(.series-mark:focus-visible) .poster-art::after,.movie-card:has(.poster-more-mark:focus-visible) .poster-art::after{opacity:1}
+.poster-detail-hit{position:absolute;inset:0;z-index:1;width:100%;border:0;border-radius:inherit;background:transparent;padding:0}
+.poster-detail-hit:focus-visible{outline:2px solid var(--accent);outline-offset:-3px}
+.poster-copy{display:grid;grid-template-rows:16px 15px;gap:2px;height:41px;padding-top:8px}
+.poster-title{overflow:hidden;color:var(--text-primary);font-size:13px;font-weight:500;line-height:16px;text-overflow:ellipsis;white-space:nowrap}
+.poster-meta{overflow:hidden;color:var(--text-secondary);font-size:12px;font-weight:400;line-height:15px;text-overflow:ellipsis;white-space:nowrap}
+.play-mark,.series-mark,.poster-more-mark{position:absolute;z-index:5;display:grid;place-items:center;width:30px;height:30px;border-radius:var(--radius-circle);opacity:0;transform:none;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);transition:opacity 110ms ease-in,background-color 110ms ease-in,color 110ms ease-in}
+.play-mark,.series-mark{left:10px;bottom:12px;border:1px solid rgba(255,255,255,.16);background:rgba(246,246,246,.74);color:#111113;box-shadow:0 5px 16px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.1)}
+.play-mark svg,.series-mark svg{width:13px;height:13px;fill:currentColor}
+.poster-more-mark{right:10px;bottom:12px;border:1px solid rgba(255,255,255,.16);background:rgba(246,246,246,.20);color:rgba(245,245,247,.94);box-shadow:0 5px 16px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.1)}
+.poster-more-mark svg{width:15px;height:15px;fill:currentColor}
+.movie-card:hover .play-mark,.movie-card:hover .series-mark,.movie-card:hover .poster-more-mark,.play-mark:focus-visible,.series-mark:focus-visible,.poster-more-mark:focus-visible{opacity:1}
+.movie-card:hover .play-mark,.movie-card:hover .series-mark,.play-mark:focus-visible,.series-mark:focus-visible{background:rgba(245,245,247,.9)}
+.movie-card:hover .poster-more-mark,.poster-more-mark:focus-visible{background:rgba(245,245,247,.24)}
+
+/* Context menu */
+.movie-card .poster-more-mark[aria-expanded="true"]{opacity:1;background:rgba(245,245,247,.28)}
+.context-scrim{display:none}
+.context-menu{position:fixed;z-index:38;width:168px;padding:6px;border:1px solid rgba(255,255,255,.1);border-radius:var(--radius-editorial);background:rgba(28,28,30,.88);box-shadow:0 18px 48px rgba(0,0,0,.36),inset 0 1px 0 rgba(255,255,255,.045);opacity:0;pointer-events:none;-webkit-backdrop-filter:blur(18px) saturate(115%);backdrop-filter:blur(18px) saturate(115%);transform:translateY(-4px);transition:opacity .16s ease-out,transform .16s ease-out}
+.context-menu[data-open="true"]{opacity:1;pointer-events:auto;transform:none}
+.context-action{display:flex;align-items:center;gap:9px;width:100%;min-height:35px;padding:0 9px;border:0;border-radius:var(--radius-xs);background:transparent;color:var(--text-primary);font-size:13px;font-weight:450;text-align:left;transition:background .11s ease-in,color .11s ease-in}
+.context-action svg{flex:0 0 auto;width:16px;height:16px;color:var(--icon-default);fill:currentColor;transition:color .11s ease-in}
+.context-action:hover,.context-action:focus-visible{background:rgba(255,255,255,.06);color:var(--fg)}
+.context-action:hover svg,.context-action:focus-visible svg{color:var(--icon-hover)}
+.context-action:focus-visible{outline:1px solid rgba(255,255,255,.18);outline-offset:-1px}
+.context-divider{height:1px;margin:5px 7px;background:var(--line)}
+
+/* Library states */
+.library-state{display:grid;justify-items:center;width:100%;padding:72px 20px;color:var(--muted);text-align:center}
+.state-icon{display:grid;place-items:center;width:44px;height:44px;margin-bottom:13px;border-radius:var(--radius-circle);background:rgba(255,255,255,.055);color:var(--icon-default)}
+.state-icon svg{width:22px;height:22px;fill:currentColor}
+.library-state strong{color:var(--fg);font-size:16px;font-weight:600}
+.library-state p{margin-top:4px;color:var(--text-tertiary);font-size:13px}
+.state-action{min-height:34px;margin-top:16px;padding:0 12px;border:1px solid rgba(255,255,255,.1);border-radius:var(--radius-nav);background:rgba(255,255,255,.055);color:var(--text-primary);font-size:13px}
+.state-action:hover{background:rgba(255,255,255,.08)}
+.movie-loading{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--library-poster-min),1fr));gap:20px;width:100%;align-items:start}
+.movie-loading-next{margin-top:20px}
+.movie-skeleton{display:grid;gap:8px}
+.skeleton-poster{aspect-ratio:2/3;border-radius:var(--radius-poster);background:linear-gradient(90deg,rgba(255,255,255,.025),rgba(255,255,255,.065),rgba(255,255,255,.025));background-size:200% 100%;animation:library-shimmer 1.25s ease-in-out infinite}
+.skeleton-line{height:10px;border-radius:var(--radius-pill);background:rgba(255,255,255,.05)}
+.skeleton-line.short{width:58%;opacity:.72}
+@keyframes library-shimmer{to{background-position:-200% 0}}
+
+/* Spotlight search */
+.search-scrim{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.38);opacity:0;pointer-events:none;-webkit-backdrop-filter:blur(2px) saturate(92%);backdrop-filter:blur(2px) saturate(92%);transition:opacity .2s ease-out}
+.search-scrim[data-open="true"]{opacity:1;pointer-events:auto}
+.search-dialog{position:fixed;z-index:45;left:50%;top:10vh;display:flex;width:min(760px,calc(100% - 40px));max-height:74vh;overflow:hidden;flex-direction:column;border:1px solid rgba(255,255,255,.11);border-radius:var(--radius-lg);background:rgba(28,28,30,.82);box-shadow:0 32px 90px rgba(0,0,0,.56),inset 0 1px 0 rgba(255,255,255,.055);opacity:0;pointer-events:none;-webkit-backdrop-filter:blur(26px) saturate(120%);backdrop-filter:blur(26px) saturate(120%);transform:translate(-50%,-10px) scale(.992);transition:opacity .2s ease-out,transform .2s ease-out}
+.search-dialog[data-open="true"]{opacity:1;pointer-events:auto;transform:translate(-50%,0) scale(1)}
+.search-field{display:grid;flex:0 0 auto;grid-template-columns:22px minmax(0,1fr) 30px auto;align-items:center;gap:12px;margin:15px 15px 7px;padding:12px 15px;border:1px solid rgba(255,255,255,.09);border-radius:var(--radius-md);background:rgba(255,255,255,.055);box-shadow:inset 0 1px 0 rgba(255,255,255,.035);transition:border-color .2s ease-out,background .2s ease-out,box-shadow .2s ease-out}
+.search-field:focus-within{border-color:rgba(255,255,255,.26);outline:0;background:rgba(255,255,255,.07);box-shadow:inset 0 1px 0 rgba(255,255,255,.07)}
+.search-field>svg{width:20px;height:20px;color:var(--icon-default);fill:currentColor}
+.search-input{width:100%;border:0;outline:0;background:transparent;color:var(--fg);font-size:17px}
+.search-input::placeholder{color:var(--muted)}
+.search-input:focus-visible{outline:0}
+.search-input::-webkit-search-cancel-button,.search-input::-webkit-search-decoration{-webkit-appearance:none;appearance:none}
+.search-clear{display:grid;place-items:center;width:30px;height:30px;padding:0;border:0;border-radius:var(--radius-circle);background:transparent;color:var(--muted);transition:color .2s ease-out,background .2s ease-out}
+.search-clear:hover,.search-clear:focus-visible{background:rgba(255,255,255,.07);color:var(--fg)}
+.search-clear:focus-visible{outline:2px solid rgba(255,255,255,.28);outline-offset:1px}
+.search-clear svg{width:17px;height:17px;fill:currentColor}
+.search-key{padding:3px 7px;border:1px solid rgba(255,255,255,.11);border-radius:var(--radius-xs);background:rgba(255,255,255,.035);color:var(--weak);font:10px var(--font-mono);letter-spacing:.02em}
+.search-results{min-height:0;max-height:calc(74vh - 82px);overflow-y:auto;padding:8px 12px 13px;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.2) transparent}
+.search-results::-webkit-scrollbar{width:5px}
+.search-results::-webkit-scrollbar-track{background:transparent}
+.search-results::-webkit-scrollbar-thumb{border-radius:var(--radius-pill);background:rgba(255,255,255,.16)}
+.search-results:hover::-webkit-scrollbar-thumb{background:rgba(255,255,255,.25)}
+.search-caption{padding:5px 8px 8px;color:color-mix(in oklch,var(--fg) 66%,transparent);font-size:12px;font-weight:600;letter-spacing:.015em}
+.search-result-list{display:grid}
+.search-result{display:grid;grid-template-columns:42px minmax(0,1fr) 24px;align-items:center;gap:12px;width:100%;min-height:68px;padding:7px 9px;border:0;border-radius:var(--radius-sm);background:transparent;text-align:left;transition:background .2s ease-out,color .2s ease-out}
+.search-result:hover,.search-result:focus-visible,.search-result[data-active="true"]{background:rgba(255,255,255,.055)}
+.search-result:focus-visible{outline:1px solid rgba(255,255,255,.2);outline-offset:-1px}
+.search-thumb{width:40px;aspect-ratio:2/3;border-radius:var(--radius-xs);object-fit:cover;opacity:1;filter:none;transform:none}
+.search-result span:nth-child(2){display:grid}
+.search-result strong{color:color-mix(in oklch,var(--fg) 92%,transparent);font-size:14px;font-weight:600;transition:color .2s ease-out}
+.search-result:hover strong,.search-result:focus-visible strong,.search-result[data-active="true"] strong{color:var(--fg)}
+.search-result small{margin-top:2px;color:var(--muted);font-size:12px}
+.search-result-caret{display:grid;place-items:center;color:var(--weak);opacity:.42;transition:color .2s ease-out,opacity .2s ease-out,transform .2s ease-out}
+.search-result-caret svg{width:15px;height:15px;fill:currentColor}
+.search-result:hover .search-result-caret,.search-result:focus-visible .search-result-caret,.search-result[data-active="true"] .search-result-caret{color:var(--icon-hover);opacity:1;transform:translateX(1px)}
+.search-empty{display:grid;gap:4px;padding:28px 10px 32px;color:var(--muted);font-size:12px;text-align:center}
+.search-empty strong{color:var(--fg);font-size:14px;font-weight:600}
+.search-empty span{color:var(--muted);font-size:12px}
+
+/* Responsive */
+@media(min-width:901px){
+  .sidebar{inset:8px auto 8px 8px;border:1px solid rgba(255,255,255,.06);border-radius:var(--radius-lg);background:rgba(20,20,22,.78);box-shadow:0 8px 28px rgba(0,0,0,.16);-webkit-backdrop-filter:blur(16px) saturate(118%);backdrop-filter:blur(16px) saturate(118%)}
+  .app-main{margin-left:calc(var(--sidebar) + 16px)}
+}
+@media(max-width:900px){
+  html,body{height:auto;overflow:auto;scrollbar-width:none;-ms-overflow-style:none}
+  html::-webkit-scrollbar,body::-webkit-scrollbar{display:none;width:0;height:0}
+  body[data-locked="true"]{overflow:hidden}
+  .sidebar{position:sticky;inset:auto;top:0;width:100%;height:70px;padding:10px 14px;flex-direction:row;align-items:center;gap:8px}
+  .brand{padding:0 4px}
+  .brand>span:last-child,.nav-label,.library-group,.sidebar-bottom>.sidebar-link,.user-copy{display:none}
+  .sidebar-search{width:42px;min-height:42px;padding:0;justify-content:center}
+  .sidebar-search span{display:none}
+  .sidebar-nav{flex-direction:row;overflow:hidden}
+  .nav-group{display:flex;min-width:0;gap:2px}
+  .sidebar-link{padding:0 10px;white-space:nowrap}
+  .sidebar-bottom{display:block;border:0;padding:0}
+  .user-button{grid-template-columns:34px;width:42px;min-height:42px;padding:4px}
+  .user-button>.icon{display:none}
+  .account-menu{left:auto;right:0;bottom:auto;top:calc(100% + 8px)}
+  .app-main{height:auto;min-height:100vh;margin-left:0;overflow:visible}
+  .content{padding-top:28px;padding-inline:28px}
+  .movie-toolbar{top:70px}
+}
+@media(max-width:900px),(hover:none){
+  body[data-action-sheet-open="true"]{overflow:hidden}
+  .context-scrim{position:fixed;inset:0;z-index:37;display:block;background:rgba(0,0,0,.28);opacity:0;visibility:hidden;pointer-events:none;-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);transition:opacity .18s ease-out,visibility .18s ease-out}
+  .context-scrim[data-open="true"]{opacity:1;visibility:visible;pointer-events:auto}
+  .context-menu{right:auto!important;bottom:max(12px,env(safe-area-inset-bottom))!important;left:50%!important;top:auto!important;width:min(420px,calc(100% - 24px));padding:18px 10px 10px;border-color:rgba(255,255,255,.11);border-radius:24px;background:rgba(31,31,34,.82);box-shadow:0 18px 44px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.07);-webkit-backdrop-filter:blur(24px) saturate(125%);backdrop-filter:blur(24px) saturate(125%);transform:translate(-50%,calc(100% + 28px)) scale(.985);transform-origin:center bottom;transition:opacity .18s ease-out,transform .22s cubic-bezier(.22,.75,.28,1)}
+  .context-menu::before{content:"";position:absolute;top:7px;left:50%;width:34px;height:4px;border-radius:var(--radius-pill);background:rgba(255,255,255,.2);transform:translateX(-50%)}
+  .context-menu[data-open="true"]{transform:translate(-50%,0) scale(1)}
+  .context-action{min-height:50px;padding:0 14px;border-radius:var(--radius-nav);font-size:15px}
+  .context-action svg{width:19px;height:19px}
+  .context-action[data-menu-action="play"]{color:var(--fg);font-weight:600}
+  .context-divider{margin:5px 12px;background:rgba(255,255,255,.08)}
+  .poster-more-mark{border-color:rgba(255,255,255,.12);background:rgba(15,15,17,.44);box-shadow:0 4px 14px rgba(0,0,0,.2),inset 0 1px 0 rgba(255,255,255,.06)}
+  .movie-card .poster-more-mark[aria-expanded="true"]{background:rgba(36,36,39,.78);box-shadow:0 0 0 1px rgba(255,255,255,.08),0 4px 14px rgba(0,0,0,.22)}
+  .poster-more-mark:active{transform:scale(.94)}
+}
+@media(max-width:680px){
+  .brand{width:40px}
+  .brand-mark{flex:0 0 auto}
+  .top-group .sidebar-link{font-size:0;padding:0 10px}
+  .top-group .sidebar-link .icon{width:20px}
+  .content{padding-inline:18px}
+  .movie-page-heading{margin-bottom:18px}
+  .movie-toolbar{margin-bottom:14px}
+  .movie-grid,.movie-loading{grid-template-columns:repeat(3,minmax(0,1fr));gap:18px 16px}
+  .filter-popover{grid-template-columns:1fr;gap:13px;max-height:65vh}
+  .filter-footer{grid-column:1}
+  .search-dialog{top:7vh;width:calc(100% - 24px)}
+  .search-results{max-height:calc(74vh - 80px)}
+  .search-field{margin:12px 12px 6px}
+  .search-key{display:none}
+}
+@media(max-width:420px){
+  .movie-grid,.movie-loading{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(hover:none){
+  .movie-card:hover .poster-art::after,.movie-card:hover .play-mark,.movie-card:hover .series-mark{opacity:0}
+  .poster-more-mark{width:32px;height:32px;opacity:1}
+  .poster-more-mark::before{content:"";position:absolute;inset:-6px;border-radius:var(--radius-circle)}
+  .option-row,.sort-option,.context-action{min-height:44px}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important}
+}
+  </style>
+</head>
+<body>
+  <svg class="icon-sprite" fill="currentColor" aria-hidden="true">
+    <symbol id="ph-film-reel-fill" viewBox="0 0 256 256"><path d="M232,216H183.36A103.95,103.95,0,1,0,128,232H232a8,8,0,0,0,0-16ZM80,148a20,20,0,1,1,20-20A20,20,0,0,1,80,148Zm48,48a20,20,0,1,1,20-20A20,20,0,0,1,128,196Zm0-96a20,20,0,1,1,20-20A20,20,0,0,1,128,100Zm28,28a20,20,0,1,1,20,20A20,20,0,0,1,156,128Z"/></symbol>
+    <symbol id="ph-magnifying-glass" viewBox="0 0 256 256"><path d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"/></symbol>
+    <symbol id="ph-x" viewBox="0 0 256 256"><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"/></symbol>
+    <symbol id="ph-house" viewBox="0 0 256 256"><path d="M219.31,108.68l-80-80a16,16,0,0,0-22.62,0l-80,80A15.87,15.87,0,0,0,32,120v96a8,8,0,0,0,8,8h64a8,8,0,0,0,8-8V160h32v56a8,8,0,0,0,8,8h64a8,8,0,0,0,8-8V120A15.87,15.87,0,0,0,219.31,108.68ZM208,208H160V152a8,8,0,0,0-8-8H104a8,8,0,0,0-8,8v56H48V120l80-80,80,80Z"/></symbol>
+    <symbol id="ph-house-fill" viewBox="0 0 256 256"><path d="M224,120v96a8,8,0,0,1-8,8H160a8,8,0,0,1-8-8V164a4,4,0,0,0-4-4H108a4,4,0,0,0-4,4v52a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V120a16,16,0,0,1,4.69-11.31l80-80a16,16,0,0,1,22.62,0l80,80A16,16,0,0,1,224,120Z"/></symbol>
+    <symbol id="ph-film-slate" viewBox="0 0 256 256"><path d="M216,104H102.09L210,75.51a8,8,0,0,0,5.68-9.84l-8.16-30a15.93,15.93,0,0,0-19.42-11.13L35.81,64.74a15.75,15.75,0,0,0-9.7,7.4,15.51,15.51,0,0,0-1.55,12L32,111.56c0,.14,0,.29,0,.44v88a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V112A8,8,0,0,0,216,104ZM192.16,40l6,22.07-22.62,6L147.42,51.83Zm-66.69,17.6,28.12,16.24-36.94,9.75L88.53,67.37Zm-79.4,44.62-6-22.08,26.5-7L94.69,89.4ZM208,200H48V120H208v80Z"/></symbol>
+    <symbol id="ph-sparkle" viewBox="0 0 256 256"><path d="M197.58,129.06,146,110l-19-51.62a15.92,15.92,0,0,0-29.88,0L78,110l-51.62,19a15.92,15.92,0,0,0,0,29.88L78,178l19,51.62a15.92,15.92,0,0,0,29.88,0L146,178l51.62-19a15.92,15.92,0,0,0,0-29.88ZM137,164.22a8,8,0,0,0-4.74,4.74L112,223.85,91.78,169A8,8,0,0,0,87,164.22L32.15,144,87,123.78A8,8,0,0,0,91.78,119L112,64.15,132.22,119a8,8,0,0,0,4.74,4.74L191.85,144ZM144,40a8,8,0,0,1,8-8h16V16a8,8,0,0,1,16,0V32h16a8,8,0,0,1,0,16H184V64a8,8,0,0,1-16,0V48H152A8,8,0,0,1,144,40ZM248,88a8,8,0,0,1-8,8h-8v8a8,8,0,0,1-16,0V96h-8a8,8,0,0,1,0-16h8V72a8,8,0,0,1,16,0v8h8A8,8,0,0,1,248,88Z"/></symbol>
+    <symbol id="ph-hard-drives" viewBox="0 0 256 256"><path d="M208,136H48a16,16,0,0,0-16,16v48a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V152A16,16,0,0,0,208,136Zm0,64H48V152H208v48Zm0-160H48A16,16,0,0,0,32,56v48a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V56A16,16,0,0,0,208,40Zm0,64H48V56H208v48ZM192,80a12,12,0,1,1-12-12A12,12,0,0,1,192,80Zm0,96a12,12,0,1,1-12-12A12,12,0,0,1,192,176Z"/></symbol>
+    <symbol id="ph-clock-counter-clockwise" viewBox="0 0 256 256"><path d="M136,80v43.47l36.12,21.67a8,8,0,0,1-8.24,13.72l-40-24A8,8,0,0,1,120,128V80a8,8,0,0,1,16,0Zm-8-48A95.44,95.44,0,0,0,60.08,60.15C52.81,67.51,46.35,74.59,40,82V64a8,8,0,0,0-16,0v40a8,8,0,0,0,8,8H72a8,8,0,0,0,0-16H49c7.15-8.42,14.27-16.35,22.39-24.57a80,80,0,1,1,1.66,114.75,8,8,0,1,0-11,11.64A96,96,0,1,0,128,32Z"/></symbol>
+    <symbol id="ph-heart" viewBox="0 0 256 256"><path d="M178,40c-20.65,0-38.73,8.88-50,23.89C116.73,48.88,98.65,40,78,40a62.07,62.07,0,0,0-62,62c0,70,103.79,126.66,108.21,129a8,8,0,0,0,7.58,0C136.21,228.66,240,172,240,102A62.07,62.07,0,0,0,178,40ZM128,214.8C109.74,204.16,32,155.69,32,102A46.06,46.06,0,0,1,78,56c19.45,0,35.78,10.36,42.6,27a8,8,0,0,0,14.8,0c6.82-16.67,23.15-27,42.6-27a46.06,46.06,0,0,1,46,46C224,155.61,146.24,204.15,128,214.8Z"/></symbol>
+    <symbol id="ph-eye-slash" viewBox="0 0 256 256"><path d="M53.92,34.62A8,8,0,1,0,42.08,45.38L61.32,66.55C25,88.84,9.38,123.2,8.69,124.76a8,8,0,0,0,0,6.5c.35.79,8.82,19.57,27.65,38.4C61.43,194.74,93.12,208,128,208a127.11,127.11,0,0,0,52.07-10.83l22,24.21a8,8,0,1,0,11.84-10.76Zm47.33,75.84,41.67,45.85a32,32,0,0,1-41.67-45.85ZM128,192c-30.78,0-57.67-11.19-79.93-33.25A133.16,133.16,0,0,1,25,128c4.69-8.79,19.66-33.39,47.35-49.38l18,19.75a48,48,0,0,0,63.66,70l14.73,16.2A112,112,0,0,1,128,192Zm6-95.43a8,8,0,0,1,3-15.72,48.16,48.16,0,0,1,38.77,42.64,8,8,0,0,1-7.22,8.71,6.39,6.39,0,0,1-.75,0,8,8,0,0,1-8-7.26A32.09,32.09,0,0,0,134,96.57Zm113.28,34.69c-.42.94-10.55,23.37-33.36,43.8a8,8,0,1,1-10.67-11.92A132.77,132.77,0,0,0,231.05,128a133.15,133.15,0,0,0-23.12-30.77C185.67,75.19,158.78,64,128,64a118.37,118.37,0,0,0-19.36,1.57A8,8,0,1,1,106,49.79,134,134,0,0,1,128,48c34.88,0,66.57,13.26,91.66,38.35,18.83,18.83,27.3,37.62,27.65,38.41A8,8,0,0,1,247.31,131.26Z"/></symbol>
+    <symbol id="ph-check-circle" viewBox="0 0 256 256"><path d="M173.66,98.34a8,8,0,0,1,0,11.32l-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35A8,8,0,0,1,173.66,98.34ZM232,128A104,104,0,1,1,128,24,104.11,104.11,0,0,1,232,128Zm-16,0a88,88,0,1,0-88,88A88.1,88.1,0,0,0,216,128Z"/></symbol>
+    <symbol id="ph-gear-six" viewBox="0 0 256 256"><path d="M128,80a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Zm109.94-52.79a8,8,0,0,0-3.89-5.4l-29.83-17-.12-33.62a8,8,0,0,0-2.83-6.08,111.91,111.91,0,0,0-36.72-20.67,8,8,0,0,0-6.46.59L128,41.85,97.88,25a8,8,0,0,0-6.47-.6A112.1,112.1,0,0,0,54.73,45.15a8,8,0,0,0-2.83,6.07l-.15,33.65-29.83,17a8,8,0,0,0-3.89,5.4,106.47,106.47,0,0,0,0,41.56,8,8,0,0,0,3.89,5.4l29.83,17,.12,33.62a8,8,0,0,0,2.83,6.08,111.91,111.91,0,0,0,36.72,20.67,8,8,0,0,0,6.46-.59L128,214.15,158.12,231a7.91,7.91,0,0,0,3.9,1,8.09,8.09,0,0,0,2.57-.42,112.1,112.1,0,0,0,36.68-20.73,8,8,0,0,0,2.83-6.07l.15-33.65,29.83-17a8,8,0,0,0,3.89-5.4A106.47,106.47,0,0,0,237.94,107.21Zm-15,34.91-28.57,16.25a8,8,0,0,0-3,3c-.58,1-1.19,2.06-1.81,3.06a7.94,7.94,0,0,0-1.22,4.21l-.15,32.25a95.89,95.89,0,0,1-25.37,14.3L134,199.13a8,8,0,0,0-3.91-1h-.19c-1.21,0-2.43,0-3.64,0a8.08,8.08,0,0,0-4.1,1l-28.84,16.1A96,96,0,0,1,67.88,201l-.11-32.2a8,8,0,0,0-1.22-4.22c-.62-1-1.23-2-1.8-3.06a8.09,8.09,0,0,0-3-3.06l-28.6-16.29a90.49,90.49,0,0,1,0-28.26L61.67,97.63a8,8,0,0,0,3-3c.58-1,1.19-2.06,1.81-3.06a7.94,7.94,0,0,0,1.22-4.21l.15-32.25a95.89,95.89,0,0,1,25.37-14.3L122,56.87a8,8,0,0,0,4.1,1c1.21,0,2.43,0,3.64,0a8.08,8.08,0,0,0,4.1-1l28.84-16.1A96,96,0,0,1,188.12,55l.11,32.2a8,8,0,0,0,1.22,4.22c.62,1,1.23,2,1.8,3.06a8.09,8.09,0,0,0,3,3.06l28.6,16.29A90.49,90.49,0,0,1,222.9,142.12Z"/></symbol>
+    <symbol id="ph-caret-right" viewBox="0 0 256 256"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></symbol>
+    <symbol id="ph-play-fill" viewBox="0 0 256 256"><path d="M240,128a15.74,15.74,0,0,1-7.6,13.51L88.32,229.65a16,16,0,0,1-16.2.3A15.86,15.86,0,0,1,64,216.13V39.87a15.86,15.86,0,0,1,8.12-13.82,16,16,0,0,1,16.2.3L232.4,114.49A15.74,15.74,0,0,1,240,128Z"/></symbol>
+    <symbol id="ph-dots-three-bold" viewBox="0 0 256 256"><path d="M144,128a16,16,0,1,1-16-16A16,16,0,0,1,144,128ZM60,112a16,16,0,1,0,16,16A16,16,0,0,0,60,112Zm136,0a16,16,0,1,0,16,16A16,16,0,0,0,196,112Z"/></symbol>
+    <symbol id="ph-funnel" viewBox="0 0 256 256"><path d="M230.6,49.53A15.81,15.81,0,0,0,216,40H40A16,16,0,0,0,28.19,66.78L96,141.32V216a8,8,0,0,0,12.29,6.75l32-20A8,8,0,0,0,144,196V141.32l67.81-74.54A15.81,15.81,0,0,0,230.6,49.53ZM130.08,132.58A8,8,0,0,0,128,138v53.57l-16,10V138a8,8,0,0,0-2.08-5.42L40,56H216Z"/></symbol>
+  </svg>
+
+  <aside class="sidebar" data-od-id="app-sidebar">
+    <a class="brand" href="personal-cinema-app-shell-v2.html" data-od-id="product-identity" aria-label="Personal Cinema 主页"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 256 256"><use href="#ph-film-reel-fill"></use></svg></span><span>PERSONAL CINEMA</span></a>
+    <button class="sidebar-search" id="searchButton" data-od-id="global-search-button" type="button" aria-label="打开全局搜索" aria-expanded="false"><svg class="icon" aria-hidden="true"><use href="#ph-magnifying-glass"></use></svg><span>搜索</span></button>
+    <nav class="sidebar-nav" aria-label="主导航">
+      <div class="nav-group top-group">
+        <button class="sidebar-link" data-route="home" data-od-id="nav-home"><svg class="icon icon-regular" aria-hidden="true"><use href="#ph-house"></use></svg><svg class="icon icon-selected" aria-hidden="true"><use href="#ph-house-fill"></use></svg>主页</button>
+        <button class="sidebar-link" data-route="movies" data-od-id="nav-movies" aria-current="page"><svg class="icon" aria-hidden="true"><use href="#ph-film-slate"></use></svg>电影</button>
+        <button class="sidebar-link" data-route="ai" data-od-id="nav-ai-discovery"><svg class="icon" aria-hidden="true"><use href="#ph-sparkle"></use></svg>AI 发现</button>
+        <button class="sidebar-link" data-route="sources" data-od-id="nav-media-sources"><svg class="icon" aria-hidden="true"><use href="#ph-hard-drives"></use></svg>媒体来源</button>
+      </div>
+      <div class="nav-group library-group">
+        <p class="nav-label">资料库</p>
+        <button class="sidebar-link" data-route="recent" data-od-id="nav-recently-added"><svg class="icon" aria-hidden="true"><use href="#ph-clock-counter-clockwise"></use></svg>最近添加</button>
+        <button class="sidebar-link" data-route="favorites" data-od-id="nav-favorites"><svg class="icon" aria-hidden="true"><use href="#ph-heart"></use></svg>收藏</button>
+        <button class="sidebar-link" data-route="unwatched" data-od-id="nav-unwatched"><svg class="icon" aria-hidden="true"><use href="#ph-eye-slash"></use></svg>未看</button>
+        <button class="sidebar-link" data-route="watched" data-od-id="nav-watched"><svg class="icon" aria-hidden="true"><use href="#ph-check-circle"></use></svg>已看</button>
+      </div>
+    </nav>
+    <div class="sidebar-bottom">
+      <button class="sidebar-link" data-action="settings" data-od-id="settings-entry"><svg class="icon" aria-hidden="true"><use href="#ph-gear-six"></use></svg>设置</button>
+      <div class="user-wrap" id="accountWrap" data-open="false">
+        <button class="user-button" id="accountButton" data-od-id="user-menu-button" aria-label="打开用户菜单" aria-expanded="false"><span class="avatar">林</span><span class="user-copy"><strong>林默</strong><small>个人电影收藏</small></span><svg class="icon" aria-hidden="true"><use href="#ph-caret-right"></use></svg></button>
+        <div class="account-menu" role="menu" data-od-id="user-menu"><button class="menu-action" role="menuitem" data-action="profile">个人资料</button><button class="menu-action" role="menuitem" data-action="logout">退出登录</button></div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="app-main" data-od-id="movie-library-page">
+    <div class="content">
+      <header class="movie-page-heading" data-od-id="movie-page-header">
+        <h1 class="page-title">电影</h1>
+      </header>
+
+      <div class="movie-toolbar" data-od-id="movie-toolbar">
+        <div class="toolbar-group">
+          <button class="toolbar-button" id="filterButton" type="button" aria-expanded="false" aria-controls="filterPopover" data-od-id="movie-filter-button"><svg aria-hidden="true"><use href="#ph-funnel"></use></svg><span id="filterButtonLabel">筛选</span></button>
+          <div class="popover filter-popover" id="filterPopover" data-open="false" role="dialog" aria-label="筛选电影">
+            <section class="filter-section" data-od-id="filter-genre"><h2 class="filter-section-title">类型</h2><div class="filter-list">
+              <label class="option-row"><span>科幻</span><input type="checkbox" name="genre" value="科幻" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
+              <label class="option-row"><span>剧情</span><input type="checkbox" name="genre" value="剧情" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
+              <label class="option-row"><span>动作</span><input type="checkbox" name="genre" value="动作" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
+              <label class="option-row"><span>悬疑</span><input type="checkbox" name="genre" value="悬疑" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
+              <label class="option-row"><span>动画</span><input type="checkbox" name="genre" value="动画" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
+              <label class="option-row"><span>喜剧</span><input type="checkbox" name="genre" value="喜剧" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
+              <label class="option-row"><span>恐怖</span><input type="checkbox" name="genre" value="恐怖" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
+              <label class="option-row"><span>纪录片</span><input type="checkbox" name="genre" value="纪录片" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
+            </div></section>
+            <section class="filter-section" data-od-id="filter-year"><h2 class="filter-section-title">年份</h2><div class="filter-list">
+              <label class="option-row"><span>全部</span><input type="radio" name="year" value="all" checked /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
+              <label class="option-row"><span>2020–</span><input type="radio" name="year" value="2020" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
+              <label class="option-row"><span>2010–2019</span><input type="radio" name="year" value="2010" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
+              <label class="option-row"><span>2000–2009</span><input type="radio" name="year" value="2000" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
+              <label class="option-row"><span>1990–1999</span><input type="radio" name="year" value="1990" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
+              <label class="option-row"><span>更早</span><input type="radio" name="year" value="older" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
+            </div></section>
+            <section class="filter-section" data-od-id="filter-status"><h2 class="filter-section-title">状态</h2><div class="filter-list">
+              <label class="option-row"><span>全部</span><input type="radio" name="status" value="all" checked /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
+              <label class="option-row"><span>未看</span><input type="radio" name="status" value="unwatched" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
+              <label class="option-row"><span>观看中</span><input type="radio" name="status" value="watching" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
+              <label class="option-row"><span>已看</span><input type="radio" name="status" value="watched" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
+            </div></section>
+            <!-- Prototype labels are CurrentUser MediaSource instances. All three use WebDAV in P0. -->
+            <section class="filter-section" data-od-id="filter-source"><h2 class="filter-section-title">来源</h2><div class="filter-list">
+              <label class="option-row"><span>AList · 迅雷云盘</span><input type="checkbox" name="mediaSourceId" value="source-alist" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
+              <label class="option-row"><span>家庭 NAS</span><input type="checkbox" name="mediaSourceId" value="source-home-nas" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
+              <label class="option-row"><span>我的 Nextcloud</span><input type="checkbox" name="mediaSourceId" value="source-nextcloud" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
+            </div></section>
+            <div class="filter-footer"><button class="quiet-action" id="clearFilters" type="button">清除筛选</button></div>
+          </div>
+        </div>
+        <div class="toolbar-group">
+          <button class="toolbar-button" id="sortButton" type="button" aria-expanded="false" aria-controls="sortPopover" data-od-id="movie-sort-button"><span id="sortButtonLabel">最近添加</span><svg class="control-caret" aria-hidden="true"><use href="#ph-caret-right"></use></svg></button>
+          <div class="popover sort-popover" id="sortPopover" data-open="false" role="menu" aria-label="电影排序">
+            <button class="sort-option" role="menuitemradio" aria-checked="true" data-sort="added">最近添加<svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></button>
+            <button class="sort-option" role="menuitemradio" aria-checked="false" data-sort="title">片名 A–Z<svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></button>
+            <button class="sort-option" role="menuitemradio" aria-checked="false" data-sort="year">上映年份<svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></button>
+            <button class="sort-option" role="menuitemradio" aria-checked="false" data-sort="watched">最近观看<svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></button>
+            <button class="sort-option" role="menuitemradio" aria-checked="false" data-sort="duration">时长<svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></button>
+          </div>
+        </div>
+      </div>
+
+      <section class="movie-grid" id="movieGrid" data-od-id="movie-poster-grid" aria-label="电影收藏">
+        <article class="movie-card" data-title="星际穿越" data-year="2014" data-genre="科幻,剧情,冒险" data-status="watching" data-media-source-id="source-home-nas" data-added="15" data-watched="15" data-duration="169" data-favorite="true" data-od-id="movie-interstellar"><div class="poster-art"><img src="assets/tmdb-poster-interstellar.jpg" alt="星际穿越 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看星际穿越详情"></button><button class="play-mark" type="button" aria-label="播放星际穿越"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="星际穿越更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">星际穿越</strong><span class="poster-meta">2014 · 科幻</span></div></article>
+        <article class="movie-card" data-item-type="collection" data-collection-id="dune" data-movie-count="2" data-members='[{"title":"沙丘","year":2021,"genres":["科幻","冒险"],"status":"watched","sourceId":"source-home-nas","poster":"assets/tmdb-poster-dune.jpg","backdrop":"assets/tmdb-backdrop-dune.jpg","detailHref":"personal-cinema-movie-detail.html"},{"title":"沙丘2","year":2024,"genres":["科幻","冒险"],"status":"unwatched","sourceId":"source-home-nas","poster":"assets/tmdb-poster-dune-part-two.jpg","backdrop":"assets/tmdb-backdrop-dune-part-two.jpg"}]' data-collection-poster="assets/tmdb-collection-poster-dune.jpg" data-default-movie="沙丘" data-default-year="2021" data-default-detail-href="personal-cinema-movie-detail.html" data-default-movie-poster="assets/tmdb-poster-dune.jpg" data-default-movie-backdrop="assets/tmdb-backdrop-dune.jpg" data-title="沙丘" data-year="2021" data-genre="科幻,冒险" data-status="mixed" data-media-source-id="source-home-nas" data-added="14" data-watched="13" data-duration="155" data-od-id="collection-dune"><div class="poster-art"><img src="assets/tmdb-collection-poster-dune.jpg" alt="沙丘系列 TMDB 合集海报" /><button class="poster-detail-hit" type="button" aria-label="查看沙丘系列"></button><button class="series-mark" type="button" aria-label="查看沙丘系列"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></button><button class="poster-more-mark" type="button" aria-label="沙丘系列更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">沙丘</strong><span class="poster-meta">2 部电影</span></div></article>
+        <article class="movie-card" data-title="银翼杀手2049" data-year="2017" data-genre="科幻,剧情" data-status="watching" data-media-source-id="source-home-nas" data-added="13" data-watched="12" data-duration="164" data-favorite="true" data-od-id="movie-blade-runner-2049"><div class="poster-art"><img src="assets/tmdb-poster-blade-runner-2049.jpg" alt="银翼杀手2049 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看银翼杀手2049详情"></button><button class="play-mark" type="button" aria-label="播放银翼杀手2049"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="银翼杀手2049更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">银翼杀手2049</strong><span class="poster-meta">2017 · 科幻</span></div></article>
+        <article class="movie-card" data-title="降临" data-year="2016" data-genre="剧情,科幻,悬疑" data-status="watching" data-media-source-id="source-alist" data-added="12" data-watched="11" data-duration="116" data-favorite="true" data-od-id="movie-arrival"><div class="poster-art"><img src="assets/tmdb-poster-arrival.jpg" alt="降临 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看降临详情"></button><button class="play-mark" type="button" aria-label="播放降临"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="降临更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">降临</strong><span class="poster-meta">2016 · 科幻</span></div></article>
+        <article class="movie-card" data-title="奥本海默" data-year="2023" data-genre="剧情,历史" data-status="watching" data-media-source-id="source-nextcloud" data-added="11" data-watched="14" data-duration="181" data-favorite="false" data-od-id="movie-oppenheimer"><div class="poster-art"><img src="assets/tmdb-poster-oppenheimer.jpg" alt="奥本海默 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看奥本海默详情"></button><button class="play-mark" type="button" aria-label="播放奥本海默"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="奥本海默更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">奥本海默</strong><span class="poster-meta">2023 · 剧情</span></div></article>
+        <article class="movie-card" data-title="新蝙蝠侠" data-year="2022" data-genre="犯罪,悬疑,剧情" data-status="watched" data-media-source-id="source-home-nas" data-added="10" data-watched="10" data-duration="176" data-favorite="false" data-od-id="movie-the-batman"><div class="poster-art"><img src="assets/tmdb-poster-the-batman.jpg" alt="新蝙蝠侠 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看新蝙蝠侠详情"></button><button class="play-mark" type="button" aria-label="播放新蝙蝠侠"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="新蝙蝠侠更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">新蝙蝠侠</strong><span class="poster-meta">2022 · 悬疑</span></div></article>
+        <article class="movie-card" data-title="盗梦空间" data-year="2010" data-genre="动作,科幻,冒险" data-status="watching" data-media-source-id="source-alist" data-added="9" data-watched="9" data-duration="148" data-favorite="true" data-od-id="movie-inception"><div class="poster-art"><img src="assets/tmdb-poster-inception.jpg" alt="盗梦空间 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看盗梦空间详情"></button><button class="play-mark" type="button" aria-label="播放盗梦空间"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="盗梦空间更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">盗梦空间</strong><span class="poster-meta">2010 · 科幻</span></div></article>
+        <article class="movie-card" data-title="囚徒" data-year="2013" data-genre="剧情,悬疑,犯罪" data-status="watching" data-media-source-id="source-alist" data-added="7" data-watched="8" data-duration="153" data-favorite="false" data-od-id="movie-prisoners"><div class="poster-art"><img src="assets/tmdb-poster-prisoners.jpg" alt="囚徒 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看囚徒详情"></button><button class="play-mark" type="button" aria-label="播放囚徒"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="囚徒更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">囚徒</strong><span class="poster-meta">2013 · 悬疑</span></div></article>
+        <article class="movie-card" data-title="1917" data-year="2019" data-genre="战争,剧情" data-status="watched" data-media-source-id="source-nextcloud" data-added="6" data-watched="7" data-duration="119" data-favorite="false" data-od-id="movie-1917"><div class="poster-art"><img src="assets/tmdb-poster-1917.jpg" alt="1917 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看1917详情"></button><button class="play-mark" type="button" aria-label="播放1917"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="1917更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">1917</strong><span class="poster-meta">2019 · 剧情</span></div></article>
+        <article class="movie-card" data-title="疯狂的麦克斯4：狂暴之路" data-year="2015" data-genre="动作,冒险,科幻" data-status="unwatched" data-media-source-id="source-home-nas" data-added="5" data-watched="0" data-duration="120" data-favorite="true" data-od-id="movie-mad-max-fury-road"><div class="poster-art"><img src="assets/tmdb-poster-mad-max-fury-road.jpg" alt="疯狂的麦克斯4：狂暴之路 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看疯狂的麦克斯4：狂暴之路详情"></button><button class="play-mark" type="button" aria-label="播放疯狂的麦克斯4：狂暴之路"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="疯狂的麦克斯4：狂暴之路更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">疯狂的麦克斯4：狂暴之路</strong><span class="poster-meta">2015 · 动作</span></div></article>
+        <article class="movie-card" data-title="寄生虫" data-year="2019" data-genre="剧情,悬疑" data-status="watched" data-media-source-id="source-nextcloud" data-added="4" data-watched="6" data-duration="133" data-favorite="true" data-od-id="movie-parasite"><div class="poster-art"><img src="assets/tmdb-poster-parasite.jpg" alt="寄生虫 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看寄生虫详情"></button><button class="play-mark" type="button" aria-label="播放寄生虫"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="寄生虫更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">寄生虫</strong><span class="poster-meta">2019 · 剧情</span></div></article>
+        <article class="movie-card" data-title="爆裂鼓手" data-year="2014" data-genre="剧情,音乐" data-status="unwatched" data-media-source-id="source-alist" data-added="3" data-watched="0" data-duration="107" data-favorite="false" data-od-id="movie-whiplash"><div class="poster-art"><img src="assets/tmdb-poster-whiplash.jpg" alt="爆裂鼓手 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看爆裂鼓手详情"></button><button class="play-mark" type="button" aria-label="播放爆裂鼓手"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="爆裂鼓手更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">爆裂鼓手</strong><span class="poster-meta">2014 · 剧情</span></div></article>
+        <article class="movie-card" data-title="消失的爱人" data-year="2014" data-genre="剧情,悬疑" data-status="watched" data-media-source-id="source-alist" data-added="2" data-watched="5" data-duration="149" data-favorite="false" data-od-id="movie-gone-girl"><div class="poster-art"><img src="assets/tmdb-poster-gone-girl.jpg" alt="消失的爱人 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看消失的爱人详情"></button><button class="play-mark" type="button" aria-label="播放消失的爱人"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="消失的爱人更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">消失的爱人</strong><span class="poster-meta">2014 · 悬疑</span></div></article>
+        <article class="movie-card" data-title="机械姬" data-year="2015" data-genre="科幻,悬疑,剧情" data-status="unwatched" data-media-source-id="source-alist" data-added="1" data-watched="0" data-duration="108" data-favorite="true" data-od-id="movie-ex-machina"><div class="poster-art"><img src="assets/tmdb-poster-ex-machina.jpg" alt="机械姬 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看机械姬详情"></button><button class="play-mark" type="button" aria-label="播放机械姬"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="机械姬更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">机械姬</strong><span class="poster-meta">2015 · 科幻</span></div></article>
+      </section>
+
+      <section class="movie-loading" id="movieLoading" aria-label="正在载入电影" hidden></section>
+      <section class="movie-loading movie-loading-next" id="movieBatchLoading" data-od-id="movie-batch-loading" aria-label="正在载入更多电影" hidden></section>
+      <section class="library-state" id="filteredEmpty" data-od-id="filtered-empty-state" hidden><span class="state-icon"><svg aria-hidden="true"><use href="#ph-funnel"></use></svg></span><strong>没有符合条件的电影</strong><p>尝试调整筛选条件</p><button class="state-action" id="emptyClearFilters" type="button">清除筛选</button></section>
+      <section class="library-state" id="libraryEmpty" data-od-id="library-empty-state" hidden><span class="state-icon"><svg aria-hidden="true"><use href="#ph-film-slate"></use></svg></span><strong>还没有电影</strong><p>新账号默认没有公共片库。添加 WebDAV 媒体来源后，影片会出现在这里。</p><button class="state-action" type="button" data-route="sources">添加 WebDAV 来源</button></section>
+      <p class="sr-only" id="libraryAnnouncement" aria-live="polite"></p>
+    </div>
+  </main>
+
+  <div class="context-scrim" id="movieContextScrim" data-open="false" aria-hidden="true"></div>
+  <div class="context-menu" id="movieContextMenu" data-open="false" role="menu" aria-label="电影操作" inert>
+    <button class="context-action" type="button" role="menuitem" data-menu-action="play"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg><span>播放</span></button>
+    <button class="context-action" type="button" role="menuitem" data-menu-action="detail"><svg aria-hidden="true"><use href="#ph-film-slate"></use></svg><span>查看详情</span></button>
+    <button class="context-action" id="favoriteAction" type="button" role="menuitem" data-menu-action="favorite"><svg aria-hidden="true"><use href="#ph-heart"></use></svg><span>收藏</span></button>
+    <button class="context-action" id="watchedAction" type="button" role="menuitem" data-menu-action="watched"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg><span>标记为已看</span></button>
+    <div class="context-divider"></div>
+    <button class="context-action" type="button" role="menuitem" data-menu-action="versions"><svg aria-hidden="true"><use href="#ph-hard-drives"></use></svg><span>查看媒体版本</span></button>
+  </div>
+
+  <div class="search-scrim" id="searchScrim" data-open="false"></div>
+  <section class="search-dialog" id="searchDialog" data-open="false" role="dialog" aria-modal="true" aria-label="搜索影片" data-od-id="global-search-dialog">
+    <div class="search-field"><label class="sr-only" for="globalSearch">搜索片名、导演或演员</label><svg class="icon" aria-hidden="true"><use href="#ph-magnifying-glass"></use></svg><input class="search-input" id="globalSearch" type="search" autocomplete="off" aria-controls="searchResultList" placeholder="搜索片名、导演或演员" /><button class="search-clear" id="clearSearch" type="button" aria-label="清空搜索关键词" data-od-id="search-clear-button" hidden><svg aria-hidden="true"><use href="#ph-x"></use></svg></button><span class="search-key">ESC</span></div>
+    <div class="search-results"><p class="search-caption" id="searchCaption">最近内容</p><div class="search-result-list" id="searchResultList" aria-live="polite">
+      <button class="search-result" type="button" data-search="星际穿越 2014 冒险 剧情 科幻 8.5"><img class="search-thumb" src="assets/tmdb-poster-interstellar.jpg" alt="星际穿越电影海报" /><span><strong>星际穿越</strong><small>2014 · 冒险 / 剧情 / 科幻 · 8.5</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
+      <button class="search-result" type="button" data-search="沙丘 2021 科幻 冒险 7.8"><img class="search-thumb" src="assets/tmdb-poster-dune.jpg" alt="沙丘电影海报" /><span><strong>沙丘</strong><small>2021 · 科幻 / 冒险 · 7.8</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
+      <button class="search-result" type="button" data-search="银翼杀手2049 2017 科幻 剧情 7.6"><img class="search-thumb" src="assets/tmdb-poster-blade-runner-2049.jpg" alt="银翼杀手2049电影海报" /><span><strong>银翼杀手2049</strong><small>2017 · 科幻 / 剧情 · 7.6</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
+      <button class="search-result" type="button" data-search="降临 2016 剧情 科幻 悬疑 7.6"><img class="search-thumb" src="assets/tmdb-poster-arrival.jpg" alt="降临电影海报" /><span><strong>降临</strong><small>2016 · 剧情 / 科幻 / 悬疑 · 7.6</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
+      <button class="search-result" type="button" data-search="奥本海默 2023 剧情 历史 8.0"><img class="search-thumb" src="assets/tmdb-poster-oppenheimer.jpg" alt="奥本海默电影海报" /><span><strong>奥本海默</strong><small>2023 · 剧情 / 历史 · 8.0</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
+      <button class="search-result" type="button" data-search="新蝙蝠侠 2022 犯罪 悬疑 惊悚 7.7"><img class="search-thumb" src="assets/tmdb-poster-the-batman.jpg" alt="新蝙蝠侠电影海报" /><span><strong>新蝙蝠侠</strong><small>2022 · 犯罪 / 悬疑 / 惊悚 · 7.7</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
+      <button class="search-result" type="button" data-search="盗梦空间 2010 动作 科幻 冒险 8.4"><img class="search-thumb" src="assets/tmdb-poster-inception.jpg" alt="盗梦空间电影海报" /><span><strong>盗梦空间</strong><small>2010 · 动作 / 科幻 / 冒险 · 8.4</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
+      <button class="search-result" type="button" data-search="沙丘2 2024 科幻 冒险 8.1"><img class="search-thumb" src="assets/tmdb-poster-dune-part-two.jpg" alt="沙丘2电影海报" /><span><strong>沙丘2</strong><small>2024 · 科幻 / 冒险 · 8.1</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
+      <button class="search-result" type="button" data-search="囚徒 2013 剧情 惊悚 犯罪 8.1"><img class="search-thumb" src="assets/tmdb-poster-prisoners.jpg" alt="囚徒电影海报" /><span><strong>囚徒</strong><small>2013 · 剧情 / 惊悚 / 犯罪 · 8.1</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
+      <button class="search-result" type="button" data-search="1917 2019 战争 剧情 历史 8.0"><img class="search-thumb" src="assets/tmdb-poster-1917.jpg" alt="1917电影海报" /><span><strong>1917</strong><small>2019 · 战争 / 剧情 / 历史 · 8.0</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
+      <button class="search-result" type="button" data-search="疯狂的麦克斯4 狂暴之路 2015 动作 冒险 科幻 7.6"><img class="search-thumb" src="assets/tmdb-poster-mad-max-fury-road.jpg" alt="疯狂的麦克斯4：狂暴之路电影海报" /><span><strong>疯狂的麦克斯4：狂暴之路</strong><small>2015 · 动作 / 冒险 / 科幻 · 7.6</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
+    </div><div class="search-empty" id="searchEmpty" hidden><strong>没有找到匹配的影片</strong><span>尝试搜索片名、导演或演员</span></div></div>
+  </section>
+
+  <script>
+    (() => {
+      const $ = id => document.getElementById(id);
+      const movieGrid = $('movieGrid');
+      const movieCards = [...movieGrid.querySelectorAll('.movie-card')];
+      const filterButton = $('filterButton');
+      const filterButtonLabel = $('filterButtonLabel');
+      const filterPopover = $('filterPopover');
+      const sortButton = $('sortButton');
+      const sortButtonLabel = $('sortButtonLabel');
+      const sortPopover = $('sortPopover');
+      const clearFilters = $('clearFilters');
+      const emptyClearFilters = $('emptyClearFilters');
+      const filteredEmpty = $('filteredEmpty');
+      const libraryEmpty = $('libraryEmpty');
+      const movieLoading = $('movieLoading');
+      const movieBatchLoading = $('movieBatchLoading');
+      const announcement = $('libraryAnnouncement');
+      const contextMenu = $('movieContextMenu');
+      const contextScrim = $('movieContextScrim');
+      const mobileContextMedia = window.matchMedia('(max-width: 900px), (hover: none)');
+      const contextPlayAction = contextMenu.querySelector('[data-menu-action="play"]');
+      const contextDetailAction = contextMenu.querySelector('[data-menu-action="detail"]');
+      const favoriteAction = $('favoriteAction');
+      const watchedAction = $('watchedAction');
+      const contextDivider = contextMenu.querySelector('.context-divider');
+      const contextVersionsAction = contextMenu.querySelector('[data-menu-action="versions"]');
+      let activeMovie = null;
+      let activeMoreButton = null;
+      let searchActiveIndex = -1;
+
+      function closePopover(popover, button) {
+        popover.dataset.open = 'false';
+        button.setAttribute('aria-expanded', 'false');
+      }
+
+      function closeToolbarPopovers() {
+        closePopover(filterPopover, filterButton);
+        closePopover(sortPopover, sortButton);
+      }
+
+      function togglePopover(popover, button) {
+        const open = popover.dataset.open !== 'true';
+        closeToolbarPopovers();
+        if (open) {
+          popover.dataset.open = 'true';
+          button.setAttribute('aria-expanded', 'true');
+        }
+      }
+
+      filterButton.addEventListener('click', event => {
+        event.stopPropagation();
+        togglePopover(filterPopover, filterButton);
+      });
+      sortButton.addEventListener('click', event => {
+        event.stopPropagation();
+        togglePopover(sortPopover, sortButton);
+      });
+      filterPopover.addEventListener('click', event => event.stopPropagation());
+      sortPopover.addEventListener('click', event => event.stopPropagation());
+
+      function selectedValues(name) {
+        return [...filterPopover.querySelectorAll(`input[name="${name}"]:checked`)]
+          .map(input => input.value);
+      }
+
+      function matchesYear(year, bucket) {
+        if (bucket === 'all') return true;
+        if (bucket === '2020') return year >= 2020;
+        if (bucket === '2010') return year >= 2010 && year <= 2019;
+        if (bucket === '2000') return year >= 2000 && year <= 2009;
+        if (bucket === '1990') return year >= 1990 && year <= 1999;
+        return year < 1990;
+      }
+
+      function readFilterQuery() {
+        return {
+          genres: selectedValues('genre'),
+          sourceIds: selectedValues('mediaSourceId'),
+          year: selectedValues('year')[0] || 'all',
+          status: selectedValues('status')[0] || 'all'
+        };
+      }
+
+      function movieFromCard(card) {
+        return {
+          title: card.dataset.title,
+          year: Number(card.dataset.year),
+          genres: card.dataset.genre.split(','),
+          status: card.dataset.status,
+          sourceId: card.dataset.mediaSourceId
+        };
+      }
+
+      function collectionMembers(card) {
+        try {
+          return JSON.parse(card.dataset.members || '[]');
+        } catch {
+          return [];
+        }
+      }
+
+      function matchesMovieFilters(movie, filters) {
+        const matchesGenre = !filters.genres.length || filters.genres.some(genre => movie.genres.includes(genre));
+        const matchesSource = !filters.sourceIds.length || filters.sourceIds.includes(movie.sourceId);
+        const matchesStatus = filters.status === 'all' || movie.status === filters.status;
+        return matchesGenre && matchesSource && matchesStatus && matchesYear(movie.year, filters.year);
+      }
+
+      function matchingMovieForCard(card, filters) {
+        const movies = card.dataset.itemType === 'collection'
+          ? collectionMembers(card)
+          : [movieFromCard(card)];
+        return movies.find(movie => matchesMovieFilters(movie, filters)) || null;
+      }
+
+      function rememberMatchedMember(card, movie) {
+        if (card.dataset.itemType !== 'collection') return;
+        if (movie) {
+          card.dataset.matchedMemberTitle = movie.title;
+          card.dataset.matchedMemberYear = String(movie.year);
+        } else {
+          delete card.dataset.matchedMemberTitle;
+          delete card.dataset.matchedMemberYear;
+        }
+      }
+
+      // Prototype-only DOM filtering mirrors one backend query state. Production sends
+      // genres/year/status/sourceIds/sort, resets cursor, and reloads the first batch.
+      // Target query shape: GET /api/movies with genres, year, status, sourceIds, sort, cursor, and limit.
+      function applyFilters() {
+        const filters = readFilterQuery();
+        const activeCount = filters.genres.length + filters.sourceIds.length + Number(filters.year !== 'all') + Number(filters.status !== 'all');
+        let hasVisibleItems = false;
+
+        setMovieBatchLoading(false);
+        movieCards.forEach(card => {
+          const matchedMovie = matchingMovieForCard(card, filters);
+          const matches = Boolean(matchedMovie);
+          card.hidden = !matches;
+          rememberMatchedMember(card, matchedMovie);
+          if (matches) hasVisibleItems = true;
+        });
+
+        filterButtonLabel.textContent = activeCount ? `筛选 · ${activeCount}` : '筛选';
+        filterButton.dataset.active = String(activeCount > 0);
+        filteredEmpty.hidden = hasVisibleItems || movieCards.length === 0;
+        movieGrid.hidden = !hasVisibleItems;
+      }
+
+      function resetFilters() {
+        filterPopover.querySelectorAll('input[type="checkbox"]').forEach(input => input.checked = false);
+        filterPopover.querySelector('input[name="year"][value="all"]').checked = true;
+        filterPopover.querySelector('input[name="status"][value="all"]').checked = true;
+        applyFilters();
+      }
+
+      filterPopover.addEventListener('change', applyFilters);
+      clearFilters.addEventListener('click', resetFilters);
+      emptyClearFilters.addEventListener('click', resetFilters);
+
+      const sortLabels = {
+        added: '最近添加',
+        title: '片名 A–Z',
+        year: '上映年份',
+        watched: '最近观看',
+        duration: '时长'
+      };
+
+      function sortMovies(type) {
+        // Production resets pagination and reloads batch one with the current filters and new sort.
+        setMovieBatchLoading(false);
+        const cards = [...movieCards];
+        cards.sort((a, b) => {
+          if (type === 'title') return a.dataset.title.localeCompare(b.dataset.title, 'zh-CN');
+          if (type === 'year') return Number(b.dataset.year) - Number(a.dataset.year);
+          if (type === 'watched') return Number(b.dataset.watched) - Number(a.dataset.watched);
+          if (type === 'duration') return Number(b.dataset.duration) - Number(a.dataset.duration);
+          return Number(b.dataset.added) - Number(a.dataset.added);
+        });
+        cards.forEach(card => movieGrid.append(card));
+        sortButtonLabel.textContent = sortLabels[type];
+        sortPopover.querySelectorAll('.sort-option').forEach(option => {
+          option.setAttribute('aria-checked', String(option.dataset.sort === type));
+        });
+        closePopover(sortPopover, sortButton);
+      }
+
+      sortPopover.querySelectorAll('.sort-option').forEach(option => {
+        option.addEventListener('click', () => sortMovies(option.dataset.sort));
+      });
+
+      function closeContextMenu(restoreFocus = false) {
+        const trigger = activeMoreButton;
+        contextMenu.dataset.open = 'false';
+        contextMenu.setAttribute('inert', '');
+        contextScrim.dataset.open = 'false';
+        document.body.dataset.actionSheetOpen = 'false';
+        activeMoreButton?.setAttribute('aria-expanded', 'false');
+        activeMoreButton = null;
+        activeMovie = null;
+        if (restoreFocus) trigger?.focus();
+      }
+
+      function openContextMenu(button, card) {
+        closeContextMenu();
+        activeMovie = card;
+        activeMoreButton = button;
+        activeMoreButton.setAttribute('aria-expanded', 'true');
+        const isCollection = card.dataset.itemType === 'collection';
+        contextMenu.setAttribute('aria-label', isCollection ? '系列操作' : '电影操作');
+        contextPlayAction.hidden = isCollection;
+        contextDetailAction.querySelector('span').textContent = isCollection ? '查看系列' : '查看详情';
+        contextDetailAction.querySelector('use').setAttribute('href', isCollection ? '#ph-caret-right' : '#ph-film-slate');
+        favoriteAction.hidden = isCollection;
+        watchedAction.hidden = isCollection;
+        contextDivider.hidden = isCollection;
+        contextVersionsAction.hidden = isCollection;
+        if (!isCollection) {
+          favoriteAction.querySelector('span').textContent = card.dataset.favorite === 'true' ? '取消收藏' : '收藏';
+          watchedAction.querySelector('span').textContent = card.dataset.status === 'watched' ? '标记为未看' : '标记为已看';
+        }
+        contextMenu.removeAttribute('inert');
+        contextMenu.dataset.open = 'true';
+        if (mobileContextMedia.matches) {
+          contextMenu.style.removeProperty('left');
+          contextMenu.style.removeProperty('top');
+          contextScrim.dataset.open = 'true';
+          document.body.dataset.actionSheetOpen = 'true';
+          requestAnimationFrame(() => contextMenu.querySelector('.context-action:not([hidden])')?.focus());
+          return;
+        }
+        const rect = button.getBoundingClientRect();
+        const menuRect = contextMenu.getBoundingClientRect();
+        const left = Math.min(window.innerWidth - menuRect.width - 10, Math.max(10, rect.right - menuRect.width));
+        let top = rect.bottom + 8;
+        if (top + menuRect.height > window.innerHeight - 10) top = rect.top - menuRect.height - 8;
+        contextMenu.style.left = `${left}px`;
+        contextMenu.style.top = `${Math.max(10, top)}px`;
+      }
+
+      movieCards
+        .filter(card => card.dataset.itemType === 'collection')
+        .forEach(card => {
+          const artwork = card.querySelector('.poster-art > img');
+          artwork.addEventListener('error', () => {
+            if (artwork.getAttribute('src') !== card.dataset.defaultMoviePoster) {
+              artwork.src = card.dataset.defaultMoviePoster;
+            }
+          }, { once: true });
+        });
+
+      function announceOpenItem(card) {
+        if (card.dataset.itemType !== 'collection') {
+          announcement.textContent = `进入《${card.dataset.title}》详情`;
+          return;
+        }
+
+        const hasActiveFilters = filterButton.dataset.active === 'true';
+        const movieTitle = hasActiveFilters && card.dataset.matchedMemberTitle
+          ? card.dataset.matchedMemberTitle
+          : card.dataset.defaultMovie;
+        const movieYear = hasActiveFilters && card.dataset.matchedMemberYear
+          ? card.dataset.matchedMemberYear
+          : card.dataset.defaultYear;
+        if (card.dataset.defaultDetailHref && movieTitle === card.dataset.defaultMovie) {
+          window.location.href = card.dataset.defaultDetailHref;
+          return;
+        }
+        announcement.textContent = `查看${card.dataset.title}系列，打开${hasActiveFilters ? '匹配' : '默认'}影片《${movieTitle}》（${movieYear}）详情`;
+      }
+
+      movieCards.forEach(card => {
+        card.querySelector('.poster-detail-hit').addEventListener('click', () => announceOpenItem(card));
+        card.querySelector('.play-mark')?.addEventListener('click', () => {
+          announcement.textContent = `正在获取当前 PlaybackLocator，并通过 mpv:// 调用 Windows 本机 mpv 播放《${card.dataset.title}》`;
+        });
+        card.querySelector('.series-mark')?.addEventListener('click', () => announceOpenItem(card));
+        const moreButton = card.querySelector('.poster-more-mark');
+        moreButton.setAttribute('aria-haspopup', 'menu');
+        moreButton.setAttribute('aria-expanded', 'false');
+        moreButton.setAttribute('aria-controls', 'movieContextMenu');
+        moreButton.addEventListener('click', event => {
+          event.stopPropagation();
+          openContextMenu(event.currentTarget, card);
+        });
+      });
+
+      contextMenu.addEventListener('click', event => {
+        const action = event.target.closest('[data-menu-action]');
+        if (!action || !activeMovie) return;
+        const title = activeMovie.dataset.title;
+        if (action.dataset.menuAction === 'favorite') {
+          activeMovie.dataset.favorite = String(activeMovie.dataset.favorite !== 'true');
+          announcement.textContent = `${title}${activeMovie.dataset.favorite === 'true' ? '已加入收藏' : '已取消收藏'}`;
+        } else if (action.dataset.menuAction === 'watched') {
+          activeMovie.dataset.status = activeMovie.dataset.status === 'watched' ? 'unwatched' : 'watched';
+          announcement.textContent = `${title}${activeMovie.dataset.status === 'watched' ? '已标记为已看' : '已标记为未看'}`;
+          applyFilters();
+        } else if (action.dataset.menuAction === 'play') {
+          announcement.textContent = `正在获取当前 PlaybackLocator，并通过 mpv:// 调用 Windows 本机 mpv 播放《${title}》`;
+        } else if (action.dataset.menuAction === 'detail') {
+          announceOpenItem(activeMovie);
+        } else {
+          announcement.textContent = `查看《${title}》的媒体版本`;
+        }
+        closeContextMenu();
+      });
+      contextScrim.addEventListener('click', () => closeContextMenu());
+      window.addEventListener('resize', () => closeContextMenu());
+
+      function renderMovieSkeletons(container, count) {
+        if (!container.children.length) {
+          container.innerHTML = Array.from({ length: count }, () => '<div class="movie-skeleton"><span class="skeleton-poster"></span><span class="skeleton-line"></span><span class="skeleton-line short"></span></div>').join('');
+        }
+      }
+
+      function setMovieLibraryLoading(loading) {
+        movieLoading.hidden = !loading;
+        movieGrid.hidden = loading;
+        filteredEmpty.hidden = true;
+        if (loading) renderMovieSkeletons(movieLoading, 12);
+        if (!loading) applyFilters();
+      }
+
+      function setMovieBatchLoading(loading) {
+        movieBatchLoading.hidden = !loading;
+        movieGrid.setAttribute('aria-busy', String(loading));
+        if (loading) renderMovieSkeletons(movieBatchLoading, 6);
+      }
+
+      window.setMovieLibraryLoading = setMovieLibraryLoading;
+      window.setMovieBatchLoading = setMovieBatchLoading;
+      libraryEmpty.hidden = movieCards.length > 0;
+      applyFilters();
+
+      const searchButton = $('searchButton');
+      const searchDialog = $('searchDialog');
+      const searchScrim = $('searchScrim');
+      const searchInput = $('globalSearch');
+      const clearSearch = $('clearSearch');
+      const searchCaption = $('searchCaption');
+      const searchResultList = $('searchResultList');
+      const searchEmpty = $('searchEmpty');
+      const searchResults = searchResultList.parentElement;
+      const searchResultItems = [...searchResultList.querySelectorAll('.search-result')];
+      const visibleSearchItems = () => searchResultItems.filter(item => !item.hidden);
+
+      function renderSearch(query = '') {
+        const q = query.trim().toLowerCase();
+        let visible = 0;
+        clearSearch.hidden = !searchInput.value;
+        searchCaption.textContent = q ? '搜索结果' : '最近内容';
+        searchResultItems.forEach((item, index) => {
+          const match = q ? item.dataset.search.toLowerCase().includes(q) : index < 5;
+          item.hidden = !match;
+          if (match) visible += 1;
+        });
+        searchEmpty.hidden = visible > 0;
+        searchResults.scrollTop = 0;
+        searchActiveIndex = -1;
+        searchResultItems.forEach(item => item.removeAttribute('data-active'));
+      }
+
+      function openSearch() {
+        closeToolbarPopovers();
+        closeContextMenu();
+        renderSearch(searchInput.value);
+        searchDialog.dataset.open = 'true';
+        searchScrim.dataset.open = 'true';
+        searchButton.setAttribute('aria-expanded', 'true');
+        document.body.dataset.locked = 'true';
+        setTimeout(() => searchInput.focus(), 0);
+      }
+
+      function closeSearch() {
+        searchDialog.dataset.open = 'false';
+        searchScrim.dataset.open = 'false';
+        searchButton.setAttribute('aria-expanded', 'false');
+        document.body.dataset.locked = 'false';
+        searchActiveIndex = -1;
+      }
+
+      function setSearchActive(index) {
+        const items = visibleSearchItems();
+        searchActiveIndex = items.length ? Math.max(0, Math.min(index, items.length - 1)) : -1;
+        searchResultItems.forEach(item => item.removeAttribute('data-active'));
+        if (searchActiveIndex < 0) return;
+        const item = items[searchActiveIndex];
+        item.dataset.active = 'true';
+        const top = item.offsetTop;
+        const bottom = top + item.offsetHeight;
+        if (top < searchResults.scrollTop) searchResults.scrollTop = top;
+        if (bottom > searchResults.scrollTop + searchResults.clientHeight) {
+          searchResults.scrollTop = bottom - searchResults.clientHeight;
+        }
+      }
+
+      searchButton.addEventListener('click', openSearch);
+      searchScrim.addEventListener('click', closeSearch);
+      searchInput.addEventListener('input', () => renderSearch(searchInput.value));
+      clearSearch.addEventListener('click', () => {
+        searchInput.value = '';
+        renderSearch();
+        searchInput.focus();
+      });
+      searchInput.addEventListener('keydown', event => {
+        if (!['ArrowDown', 'ArrowUp', 'Enter'].includes(event.key)) return;
+        const items = visibleSearchItems();
+        if (!items.length) return;
+        if (event.key === 'Enter') {
+          if (searchActiveIndex >= 0) {
+            event.preventDefault();
+            items[searchActiveIndex].click();
+          }
+          return;
+        }
+        event.preventDefault();
+        const next = event.key === 'ArrowDown'
+          ? (searchActiveIndex + 1) % items.length
+          : searchActiveIndex <= 0 ? items.length - 1 : searchActiveIndex - 1;
+        setSearchActive(next);
+      });
+      searchResultItems.forEach(item => item.addEventListener('click', closeSearch));
+
+      const accountWrap = $('accountWrap');
+      const accountButton = $('accountButton');
+      accountButton.addEventListener('click', event => {
+        event.stopPropagation();
+        const open = accountWrap.dataset.open !== 'true';
+        accountWrap.dataset.open = String(open);
+        accountButton.setAttribute('aria-expanded', String(open));
+      });
+
+      const routes = {
+        home: 'personal-cinema-app-shell-v2.html',
+        movies: 'personal-cinema-movie-library.html',
+        ai: 'personal-cinema-ai-discovery.html',
+        sources: 'personal-cinema-media-sources.html'
+      };
+      document.querySelectorAll('[data-route]').forEach(button => {
+        button.addEventListener('click', () => {
+          const target = routes[button.dataset.route];
+          if (target) {
+            window.location.href = target;
+            return;
+          }
+          if (button.dataset.route === 'sources') announcement.textContent = '进入媒体来源';
+        });
+      });
+
+      document.addEventListener('click', event => {
+        if (!contextMenu.contains(event.target)) closeContextMenu();
+        if (!accountWrap.contains(event.target)) {
+          accountWrap.dataset.open = 'false';
+          accountButton.setAttribute('aria-expanded', 'false');
+        }
+        if (!event.target.closest('.toolbar-group')) closeToolbarPopovers();
+      });
+
+      document.addEventListener('keydown', event => {
+        if (event.key === '/' && document.activeElement !== searchInput) {
+          event.preventDefault();
+          openSearch();
+        }
+        if (event.key === 'Escape') {
+          closeSearch();
+          closeToolbarPopovers();
+          closeContextMenu(true);
+          accountWrap.dataset.open = 'false';
+          accountButton.setAttribute('aria-expanded', 'false');
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

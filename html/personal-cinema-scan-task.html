@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>扫描媒体来源 · Personal Cinema</title>
+  <link rel="stylesheet" href="assets/css/personal-cinema-base.css" />
+  <link rel="stylesheet" href="assets/css/personal-cinema-ingest.css" />
+</head>
+<body>
+  <svg class="icon-sprite" fill="currentColor" aria-hidden="true" focusable="false">
+    <symbol id="ph-film-reel-fill" viewBox="0 0 256 256"><path d="M232 216h-48.64A104 104 0 1 0 128 232h104a8 8 0 0 0 0-16ZM80 148a20 20 0 1 1 20-20 20 20 0 0 1-20 20Zm48 48a20 20 0 1 1 20-20 20 20 0 0 1-20 20Zm0-96a20 20 0 1 1 20-20 20 20 0 0 1-20 20Zm28 28a20 20 0 1 1 20 20 20 20 0 0 1-20-20Z"/></symbol>
+    <symbol id="ph-magnifying-glass" viewBox="0 0 256 256"><path d="m229.66 218.34-50.07-50.06a88.11 88.11 0 1 0-11.31 11.31l50.06 50.07a8 8 0 0 0 11.32-11.32ZM40 112a72 72 0 1 1 72 72 72.08 72.08 0 0 1-72-72Z"/></symbol>
+    <symbol id="ph-x" viewBox="0 0 256 256"><path d="M205.66 194.34a8 8 0 0 1-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 0 1-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0 1 11.32-11.32L128 116.69l66.34-66.35a8 8 0 0 1 11.32 11.32L139.31 128Z"/></symbol>
+    <symbol id="ph-house" viewBox="0 0 256 256"><path d="m219.31 108.68-80-80a16 16 0 0 0-22.62 0l-80 80A15.87 15.87 0 0 0 32 120v96a8 8 0 0 0 8 8h64a8 8 0 0 0 8-8v-56h32v56a8 8 0 0 0 8 8h64a8 8 0 0 0 8-8v-96a15.87 15.87 0 0 0-4.69-11.32ZM208 208h-48v-56a8 8 0 0 0-8-8h-48a8 8 0 0 0-8 8v56H48v-88l80-80 80 80Z"/></symbol>
+    <symbol id="ph-house-fill" viewBox="0 0 256 256"><path d="M224 120v96a8 8 0 0 1-8 8h-56a8 8 0 0 1-8-8v-52a4 4 0 0 0-4-4h-40a4 4 0 0 0-4 4v52a8 8 0 0 1-8 8H40a8 8 0 0 1-8-8v-96a16 16 0 0 1 4.69-11.31l80-80a16 16 0 0 1 22.62 0l80 80A16 16 0 0 1 224 120Z"/></symbol>
+    <symbol id="ph-film-slate" viewBox="0 0 256 256"><path d="M216 104H102.09L210 75.51a8 8 0 0 0 5.68-9.84l-8.16-30a15.93 15.93 0 0 0-19.42-11.13L35.81 64.74a16 16 0 0 0-11.25 19.4L32 111.56V200a16 16 0 0 0 16 16h160a16 16 0 0 0 16-16v-88a8 8 0 0 0-8-8Zm-23.84-64 6 22.07-22.62 6-28.12-16.24Zm-66.69 17.6 28.12 16.24-36.94 9.75-28.12-16.22Zm-79.4 44.62-6-22.08 26.5-7L94.69 89.4ZM208 200H48v-80h160Z"/></symbol>
+    <symbol id="ph-sparkle" viewBox="0 0 256 256"><path d="M197.58,129.06,146,110l-19-51.62a15.92,15.92,0,0,0-29.88,0L78,110l-51.62,19a15.92,15.92,0,0,0,0,29.88L78,178l19,51.62a15.92,15.92,0,0,0,29.88,0L146,178l51.62-19a15.92,15.92,0,0,0,0-29.88ZM137,164.22a8,8,0,0,0-4.74,4.74L112,223.85,91.78,169A8,8,0,0,0,87,164.22L32.15,144,87,123.78A8,8,0,0,0,91.78,119L112,64.15,132.22,119a8,8,0,0,0,4.74,4.74L191.85,144ZM144,40a8,8,0,0,1,8-8h16V16a8,8,0,0,1,16,0V32h16a8,8,0,0,1,0,16H184V64a8,8,0,0,1-16,0V48H152A8,8,0,0,1,144,40ZM248,88a8,8,0,0,1-8,8h-8v8a8,8,0,0,1-16,0V96h-8a8,8,0,0,1,0-16h8V72a8,8,0,0,1,16,0v8h8A8,8,0,0,1,248,88Z"/></symbol>
+    <symbol id="ph-hard-drives" viewBox="0 0 256 256"><path d="M208 136H48a16 16 0 0 0-16 16v48a16 16 0 0 0 16 16h160a16 16 0 0 0 16-16v-48a16 16 0 0 0-16-16Zm0 64H48v-48h160Zm0-160H48a16 16 0 0 0-16 16v48a16 16 0 0 0 16 16h160a16 16 0 0 0 16-16V56a16 16 0 0 0-16-16Zm0 64H48V56h160Zm-16-24a12 12 0 1 1-12-12 12 12 0 0 1 12 12Zm0 96a12 12 0 1 1-12-12 12 12 0 0 1 12 12Z"/></symbol>
+    <symbol id="ph-clock-counter-clockwise" viewBox="0 0 256 256"><path d="M136 80v43.47l36.12 21.67a8 8 0 0 1-8.24 13.72l-40-24A8 8 0 0 1 120 128V80a8 8 0 0 1 16 0Zm-8-48a95.44 95.44 0 0 0-67.92 28.15C52.81 67.51 46.35 74.59 40 82V64a8 8 0 0 0-16 0v40a8 8 0 0 0 8 8h40a8 8 0 0 0 0-16H49a181.22 181.22 0 0 1 22.39-24.57 80 80 0 1 1 1.66 114.75 8 8 0 1 0-11 11.64A96 96 0 1 0 128 32Z"/></symbol>
+    <symbol id="ph-heart" viewBox="0 0 256 256"><path d="M178 40c-20.65 0-38.73 8.88-50 23.89C116.73 48.88 98.65 40 78 40a62.07 62.07 0 0 0-62 62c0 70 103.79 126.66 108.21 129a8 8 0 0 0 7.58 0C136.21 228.66 240 172 240 102a62.07 62.07 0 0 0-62-62Zm-50 174.8C109.74 204.16 32 155.69 32 102a46.06 46.06 0 0 1 46-46c19.45 0 35.78 10.36 42.6 27a8 8 0 0 0 14.8 0c6.82-16.67 23.15-27 42.6-27a46.06 46.06 0 0 1 46 46c0 53.61-77.76 102.15-96 112.8Z"/></symbol>
+    <symbol id="ph-eye-slash" viewBox="0 0 256 256"><path d="M53.92,34.62A8,8,0,1,0,42.08,45.38L61.32,66.55C25,88.84,9.38,123.2,8.69,124.76a8,8,0,0,0,0,6.5c.35.79,8.82,19.57,27.65,38.4C61.43,194.74,93.12,208,128,208a127.11,127.11,0,0,0,52.07-10.83l22,24.21a8,8,0,1,0,11.84-10.76Zm47.33,75.84,41.67,45.85a32,32,0,0,1-41.67-45.85ZM128,192c-30.78,0-57.67-11.19-79.93-33.25A133.16,133.16,0,0,1,25,128c4.69-8.79,19.66-33.39,47.35-49.38l18,19.75a48,48,0,0,0,63.66,70l14.73,16.2A112,112,0,0,1,128,192Zm6-95.43a8,8,0,0,1,3-15.72,48.16,48.16,0,0,1,38.77,42.64,8,8,0,0,1-7.22,8.71,6.39,6.39,0,0,1-.75,0,8,8,0,0,1-8-7.26A32.09,32.09,0,0,0,134,96.57Zm113.28,34.69c-.42.94-10.55,23.37-33.36,43.8a8,8,0,1,1-10.67-11.92A132.77,132.77,0,0,0,231.05,128a133.15,133.15,0,0,0-23.12-30.77C185.67,75.19,158.78,64,128,64a118.37,118.37,0,0,0-19.36,1.57A8,8,0,1,1,106,49.79,134,134,0,0,1,128,48c34.88,0,66.57,13.26,91.66,38.35,18.83,18.83,27.3,37.62,27.65,38.41A8,8,0,0,1,247.31,131.26Z"/></symbol>
+    <symbol id="ph-check-circle" viewBox="0 0 256 256"><path d="M173.66 98.34a8 8 0 0 1 0 11.32l-56 56a8 8 0 0 1-11.32 0l-24-24a8 8 0 0 1 11.32-11.32L112 148.69l50.34-50.35a8 8 0 0 1 11.32 0ZM232 128A104 104 0 1 1 128 24a104.11 104.11 0 0 1 104 104Zm-16 0a88 88 0 1 0-88 88 88.1 88.1 0 0 0 88-88Z"/></symbol>
+    <symbol id="ph-gear-six" viewBox="0 0 256 256"><path d="M128,80a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Zm109.94-52.79a8,8,0,0,0-3.89-5.4l-29.83-17-.12-33.62a8,8,0,0,0-2.83-6.08,111.91,111.91,0,0,0-36.72-20.67,8,8,0,0,0-6.46.59L128,41.85,97.88,25a8,8,0,0,0-6.47-.6A112.1,112.1,0,0,0,54.73,45.15a8,8,0,0,0-2.83,6.07l-.15,33.65-29.83,17a8,8,0,0,0-3.89,5.4,106.47,106.47,0,0,0,0,41.56,8,8,0,0,0,3.89,5.4l29.83,17,.12,33.62a8,8,0,0,0,2.83,6.08,111.91,111.91,0,0,0,36.72,20.67,8,8,0,0,0,6.46-.59L128,214.15,158.12,231a7.91,7.91,0,0,0,3.9,1,8.09,8.09,0,0,0,2.57-.42,112.1,112.1,0,0,0,36.68-20.73,8,8,0,0,0,2.83-6.07l.15-33.65,29.83-17a8,8,0,0,0,3.89-5.4A106.47,106.47,0,0,0,237.94,107.21Zm-15,34.91-28.57,16.25a8,8,0,0,0-3,3c-.58,1-1.19,2.06-1.81,3.06a7.94,7.94,0,0,0-1.22,4.21l-.15,32.25a95.89,95.89,0,0,1-25.37,14.3L134,199.13a8,8,0,0,0-3.91-1h-.19c-1.21,0-2.43,0-3.64,0a8.08,8.08,0,0,0-4.1,1l-28.84,16.1A96,96,0,0,1,67.88,201l-.11-32.2a8,8,0,0,0-1.22-4.22c-.62-1-1.23-2-1.8-3.06a8.09,8.09,0,0,0-3-3.06l-28.6-16.29a90.49,90.49,0,0,1,0-28.26L61.67,97.63a8,8,0,0,0,3-3c.58-1,1.19-2.06,1.81-3.06a7.94,7.94,0,0,0,1.22-4.21l.15-32.25a95.89,95.89,0,0,1,25.37-14.3L122,56.87a8,8,0,0,0,4.1,1c1.21,0,2.43,0,3.64,0a8.08,8.08,0,0,0,4.1-1l28.84-16.1A96,96,0,0,1,188.12,55l.11,32.2a8,8,0,0,0,1.22,4.22c.62,1,1.23,2,1.8,3.06a8.09,8.09,0,0,0,3,3.06l28.6,16.29A90.49,90.49,0,0,1,222.9,142.12Z"/></symbol>
+    <symbol id="ph-caret-right" viewBox="0 0 256 256"><path d="m181.66 133.66-80 80a8 8 0 0 1-11.32-11.32L164.69 128 90.34 53.66a8 8 0 0 1 11.32-11.32l80 80a8 8 0 0 1 0 11.32Z"/></symbol>
+    <symbol id="ph-arrow-left" viewBox="0 0 256 256"><path d="M224 128a8 8 0 0 1-8 8H59.3l58.4 58.3a8 8 0 0 1-11.4 11.4l-72-72a8 8 0 0 1 0-11.4l72-72a8 8 0 0 1 11.4 11.4L59.3 120H216a8 8 0 0 1 8 8Z"/></symbol>
+    <symbol id="ph-file-video" viewBox="0 0 256 256"><path d="M208 88h-56V32a8 8 0 0 0-8-8H48a16 16 0 0 0-16 16v176a16 16 0 0 0 16 16h160a16 16 0 0 0 16-16V104a16 16 0 0 0-16-16Zm-56-44.69L204.69 96H152ZM208 216H48V40h88v64a8 8 0 0 0 8 8h64Zm-35.73-60.66-48-24A8 8 0 0 0 112 138.5v48a8 8 0 0 0 12.27 7l48-24a8 8 0 0 0 0-14.32Z"/></symbol>
+    <symbol id="ph-folder" viewBox="0 0 256 256"><path d="M216 56h-84.7l-24-24H40a16 16 0 0 0-16 16v160a16 16 0 0 0 16 16h176a16 16 0 0 0 16-16V72a16 16 0 0 0-16-16Zm0 152H40V48h60.7l24 24H216Z"/></symbol>
+    <symbol id="ph-warning" viewBox="0 0 256 256"><path d="M236.8 188.09 148.89 36.22a24 24 0 0 0-41.78 0L19.2 188.09A23.9 23.9 0 0 0 40.09 224h175.82a23.9 23.9 0 0 0 20.89-35.91ZM128 184a12 12 0 1 1 12-12 12 12 0 0 1-12 12Zm8-48h-16V88h16Z"/></symbol>
+    <symbol id="ph-x-circle" viewBox="0 0 256 256"><path d="M128 24a104 104 0 1 0 104 104A104.11 104.11 0 0 0 128 24Zm0 192a88 88 0 1 1 88-88 88.1 88.1 0 0 1-88 88Zm37.66-125.66L139.31 128l26.35 26.34a8 8 0 0 1-11.32 11.32L128 139.31l-26.34 26.35a8 8 0 0 1-11.32-11.32L116.69 128 90.34 101.66a8 8 0 0 1 11.32-11.32L128 116.69l26.34-26.35a8 8 0 0 1 11.32 11.32Z"/></symbol>
+    <symbol id="ph-spinner" viewBox="0 0 256 256"><path d="M128 24a104 104 0 0 0-73.54 177.54 8 8 0 0 0 11.32-11.32A88 88 0 1 1 216 128a8 8 0 0 0 16 0A104.11 104.11 0 0 0 128 24Z"/></symbol>
+  </svg>
+
+  <div class="app-shell">
+    <aside class="sidebar" data-od-id="app-sidebar">
+      <a class="brand" href="personal-cinema-app-shell-v2.html" aria-label="Personal Cinema 主页"><span class="brand-mark"><svg aria-hidden="true"><use href="#ph-film-reel-fill"></use></svg></span><span>PERSONAL CINEMA</span></a>
+      <button class="sidebar-search" id="searchButton" data-od-id="global-search-button" type="button" aria-label="打开全局搜索" aria-expanded="false"><svg class="icon" aria-hidden="true"><use href="#ph-magnifying-glass"></use></svg><span>搜索</span></button>
+      <nav class="sidebar-nav" aria-label="主导航">
+        <div class="nav-group top-group">
+          <button class="sidebar-link" data-route="home"><svg class="icon icon-regular" aria-hidden="true"><use href="#ph-house"></use></svg><svg class="icon icon-selected" aria-hidden="true"><use href="#ph-house-fill"></use></svg>主页</button>
+          <button class="sidebar-link" data-route="movies"><svg class="icon" aria-hidden="true"><use href="#ph-film-slate"></use></svg>电影</button>
+          <button class="sidebar-link" data-route="ai"><svg class="icon" aria-hidden="true"><use href="#ph-sparkle"></use></svg>AI 发现</button>
+          <button class="sidebar-link" data-route="sources" aria-current="page"><svg class="icon" aria-hidden="true"><use href="#ph-hard-drives"></use></svg>媒体来源</button>
+        </div>
+        <div class="nav-group library-group">
+          <p class="nav-label">资料库</p>
+          <button class="sidebar-link" data-route="recent"><svg class="icon" aria-hidden="true"><use href="#ph-clock-counter-clockwise"></use></svg>最近添加</button>
+          <button class="sidebar-link" data-route="favorites"><svg class="icon" aria-hidden="true"><use href="#ph-heart"></use></svg>收藏</button>
+          <button class="sidebar-link" data-route="unwatched"><svg class="icon" aria-hidden="true"><use href="#ph-eye-slash"></use></svg>未看</button>
+          <button class="sidebar-link" data-route="watched"><svg class="icon" aria-hidden="true"><use href="#ph-check-circle"></use></svg>已看</button>
+        </div>
+      </nav>
+      <div class="sidebar-bottom">
+        <button class="sidebar-link" data-action="settings"><svg class="icon" aria-hidden="true"><use href="#ph-gear-six"></use></svg>设置</button>
+        <div class="user-wrap" id="accountWrap" data-open="false">
+          <button class="user-button" id="accountButton" aria-label="打开用户菜单" aria-expanded="false"><span class="avatar">林</span><span class="user-copy"><strong>林默</strong><small>个人电影收藏</small></span><svg class="icon" aria-hidden="true"><use href="#ph-caret-right"></use></svg></button>
+          <div class="account-menu" role="menu"><button class="menu-action" role="menuitem" data-action="profile">个人资料</button><button class="menu-action" role="menuitem" data-action="logout">退出登录</button></div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="app-main" data-od-id="scan-task-page">
+      <div class="content">
+        <div class="content-inner">
+          <a class="back-link" href="personal-cinema-media-sources.html"><svg aria-hidden="true"><use href="#ph-arrow-left"></use></svg>返回媒体来源</a>
+          <header class="page-heading scan-page-heading">
+            <div class="page-heading-copy"><h1 class="page-title" id="pageTitle">扫描媒体来源</h1><p class="page-subtitle" id="pageSubtitle">Personal Cinema 正在帮你整理电影。</p></div>
+          </header>
+
+          <div class="workflow-stack" id="scanContent">
+            <section class="scan-hero surface-card" id="scanHero" data-mode="running" aria-labelledby="scanHeroTitle">
+              <div class="scan-hero-head">
+                <div class="scan-source"><span>媒体来源</span><strong id="sourceName">家庭 NAS</strong></div>
+                <span class="status-label" id="headerStatus" data-state="active"><span class="status-dot" aria-hidden="true"></span><span>扫描中</span></span>
+              </div>
+              <div class="scan-hero-body">
+                <div class="scan-message"><strong id="scanHeroTitle">正在整理你的电影</strong><span id="currentActivity" aria-live="polite">正在连接媒体来源……</span></div>
+                <div class="scan-running-progress">
+                  <div class="scan-progress-copy"><strong id="scanProgressCount">0 / 126 个文件</strong><span id="scanProgressPercent">0%</span></div>
+                  <div class="progress-track" id="scanProgress" role="progressbar" aria-label="扫描进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span class="progress-value" id="progressValue"></span></div>
+                </div>
+              </div>
+              <div class="user-summary" aria-label="扫描结果摘要">
+                <div class="summary-item"><strong class="summary-value" id="userRecognizedCount">0</strong><span class="summary-label" id="userRecognizedLabel">已识别</span></div>
+                <div class="summary-item"><strong class="summary-value" id="pendingCount">0</strong><span class="summary-label" id="pendingLabel">待确认</span></div>
+                <div class="summary-item"><strong class="summary-value" id="issueCount">0</strong><span class="summary-label">有问题</span></div>
+              </div>
+            </section>
+
+            <section class="workflow-section" id="completionCta" aria-label="扫描完成后的操作" hidden>
+              <div class="result-actions"><a class="primary-action" id="matchingCta" href="personal-cinema-movie-matching.html">处理待确认影片</a><a class="secondary-action" id="libraryCta" href="personal-cinema-movie-library.html">查看片库</a><a class="quiet-action" href="personal-cinema-media-sources.html">返回媒体来源</a></div>
+            </section>
+
+            <section class="workflow-section" id="failureCta" aria-labelledby="failureTitle" hidden>
+              <div class="completion-panel surface-card">
+                <div class="completion-copy"><strong id="failureTitle">扫描没有完成</strong><p>WebDAV 连接中断，已经处理的结果会保留。</p></div>
+                <div class="header-actions"><button class="primary-action" id="retryScan" type="button">重新扫描</button><a class="quiet-action" href="personal-cinema-media-sources.html">返回媒体来源</a></div>
+              </div>
+            </section>
+
+            <section class="workflow-section" id="addedMoviesSection" aria-labelledby="addedMoviesTitle">
+              <div class="workflow-section-heading"><h2 class="section-title" id="addedMoviesTitle">最近识别</h2><p id="addedMoviesHint">电影正在加入你的片库</p></div>
+              <div class="poster-strip" id="recognizedMovies">
+                <a class="mini-movie" data-reveal-at="0.12" href="personal-cinema-movie-detail.html"><span class="poster-frame" data-fallback="DUNE"><img src="assets/tmdb-poster-dune.jpg" alt="沙丘电影海报" onerror="this.hidden=true" /></span><span class="mini-movie-copy"><strong>沙丘</strong><span>2021 · 4K</span></span></a>
+                <a class="mini-movie" data-reveal-at="0.3" href="personal-cinema-movie-detail-oppenheimer.html"><span class="poster-frame" data-fallback="OPPENHEIMER"><img src="assets/tmdb-poster-oppenheimer.jpg" alt="奥本海默电影海报" onerror="this.hidden=true" /></span><span class="mini-movie-copy"><strong>奥本海默</strong><span>2023 · 4K HDR</span></span></a>
+                <a class="mini-movie" data-reveal-at="0.5" href="personal-cinema-movie-detail-interstellar.html"><span class="poster-frame" data-fallback="INTERSTELLAR"><img src="assets/tmdb-poster-interstellar.jpg" alt="星际穿越电影海报" onerror="this.hidden=true" /></span><span class="mini-movie-copy"><strong>星际穿越</strong><span>2014 · 1080p</span></span></a>
+                <a class="mini-movie" data-reveal-at="0.7" href="personal-cinema-movie-library.html"><span class="poster-frame" data-fallback="ARRIVAL"><img src="assets/tmdb-poster-arrival.jpg" alt="降临电影海报" onerror="this.hidden=true" /></span><span class="mini-movie-copy"><strong>降临</strong><span>2016 · 4K</span></span></a>
+              </div>
+              <p class="recognition-empty" id="recognitionEmpty">识别到的电影会显示在这里。</p>
+            </section>
+
+            <section class="pending-nudge surface-card" id="pendingNudge" aria-labelledby="pendingNudgeTitle">
+              <div><strong id="pendingNudgeTitle">有电影需要确认</strong><p>有些文件无法自动确定对应的影片。扫描完成后可以统一处理。</p></div>
+              <span class="status-label" data-state="pending"><span class="status-dot" aria-hidden="true"></span><span id="pendingNudgeCount">0 部</span></span>
+            </section>
+
+            <p class="background-note" id="backgroundNote">扫描会在后台继续，你可以离开此页面。</p>
+
+            <section class="workflow-section" id="reviewSection" aria-labelledby="reviewTitle" hidden>
+              <div class="workflow-section-heading"><h2 class="section-title" id="reviewTitle">需要确认</h2><p id="reviewCountLabel">正在读取待确认项目</p></div>
+              <div class="compact-list surface-card" id="reviewList"></div>
+            </section>
+
+            <section class="workflow-section" id="exceptionsSection" aria-labelledby="exceptionsTitle" hidden>
+              <div class="workflow-section-heading"><h2 class="section-title" id="exceptionsTitle">需要注意</h2><p>这些项目不会影响其他电影</p></div>
+              <div class="compact-list surface-card">
+                <div class="compact-row"><div class="compact-row-copy"><strong>The Fall</strong><span>已加入片库，但部分媒体信息没有读取完整。</span></div><span class="status-label" data-state="pending">信息不完整</span></div>
+                <div class="compact-row"><div class="compact-row-copy"><strong>random_test_clip.mp4</strong><span>没有识别为电影，因此没有加入片库。</span></div><span class="status-label" data-state="pending">未加入</span></div>
+              </div>
+            </section>
+
+            <section class="processing-details" aria-labelledby="processingDetailsLabel">
+              <button class="details-toggle" id="detailsToggle" type="button" aria-expanded="false" aria-controls="processingDetails"><span id="processingDetailsLabel">查看处理详情</span><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></button>
+              <div class="details-content" id="processingDetails" hidden>
+                <section class="technical-task surface-card" aria-labelledby="taskOverviewTitle">
+                  <div class="task-overview-head">
+                    <div class="task-overview-title"><strong id="taskOverviewTitle">家庭 NAS · WebDAV</strong><span id="taskRootLabel">扫描根路径 /Movies</span></div>
+                    <span class="status-label" id="taskState" data-state="active"><span class="status-dot" aria-hidden="true"></span><span>扫描中</span></span>
+                  </div>
+                  <div class="task-meta"><span id="taskSourceMeta"><svg aria-hidden="true"><use href="#ph-hard-drives"></use></svg>家庭 NAS</span><span id="taskPathMeta"><svg aria-hidden="true"><use href="#ph-folder"></use></svg>/Movies</span><span class="task-id" id="taskIdMeta">task_id · scan_20260903_1032</span><span id="elapsedLabel">已运行 00:00</span></div>
+                  <div class="task-summary" aria-label="技术处理统计">
+                    <div class="summary-item"><strong class="summary-value" id="foundCount">0</strong><span class="summary-label">已发现文件</span></div>
+                    <div class="summary-item"><strong class="summary-value" id="recognizedCount">0</strong><span class="summary-label" id="recognizedLabel">已识别影片</span></div>
+                    <div class="summary-item"><strong class="summary-value" id="importedCount">0</strong><span class="summary-label" id="importedLabel">已入库</span></div>
+                    <div class="summary-item"><strong class="summary-value" id="technicalPendingCount">0</strong><span class="summary-label">待确认</span></div>
+                    <div class="summary-item"><strong class="summary-value" id="skippedCount">0</strong><span class="summary-label">跳过</span></div>
+                    <div class="summary-item"><strong class="summary-value" id="degradedCount">0</strong><span class="summary-label">探测降级</span></div>
+                  </div>
+                </section>
+
+                <section class="workflow-section" aria-labelledby="pipelineTitle">
+                  <div class="workflow-section-heading"><h2 class="section-title" id="pipelineTitle">处理流程</h2><p id="pipelineHint">文件名解析完成后再使用片名与年份查询 TMDB</p></div>
+                  <div class="pipeline surface-card" id="pipeline" aria-live="polite"></div>
+                </section>
+
+                <section class="workflow-section" id="recentFilesSection" aria-labelledby="recentFilesTitle">
+                  <div class="workflow-section-heading"><h2 class="section-title" id="recentFilesTitle">文件处理记录</h2><p>ffprobe 失败不会阻止影片识别和入库</p></div>
+                  <div class="file-list surface-card" id="fileList"></div>
+                </section>
+              </div>
+            </section>
+          </div>
+          <p class="sr-only" id="announcement" data-shell-announcement aria-live="polite"></p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="search-scrim" id="searchScrim" data-open="false"></div>
+  <section class="search-dialog" id="searchDialog" data-open="false" role="dialog" aria-modal="true" aria-label="搜索影片" inert>
+    <div class="search-field"><label class="sr-only" for="globalSearch">搜索片名、导演或演员</label><svg class="icon" aria-hidden="true"><use href="#ph-magnifying-glass"></use></svg><input class="search-input" id="globalSearch" type="search" autocomplete="off" placeholder="搜索片名、导演或演员" /><button class="search-clear" id="clearSearch" type="button" aria-label="清空搜索关键词" hidden><svg aria-hidden="true"><use href="#ph-x"></use></svg></button><span class="search-key">ESC</span></div>
+    <div class="search-results"><p class="search-caption" id="searchCaption">最近内容</p><div class="search-result-list" id="searchResultList" aria-live="polite">
+      <button class="search-result" type="button" data-search="星际穿越 2014 科幻" data-href="personal-cinema-movie-detail-interstellar.html"><img class="search-thumb" src="assets/tmdb-poster-interstellar.jpg" alt="" onerror="this.style.visibility='hidden'" /><span><strong>星际穿越</strong><small>2014 · 科幻 / 剧情 / 冒险 · 8.5</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
+      <button class="search-result" type="button" data-search="沙丘 2021 科幻" data-href="personal-cinema-movie-detail.html"><img class="search-thumb" src="assets/tmdb-poster-dune.jpg" alt="" onerror="this.style.visibility='hidden'" /><span><strong>沙丘</strong><small>2021 · 科幻 / 冒险 · 7.8</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
+      <button class="search-result" type="button" data-search="银翼杀手2049 2017 科幻 剧情"><img class="search-thumb" src="assets/tmdb-poster-blade-runner-2049.jpg" alt="" onerror="this.style.visibility='hidden'" /><span><strong>银翼杀手2049</strong><small>2017 · 科幻 / 剧情 · 7.6</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
+      <button class="search-result" type="button" data-search="奥本海默 2023 剧情 历史" data-href="personal-cinema-movie-detail-oppenheimer.html"><img class="search-thumb" src="assets/tmdb-poster-oppenheimer.jpg" alt="" onerror="this.style.visibility='hidden'" /><span><strong>奥本海默</strong><small>2023 · 剧情 / 历史 · 8.0</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
+      <button class="search-result" type="button" data-search="囚徒 2013 剧情 犯罪"><img class="search-thumb" src="assets/tmdb-poster-prisoners.jpg" alt="" onerror="this.style.visibility='hidden'" /><span><strong>囚徒</strong><small>2013 · 剧情 / 犯罪 · 8.1</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
+    </div><div class="search-empty" id="searchEmpty" hidden><strong>没有找到匹配的影片</strong><span>尝试搜索片名、导演或演员</span></div></div>
+  </section>
+
+  <script src="assets/js/personal-cinema-shell.js"></script>
+  <script src="assets/js/personal-cinema-scan-task.js"></script>
+</body>
+</html>
