@@ -148,14 +148,16 @@
   function renderReviewList() {
     const count = pendingTotal();
     const itemMap = {
-      'blade-runner-2049': ['银翼杀手2049', '无法自动确定对应的影片'],
+      'blade-runner-2049': ['银翼杀手 2049', '无法自动确定对应的影片'],
       'alien-1979': ['异形', '检测到导演剪辑版，需要确认影片信息'],
       'prisoners-2013': ['囚徒', '找到多个相近结果，需要你选择']
     };
-    const id = pendingIds()[0];
-    const [title, detail] = itemMap[id] || ['待确认影片', '无法自动确定对应的影片'];
-    $('reviewCountLabel').textContent = `${count} 部电影等待处理`;
-    $('reviewList').innerHTML = count ? `<div class="compact-row"><div class="compact-row-copy"><strong>${title}</strong><span>${detail}</span></div><a class="quiet-action" href="personal-cinema-movie-matching.html?task=${encodeURIComponent(requestedTaskId)}&item=${encodeURIComponent(id)}">去确认</a></div>` : '';
+    const ids = pendingIds();
+    const titles = ids.map(id => (itemMap[id] || ['待确认影片'])[0]);
+    const preview = titles.length > 1 ? `${titles[0]} 等 ${count} 部` : titles[0] || '';
+    $('reviewCountLabel').textContent = `${count} 部影片需要确认`;
+    $('reviewList').textContent = preview;
+    $('reviewAction').href = `personal-cinema-movie-matching.html?task=${encodeURIComponent(requestedTaskId)}`;
   }
 
   function renderCounts(progress, completed) {
@@ -181,25 +183,26 @@
     $('scanProgress').setAttribute('aria-valuenow', String(Math.round(progress * 100)));
     $('pendingNudgeCount').textContent = `${pending} 部`;
     $('pendingNudgeTitle').textContent = `${pending} 部电影需要确认`;
-    return { pending, recognized };
+    $('addedMoviesCount').textContent = `${recognized} 部`;
+    $('exceptionsCount').textContent = String(issues);
+    return { pending, recognized, issues };
   }
 
-  function showCompletion(count) {
+  function showCompletion(count, issues) {
     $('completionCta').hidden = false;
     $('failureCta').hidden = true;
     $('pendingNudge').hidden = true;
     $('backgroundNote').hidden = true;
     $('reviewSection').hidden = count === 0;
-    $('exceptionsSection').hidden = false;
+    $('exceptionsSection').hidden = issues === 0;
     renderReviewList();
+    $('libraryCta').hidden = false;
     if (count > 0) {
-      $('matchingCta').textContent = `处理 ${count} 个待确认影片`;
+      $('matchingCta').hidden = false;
+      $('matchingCta').textContent = `处理 ${count} 部待确认影片`;
       $('matchingCta').href = `personal-cinema-movie-matching.html?task=${encodeURIComponent(requestedTaskId)}`;
-      $('libraryCta').hidden = false;
     } else {
-      $('matchingCta').textContent = '查看片库';
-      $('matchingCta').href = 'personal-cinema-movie-library.html';
-      $('libraryCta').hidden = true;
+      $('matchingCta').hidden = true;
     }
   }
 
@@ -233,10 +236,11 @@
       $('taskState').dataset.state = 'completed';
       $('taskState').innerHTML = stateMarkup('completed', '扫描完成');
       $('userRecognizedLabel').textContent = '已加入片库';
-      $('pendingLabel').textContent = '需要确认';
+      $('pendingLabel').textContent = '待确认';
+      $('issueLabel').textContent = '需要注意';
       $('addedMoviesTitle').textContent = '本次新增影片';
       $('addedMoviesHint').textContent = '已自动匹配并加入片库';
-      showCompletion(counts.pending);
+      showCompletion(counts.pending, counts.issues);
       if (timer) { clearInterval(timer); timer = null; }
     } else if (failed) {
       document.title = '扫描未完成 · Personal Cinema';
@@ -277,6 +281,7 @@
       $('taskState').innerHTML = stateMarkup('active', '扫描中');
       $('userRecognizedLabel').textContent = '已识别';
       $('pendingLabel').textContent = '待确认';
+      $('issueLabel').textContent = '有问题';
       $('addedMoviesTitle').textContent = '最近识别';
       $('addedMoviesHint').textContent = '电影正在加入你的片库';
     }

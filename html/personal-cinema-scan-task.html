@@ -83,12 +83,11 @@
               <div class="user-summary" aria-label="扫描结果摘要">
                 <div class="summary-item"><strong class="summary-value" id="userRecognizedCount">0</strong><span class="summary-label" id="userRecognizedLabel">已识别</span></div>
                 <div class="summary-item"><strong class="summary-value" id="pendingCount">0</strong><span class="summary-label" id="pendingLabel">待确认</span></div>
-                <div class="summary-item"><strong class="summary-value" id="issueCount">0</strong><span class="summary-label">有问题</span></div>
+                <div class="summary-item"><strong class="summary-value" id="issueCount">0</strong><span class="summary-label" id="issueLabel">有问题</span></div>
               </div>
-            </section>
-
-            <section class="workflow-section" id="completionCta" aria-label="扫描完成后的操作" hidden>
-              <div class="result-actions"><a class="primary-action" id="matchingCta" href="personal-cinema-movie-matching.html">处理待确认影片</a><a class="secondary-action" id="libraryCta" href="personal-cinema-movie-library.html">查看片库</a><a class="quiet-action" href="personal-cinema-media-sources.html">返回媒体来源</a></div>
+              <section class="scan-hero-actions" id="completionCta" aria-label="扫描完成后的操作" hidden>
+                <div class="result-actions"><a class="primary-action" id="libraryCta" href="personal-cinema-movie-library.html">查看片库</a><a class="secondary-action" id="matchingCta" href="personal-cinema-movie-matching.html">处理待确认影片</a><a class="quiet-action" href="personal-cinema-media-sources.html">返回媒体来源</a></div>
+              </section>
             </section>
 
             <section class="workflow-section" id="failureCta" aria-labelledby="failureTitle" hidden>
@@ -99,7 +98,10 @@
             </section>
 
             <section class="workflow-section" id="addedMoviesSection" aria-labelledby="addedMoviesTitle">
-              <div class="workflow-section-heading"><h2 class="section-title" id="addedMoviesTitle">最近识别</h2><p id="addedMoviesHint">电影正在加入你的片库</p></div>
+              <div class="workflow-section-heading added-movies-heading">
+                <div class="section-heading-copy"><div class="section-title-line"><h2 class="section-title" id="addedMoviesTitle">最近识别</h2><span class="section-count" id="addedMoviesCount">0 部</span></div><p id="addedMoviesHint">电影正在加入你的片库</p></div>
+                <a class="section-link" href="personal-cinema-movie-library.html">查看全部</a>
+              </div>
               <div class="poster-strip" id="recognizedMovies">
                 <a class="mini-movie" data-reveal-at="0.12" href="personal-cinema-movie-detail.html"><span class="poster-frame" data-fallback="DUNE"><img src="assets/tmdb-poster-dune.jpg" alt="沙丘电影海报" onerror="this.hidden=true" /></span><span class="mini-movie-copy"><strong>沙丘</strong><span>2021 · 4K</span></span></a>
                 <a class="mini-movie" data-reveal-at="0.3" href="personal-cinema-movie-detail-oppenheimer.html"><span class="poster-frame" data-fallback="OPPENHEIMER"><img src="assets/tmdb-poster-oppenheimer.jpg" alt="奥本海默电影海报" onerror="this.hidden=true" /></span><span class="mini-movie-copy"><strong>奥本海默</strong><span>2023 · 4K HDR</span></span></a>
@@ -117,12 +119,15 @@
             <p class="background-note" id="backgroundNote">扫描会在后台继续，你可以离开此页面。</p>
 
             <section class="workflow-section" id="reviewSection" aria-labelledby="reviewTitle" hidden>
-              <div class="workflow-section-heading"><h2 class="section-title" id="reviewTitle">需要确认</h2><p id="reviewCountLabel">正在读取待确认项目</p></div>
-              <div class="compact-list surface-card" id="reviewList"></div>
+              <div class="workflow-section-heading"><div class="section-heading-copy"><h2 class="section-title" id="reviewTitle">需要你处理</h2></div></div>
+              <div class="review-panel surface-card">
+                <div class="review-panel-copy"><strong id="reviewCountLabel">正在读取待确认项目</strong><p>有些文件无法自动确定对应影片，扫描结果已经保留，可以稍后统一处理。</p><span id="reviewList">正在读取待确认影片</span></div>
+                <a class="secondary-action" id="reviewAction" href="personal-cinema-movie-matching.html">去处理</a>
+              </div>
             </section>
 
             <section class="workflow-section" id="exceptionsSection" aria-labelledby="exceptionsTitle" hidden>
-              <div class="workflow-section-heading"><h2 class="section-title" id="exceptionsTitle">需要注意</h2><p>这些项目不会影响其他电影</p></div>
+              <div class="workflow-section-heading"><div class="section-heading-copy"><div class="section-title-line"><h2 class="section-title" id="exceptionsTitle">需要注意</h2><span class="section-count" id="exceptionsCount">0</span></div><p>这些项目不会影响其他电影</p></div></div>
               <div class="compact-list surface-card">
                 <div class="compact-row"><div class="compact-row-copy"><strong>The Fall</strong><span>已加入片库，但部分媒体信息没有读取完整。</span></div><span class="status-label" data-state="pending">信息不完整</span></div>
                 <div class="compact-row"><div class="compact-row-copy"><strong>random_test_clip.mp4</strong><span>没有识别为电影，因此没有加入片库。</span></div><span class="status-label" data-state="pending">未加入</span></div>
