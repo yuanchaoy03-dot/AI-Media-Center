@@ -28,3 +28,13 @@
 - 按实际影响更新文档：产品需求/P0范围/验收标准→`docs/01-项目需求文档.md`，架构/ADR→`docs/02-系统架构设计文档.md`，长期开发规则→`docs/开发规范与模块边界.md`，接口→`docs/API.md`，进度→`PROJECT_STATUS.md`，工作规则→`AGENTS.md`；数据库事实留给未来03。
 - 不因小型UI或组件改动重写稳定基线，不创建零散任务Markdown。
 - 每个切片结束前完成相应测试、Code Review、必要文档更新和Git提交检查，并确认用户隔离、secret、模块边界及P0范围未被破坏。
+
+## Git工作规则
+
+- Git提交信息默认使用中文描述，可保留`feat:`、`fix:`、`docs:`、`design:`、`refactor:`、`chore:`等类型前缀。
+- 每次提交前检查`git status`和必要的`git diff`，只提交当前任务相关修改，不混入无关文件。
+- 不得提交`.env`、密码、Token、API Key、AccessKey、JWT Secret、WebDAV密码等敏感信息。
+- 不得擅自执行`push`、`force push`、添加或修改remote、创建远程仓库；只有用户明确要求时才能进行远程操作。
+- 不得擅自撤销、覆盖、reset或丢弃用户已有的未提交修改。
+- 一个完整功能切片或明确阶段完成后再形成有意义的提交，不因每个微小修改机械创建commit。
+- 修改历史提交、rebase、reset、force push等可能改写Git历史的操作，必须在用户明确要求后执行。
