@@ -100,13 +100,25 @@
             <section class="workflow-section" id="addedMoviesSection" aria-labelledby="addedMoviesTitle">
               <div class="workflow-section-heading">
                 <div class="section-heading-copy"><div class="section-title-line"><h2 class="section-title" id="addedMoviesTitle">最近识别</h2><span class="section-count" id="addedMoviesCount">0 部</span></div><p id="addedMoviesHint">电影正在加入你的片库</p></div>
-                <a class="section-link" href="personal-cinema-movie-library.html">查看全部<svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></a>
+                <a class="section-link" id="addedMoviesLink" href="personal-cinema-movie-library.html"><span id="addedMoviesLinkLabel">查看全部</span><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></a>
               </div>
               <div class="poster-strip" id="recognizedMovies">
                 <a class="mini-movie" data-reveal-at="0.12" href="personal-cinema-movie-detail.html"><span class="poster-frame" data-fallback="DUNE"><img src="assets/tmdb-poster-dune.jpg" alt="沙丘电影海报" onerror="this.hidden=true" /></span><span class="mini-movie-copy"><strong>沙丘</strong><span>2021 · 4K</span></span></a>
                 <a class="mini-movie" data-reveal-at="0.3" href="personal-cinema-movie-detail-oppenheimer.html"><span class="poster-frame" data-fallback="OPPENHEIMER"><img src="assets/tmdb-poster-oppenheimer.jpg" alt="奥本海默电影海报" onerror="this.hidden=true" /></span><span class="mini-movie-copy"><strong>奥本海默</strong><span>2023 · 4K HDR</span></span></a>
                 <a class="mini-movie" data-reveal-at="0.5" href="personal-cinema-movie-detail-interstellar.html"><span class="poster-frame" data-fallback="INTERSTELLAR"><img src="assets/tmdb-poster-interstellar.jpg" alt="星际穿越电影海报" onerror="this.hidden=true" /></span><span class="mini-movie-copy"><strong>星际穿越</strong><span>2014 · 1080p</span></span></a>
                 <a class="mini-movie" data-reveal-at="0.7" href="personal-cinema-movie-library.html"><span class="poster-frame" data-fallback="ARRIVAL"><img src="assets/tmdb-poster-arrival.jpg" alt="降临电影海报" onerror="this.hidden=true" /></span><span class="mini-movie-copy"><strong>降临</strong><span>2016 · 4K</span></span></a>
+                <a class="mini-movie" data-completion-preview hidden href="personal-cinema-movie-detail-dune-part-two.html"><span class="poster-frame" data-fallback="沙丘2"><img src="assets/tmdb-poster-dune-part-two.jpg" alt="沙丘2电影海报" onerror="this.hidden=true" /></span><span class="mini-movie-copy"><strong>沙丘2</strong><span>2024 · 4K HDR</span></span></a>
+                <a class="mini-movie" data-completion-preview hidden href="personal-cinema-movie-library.html"><span class="poster-frame" data-fallback="新蝙蝠侠"><img src="assets/tmdb-poster-the-batman.jpg" alt="新蝙蝠侠电影海报" onerror="this.hidden=true" /></span><span class="mini-movie-copy"><strong>新蝙蝠侠</strong><span>2022 · 4K HDR</span></span></a>
+                <a class="mini-movie" data-completion-preview hidden href="personal-cinema-movie-library.html"><span class="poster-frame" data-fallback="盗梦空间"><img src="assets/tmdb-poster-inception.jpg" alt="盗梦空间电影海报" onerror="this.hidden=true" /></span><span class="mini-movie-copy"><strong>盗梦空间</strong><span>2010 · 4K</span></span></a>
+                <a class="mini-movie" data-completion-preview hidden href="personal-cinema-movie-library.html"><span class="poster-frame" data-fallback="1917"><img src="assets/tmdb-poster-1917.jpg" alt="1917电影海报" onerror="this.hidden=true" /></span><span class="mini-movie-copy"><strong>1917</strong><span>2019 · 4K HDR</span></span></a>
+                <a class="mini-movie" data-completion-preview hidden href="personal-cinema-movie-library.html"><span class="poster-frame" data-fallback="疯狂的麦克斯：狂暴之路"><img src="assets/tmdb-poster-mad-max-fury-road.jpg" alt="疯狂的麦克斯：狂暴之路电影海报" onerror="this.hidden=true" /></span><span class="mini-movie-copy"><strong>疯狂的麦克斯：狂暴之路</strong><span>2015 · 4K HDR</span></span></a>
+                <a class="mini-movie" data-completion-preview hidden href="personal-cinema-movie-library.html"><span class="poster-frame" data-fallback="寄生虫"><img src="assets/tmdb-poster-parasite.jpg" alt="寄生虫电影海报" onerror="this.hidden=true" /></span><span class="mini-movie-copy"><strong>寄生虫</strong><span>2019 · 1080p</span></span></a>
+                <a class="mini-movie" data-completion-preview hidden href="personal-cinema-movie-library.html"><span class="poster-frame" data-fallback="爆裂鼓手"><img src="assets/tmdb-poster-whiplash.jpg" alt="爆裂鼓手电影海报" onerror="this.hidden=true" /></span><span class="mini-movie-copy"><strong>爆裂鼓手</strong><span>2014 · 1080p</span></span></a>
+                <a class="mini-movie" data-completion-preview hidden href="personal-cinema-movie-library.html"><span class="poster-frame" data-fallback="消失的爱人"><img src="assets/tmdb-poster-gone-girl.jpg" alt="消失的爱人电影海报" onerror="this.hidden=true" /></span><span class="mini-movie-copy"><strong>消失的爱人</strong><span>2014 · 1080p</span></span></a>
+                <a class="mini-movie" data-completion-preview hidden href="personal-cinema-movie-library.html"><span class="poster-frame" data-fallback="机械姬"><img src="assets/tmdb-poster-ex-machina.jpg" alt="机械姬电影海报" onerror="this.hidden=true" /></span><span class="mini-movie-copy"><strong>机械姬</strong><span>2015 · 4K</span></span></a>
+                <a class="mini-movie" data-completion-preview hidden href="personal-cinema-movie-library.html"><span class="poster-frame" data-fallback="银翼杀手"><img src="assets/tmdb-poster-blade-runner.jpg" alt="银翼杀手电影海报" onerror="this.hidden=true" /></span><span class="mini-movie-copy"><strong>银翼杀手</strong><span>1982 · 4K</span></span></a>
+                <a class="mini-movie" data-completion-preview hidden href="personal-cinema-movie-library.html"><span class="poster-frame" data-fallback="异形2"><img src="assets/tmdb-poster-aliens.jpg" alt="异形2电影海报" onerror="this.hidden=true" /></span><span class="mini-movie-copy"><strong>异形2</strong><span>1986 · 1080p</span></span></a>
+                <a class="mini-movie" data-completion-preview hidden href="personal-cinema-movie-library.html"><span class="poster-frame" data-fallback="异形：契约"><img src="assets/tmdb-poster-alien-covenant.jpg" alt="异形：契约电影海报" onerror="this.hidden=true" /></span><span class="mini-movie-copy"><strong>异形：契约</strong><span>2017 · 4K HDR</span></span></a>
               </div>
               <p class="recognition-empty" id="recognitionEmpty">识别到的电影会显示在这里。</p>
             </section>
@@ -118,21 +130,23 @@
 
             <p class="background-note" id="backgroundNote">扫描会在后台继续，你可以离开此页面。</p>
 
-            <section class="workflow-section" id="reviewSection" aria-labelledby="reviewTitle" hidden>
-              <div class="workflow-section-heading"><div class="section-heading-copy"><h2 class="section-title" id="reviewTitle">需要你处理</h2></div></div>
-              <div class="review-panel surface-card">
-                <div class="review-panel-copy"><strong id="reviewCountLabel">正在读取待确认项目</strong><p>有些文件无法自动确定对应影片，扫描结果已经保留，可以稍后统一处理。</p><span id="reviewList">正在读取待确认影片</span></div>
-                <a class="secondary-action" id="reviewAction" href="personal-cinema-movie-matching.html">去处理</a>
-              </div>
-            </section>
+            <div class="completion-secondary-grid" id="completionSecondary" hidden>
+              <section class="workflow-section" id="reviewSection" aria-labelledby="reviewTitle" hidden>
+                <div class="workflow-section-heading"><div class="section-title-line"><h2 class="section-title" id="reviewTitle">需要你处理</h2><span class="section-count" id="reviewPreviewCount">0</span></div></div>
+                <div class="review-panel surface-card">
+                  <div class="review-panel-copy"><strong id="reviewCountLabel">正在读取待确认项目</strong><p>有些文件无法自动确定对应影片，扫描结果已经保留，可以稍后统一处理。</p><ul class="review-preview-list" id="reviewList" aria-label="待确认影片预览"></ul><span id="reviewRemaining" hidden></span></div>
+                  <a class="secondary-action" id="reviewAction" href="personal-cinema-movie-matching.html">去处理</a>
+                </div>
+              </section>
 
-            <section class="workflow-section" id="exceptionsSection" aria-labelledby="exceptionsTitle" hidden>
-              <div class="workflow-section-heading"><div class="section-heading-copy"><div class="section-title-line"><h2 class="section-title" id="exceptionsTitle">需要注意</h2><span class="section-count" id="exceptionsCount">0</span></div><p>这些项目不会影响其他电影</p></div></div>
-              <div class="compact-list surface-card">
-                <div class="compact-row"><div class="compact-row-copy"><strong>The Fall</strong><span>已加入片库，但部分媒体信息没有读取完整。</span></div><span class="status-label" data-state="pending">信息不完整</span></div>
-                <div class="compact-row"><div class="compact-row-copy"><strong>random_test_clip.mp4</strong><span>没有识别为电影，因此没有加入片库。</span></div><span class="status-label" data-state="pending">未加入</span></div>
-              </div>
-            </section>
+              <section class="workflow-section" id="exceptionsSection" aria-labelledby="exceptionsTitle" hidden>
+                <div class="workflow-section-heading"><div class="section-heading-copy"><div class="section-title-line"><h2 class="section-title" id="exceptionsTitle">需要注意</h2><span class="section-count" id="exceptionsCount">0</span></div></div></div>
+                <div class="compact-list surface-card">
+                  <div class="compact-row" id="degradedIssue"><div class="compact-row-copy"><strong>The Fall</strong><span>已加入片库，但部分媒体信息没有读取完整。</span></div><span class="status-label" data-state="pending">信息不完整</span></div>
+                  <div class="compact-row" id="skippedIssue"><div class="compact-row-copy"><strong>random_test_clip.mp4</strong><span>没有识别为电影，因此没有加入片库。</span></div><span class="status-label" data-state="pending">未加入</span></div>
+                </div>
+              </section>
+            </div>
 
             <section class="processing-details" aria-labelledby="processingDetailsLabel">
               <button class="details-toggle" id="detailsToggle" type="button" aria-expanded="false" aria-controls="processingDetails"><span id="processingDetailsLabel">查看处理详情</span><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></button>

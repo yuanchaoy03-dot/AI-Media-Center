@@ -139,10 +139,13 @@
       <div class="file-row"><span class="file-icon">${icon('ph-file-video')}</span><div class="file-main"><span class="file-name">random_test_clip.mp4</span><span class="file-result"><strong>未识别为电影</strong><span>· 保持未关联</span></span></div><div class="file-side">${fileStatus('pending', '已跳过')}<span class="confidence">无 TMDB 候选</span></div></div>`;
   }
 
-  function renderRecognizedMovies(progress, completed) {
-    const cards = [...$('recognizedMovies').querySelectorAll('[data-reveal-at]')];
-    cards.forEach(card => { card.hidden = !completed && progress < Number(card.dataset.revealAt); });
+  function renderRecognizedMovies(progress, completed, recognized) {
+    const cards = [...$('recognizedMovies').querySelectorAll('.mini-movie')];
+    cards.forEach((card, index) => {
+      card.hidden = index >= recognized || (!completed && (card.hasAttribute('data-completion-preview') || progress < Number(card.dataset.revealAt)));
+    });
     $('recognitionEmpty').hidden = cards.some(card => !card.hidden);
+    $('recognitionEmpty').textContent = completed ? '本次没有新增影片，你可以查看现有片库或返回媒体来源。' : '识别到的电影会显示在这里。';
   }
 
   function renderReviewList() {
@@ -153,10 +156,16 @@
       'prisoners-2013': ['囚徒', '找到多个相近结果，需要你选择']
     };
     const ids = pendingIds();
-    const titles = ids.map(id => (itemMap[id] || ['待确认影片'])[0]);
-    const preview = titles.length > 1 ? `${titles[0]} 等 ${count} 部` : titles[0] || '';
+    const titles = ids.slice(0, 3).map(id => (itemMap[id] || ['待确认影片'])[0]);
+    $('reviewPreviewCount').textContent = String(count);
     $('reviewCountLabel').textContent = `${count} 部影片需要确认`;
-    $('reviewList').textContent = preview;
+    $('reviewList').replaceChildren(...titles.map(title => {
+      const item = document.createElement('li');
+      item.textContent = title;
+      return item;
+    }));
+    $('reviewRemaining').hidden = count <= titles.length;
+    $('reviewRemaining').textContent = count > titles.length ? `还有 ${count - titles.length} 部待确认` : '';
     $('reviewAction').href = `personal-cinema-movie-matching.html?task=${encodeURIComponent(requestedTaskId)}`;
   }
 
@@ -184,7 +193,11 @@
     $('pendingNudgeCount').textContent = `${pending} 部`;
     $('pendingNudgeTitle').textContent = `${pending} 部电影需要确认`;
     $('addedMoviesCount').textContent = `${recognized} 部`;
+    $('addedMoviesLinkLabel').textContent = completed ? `查看全部 ${recognized} 部` : '查看全部';
+    $('addedMoviesLink').hidden = completed && recognized === 0;
     $('exceptionsCount').textContent = String(issues);
+    $('degradedIssue').hidden = degraded === 0;
+    $('skippedIssue').hidden = skipped === 0;
     return { pending, recognized, issues };
   }
 
@@ -219,9 +232,11 @@
     }
 
     const counts = renderCounts(progress, completed);
+    $('scanContent').dataset.mode = completed ? 'complete' : 'running';
+    $('completionSecondary').hidden = !completed || (counts.pending === 0 && counts.issues === 0);
     renderPipeline(progress, completed, failed);
     renderFiles(progress, completed);
-    renderRecognizedMovies(progress, completed);
+    renderRecognizedMovies(progress, completed, counts.recognized);
     const seconds = Math.floor((Date.now() - task.createdAt) / 1000);
     $('elapsedLabel').textContent = completed ? '已完成' : `已运行 00:${String(Math.max(0, seconds)).padStart(2, '0')}`;
 
