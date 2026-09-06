@@ -1,7 +1,11 @@
 /* Scan and matching workflow components extend the existing Personal Cinema language. */
 .workflow-stack{display:grid;gap:42px}.workflow-section{display:grid;gap:15px}.workflow-section-heading{display:flex;align-items:end;justify-content:space-between;gap:18px}.workflow-section-heading p{color:var(--text-tertiary);font-size:12px}
 .app-main[data-od-id="scan-task-page"] .content-inner{width:min(100%,1240px)}
-.app-main[data-od-id="scan-task-page"] .content-inner:has(#scanContent[data-mode="complete"]){width:min(100%,1480px)}
+/* Completed results fill the app canvas; task states keep their focused width. */
+.app-main[data-od-id="scan-task-page"] .content-inner:has(#scanContent[data-mode="complete"]){width:100%}
+@media(min-width:901px){
+  .app-main[data-od-id="scan-task-page"] .content:has(#scanContent[data-mode="complete"]){padding-inline:40px}
+}
 .app-main[data-od-id="scan-task-page"] .workflow-stack{gap:32px;grid-template-columns:minmax(0,1fr)}
 .section-heading-copy{display:grid;gap:5px;min-width:0}.section-title-line{display:flex;flex-wrap:wrap;align-items:baseline;gap:5px 9px}.section-count{color:var(--text-secondary);font-size:13px;font-weight:600}.section-link{display:inline-flex;flex-shrink:0;align-items:center;gap:5px;min-height:32px;color:var(--text-secondary);font-size:12px;font-weight:600;text-decoration:none}.section-link svg{width:12px;height:12px;fill:currentColor}.section-link:hover{color:var(--text-primary)}
 .header-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:9px}
