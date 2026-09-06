@@ -191,6 +191,7 @@
   function showCompletion(count, issues) {
     $('completionCta').hidden = false;
     $('failureCta').hidden = true;
+    $('addedMoviesSection').hidden = false;
     $('pendingNudge').hidden = true;
     $('backgroundNote').hidden = true;
     $('reviewSection').hidden = count === 0;
@@ -229,7 +230,7 @@
       $('pageTitle').textContent = '扫描完成';
       $('pageSubtitle').textContent = sourceProfile.name;
       $('scanHero').dataset.mode = 'complete';
-      $('scanHeroTitle').textContent = `${completedMovies} 部电影已加入你的片库`;
+      $('scanHeroTitle').textContent = `${counts.recognized} 部电影已加入你的片库`;
       $('currentActivity').textContent = '你的电影已经整理好了';
       $('headerStatus').dataset.state = 'completed';
       $('headerStatus').innerHTML = stateMarkup('completed', '扫描完成');
@@ -239,7 +240,7 @@
       $('pendingLabel').textContent = '待确认';
       $('issueLabel').textContent = '需要注意';
       $('addedMoviesTitle').textContent = '本次新增影片';
-      $('addedMoviesHint').textContent = '已自动匹配并加入片库';
+      $('addedMoviesHint').hidden = true;
       showCompletion(counts.pending, counts.issues);
       if (timer) { clearInterval(timer); timer = null; }
     } else if (failed) {
@@ -283,6 +284,7 @@
       $('pendingLabel').textContent = '待确认';
       $('issueLabel').textContent = '有问题';
       $('addedMoviesTitle').textContent = '最近识别';
+      $('addedMoviesHint').hidden = false;
       $('addedMoviesHint').textContent = '电影正在加入你的片库';
     }
   }
@@ -309,6 +311,14 @@
     render();
     timer = setInterval(render, 600);
     window.PersonalCinemaShell?.announce(`扫描任务 ${requestedTaskId} 已重新开始`);
+  });
+
+  // Matching can change while this completed page is cached or open in another tab.
+  window.addEventListener('pageshow', event => {
+    if (event.persisted) render();
+  });
+  window.addEventListener('storage', event => {
+    if (event.key === matchingKey || event.key === null) render();
   });
 
   render();
