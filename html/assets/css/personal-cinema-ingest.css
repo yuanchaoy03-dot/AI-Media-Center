@@ -46,7 +46,8 @@
 .review-panel{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:24px;padding:20px}.review-panel-copy{display:grid;gap:5px}.review-panel-copy strong{color:var(--text-primary);font:650 16px/1.3 var(--font-display)}.review-panel-copy p{max-width:680px;color:var(--text-secondary);font-size:12px;line-height:1.6}.review-panel-copy>span{margin-top:3px;color:var(--text-tertiary);font-size:12px}.compact-list{overflow:hidden}.compact-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:20px;min-height:62px;padding:11px 16px;border-bottom:1px solid var(--line)}.compact-row:last-child{border-bottom:0}.compact-row-copy{display:grid;gap:3px;min-width:0}.compact-row-copy strong{overflow:hidden;color:var(--text-primary);font-size:12px;font-weight:600;text-overflow:ellipsis;white-space:nowrap}.compact-row-copy span{color:var(--text-tertiary);font-size:11px;line-height:1.5}
 
 /* Completed scans preview the library; running scans retain the small poster strip. */
-#scanContent[data-mode="complete"] .poster-strip{grid-template-columns:repeat(auto-fill,minmax(min(100%,140px),1fr));gap:24px 20px}
+/* Match the movie library's column sizing; auto-fill keeps sparse rows from stretching. */
+#scanContent[data-mode="complete"] .poster-strip{grid-template-columns:repeat(auto-fill,minmax(min(100%,clamp(150px,9vw,170px)),1fr));gap:24px 20px}
 .completion-secondary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}
 .completion-secondary-grid>.workflow-section{min-width:0;grid-template-rows:auto 1fr}
 .completion-secondary-grid:has(>.workflow-section[hidden])>.workflow-section{grid-column:1/-1}
