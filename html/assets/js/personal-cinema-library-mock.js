@@ -41,7 +41,7 @@
   // Home previews and full library views share the same collection membership rules.
   function matchesLibraryView(movie, view) {
     if (view === 'favorites') return movie.favorite === true;
-    if (view === 'unwatched') return ['unwatched', 'watching'].includes(movie.status);
+    if (view === 'unwatched') return movie.status === 'unwatched';
     if (view === 'watched') return movie.status === 'watched';
     return true;
   }
