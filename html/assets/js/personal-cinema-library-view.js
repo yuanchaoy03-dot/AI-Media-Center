@@ -2,6 +2,7 @@
   const $ = id => document.getElementById(id);
   const movieGrid = $('movieGrid');
   const libraryView = document.body.dataset.libraryView || 'movies';
+  const { matchesLibraryView } = window.PersonalCinemaLibraryMock;
   const movieCards = [...movieGrid.querySelectorAll('.movie-card')];
   const filterButton = $('filterButton');
   const filterButtonLabel = $('filterButtonLabel');
@@ -113,11 +114,7 @@
       ? collectionMembers(card)
       : [movieFromCard(card)];
     return movies.find(movie => {
-      const matchesView = libraryView === 'favorites' ? movie.favorite === true
-        : libraryView === 'unwatched' ? ['unwatched', 'watching'].includes(movie.status)
-        : libraryView === 'watched' ? movie.status === 'watched'
-        : true;
-      return matchesView && matchesMovieFilters(movie, filters);
+      return matchesLibraryView(movie, libraryView) && matchesMovieFilters(movie, filters);
     }) || null;
   }
 

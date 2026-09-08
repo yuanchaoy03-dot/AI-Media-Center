@@ -320,7 +320,7 @@ body[data-locked="true"] .app-main{overflow:hidden}
         </div>
       </section>
 
-<section class="section" id="genreSection"><div class="section-heading"><h2 class="section-link">电影类型</h2><div class="shelf-navigation"><a class="view-all" href="personal-cinema-movie-library.html">查看全部 ›</a><button class="shelf-arrow" data-shelf-step="-1" aria-label="向前浏览"><svg aria-hidden="true"><use href="#ph-caret-left"></use></svg></button><button class="shelf-arrow" data-shelf-step="1" aria-label="向后浏览"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></button></div></div><div class="poster-shelf genre-shelf" tabindex="0" aria-label="电影类型"><a class="genre-card" href="personal-cinema-movie-library.html?genre=科幻"><img src="assets/tmdb-backdrop-blade-runner-2049.jpg" alt="" /><strong>科幻</strong></a><a class="genre-card" href="personal-cinema-movie-library.html?genre=悬疑"><img src="assets/tmdb-backdrop-prisoners.jpg" alt="" /><strong>悬疑</strong></a><a class="genre-card" href="personal-cinema-movie-library.html?genre=动作"><img src="assets/tmdb-backdrop-inception.jpg" alt="" /><strong>动作</strong></a><a class="genre-card" href="personal-cinema-movie-library.html?genre=犯罪"><img src="assets/tmdb-backdrop-the-batman.jpg" alt="" /><strong>犯罪</strong></a><a class="genre-card" href="personal-cinema-movie-library.html?genre=冒险"><img src="assets/tmdb-backdrop-dune-part-two.jpg" alt="" /><strong>冒险</strong></a><a class="genre-card" href="personal-cinema-movie-library.html?genre=剧情"><img src="assets/tmdb-backdrop-oppenheimer.jpg" alt="" /><strong>剧情</strong></a></div></section>
+<section class="section" id="genreSection"><div class="section-heading"><h2 class="section-link">电影类型</h2><div class="shelf-navigation"><button class="shelf-arrow" data-shelf-step="-1" aria-label="向前浏览"><svg aria-hidden="true"><use href="#ph-caret-left"></use></svg></button><button class="shelf-arrow" data-shelf-step="1" aria-label="向后浏览"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></button></div></div><div class="poster-shelf genre-shelf" tabindex="0" aria-label="电影类型"><a class="genre-card" href="personal-cinema-movie-library.html?genre=科幻"><img src="assets/tmdb-backdrop-blade-runner-2049.jpg" alt="" /><strong>科幻</strong></a><a class="genre-card" href="personal-cinema-movie-library.html?genre=悬疑"><img src="assets/tmdb-backdrop-prisoners.jpg" alt="" /><strong>悬疑</strong></a><a class="genre-card" href="personal-cinema-movie-library.html?genre=动作"><img src="assets/tmdb-backdrop-inception.jpg" alt="" /><strong>动作</strong></a><a class="genre-card" href="personal-cinema-movie-library.html?genre=犯罪"><img src="assets/tmdb-backdrop-the-batman.jpg" alt="" /><strong>犯罪</strong></a><a class="genre-card" href="personal-cinema-movie-library.html?genre=冒险"><img src="assets/tmdb-backdrop-dune-part-two.jpg" alt="" /><strong>冒险</strong></a><a class="genre-card" href="personal-cinema-movie-library.html?genre=剧情"><img src="assets/tmdb-backdrop-oppenheimer.jpg" alt="" /><strong>剧情</strong></a></div></section>
 <section class="section" id="addedSection"><div class="section-heading"><h2 class="section-link">最近添加</h2><div class="shelf-navigation"><a class="view-all" href="personal-cinema-recently-added.html">查看全部 ›</a><button class="shelf-arrow" data-shelf-step="-1" aria-label="向前浏览"><svg aria-hidden="true"><use href="#ph-caret-left"></use></svg></button><button class="shelf-arrow" data-shelf-step="1" aria-label="向后浏览"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></button></div></div><div class="poster-shelf movie-shelf" tabindex="0" aria-label="最近添加"></div></section>
 <section class="section" id="unwatchedSection"><div class="section-heading"><h2 class="section-link">未看</h2><div class="shelf-navigation"><a class="view-all" href="personal-cinema-unwatched.html">查看全部 ›</a><button class="shelf-arrow" data-shelf-step="-1" aria-label="向前浏览"><svg aria-hidden="true"><use href="#ph-caret-left"></use></svg></button><button class="shelf-arrow" data-shelf-step="1" aria-label="向后浏览"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></button></div></div><div class="poster-shelf movie-shelf" tabindex="0" aria-label="未看">
 </div></section>
@@ -382,14 +382,14 @@ body[data-locked="true"] .app-main{overflow:hidden}
       let searchActiveIndex = -1;
 
       const HOME_SHELF_LIMIT = 8;
-      const { movies, renderMovieCard } = window.PersonalCinemaLibraryMock;
+      const { movies, renderMovieCard, matchesLibraryView } = window.PersonalCinemaLibraryMock;
       // Preview limits are independent of viewport width. Full library views have no limit.
       const newestMovies = [...movies].sort((a, b) => b.added - a.added);
       document.querySelector('#addedSection .movie-shelf').replaceChildren(
         ...newestMovies.slice(0, HOME_SHELF_LIMIT).map(renderMovieCard)
       );
       document.querySelector('#unwatchedSection .movie-shelf').replaceChildren(
-        ...newestMovies.filter(movie => movie.status === 'unwatched')
+        ...newestMovies.filter(movie => matchesLibraryView(movie, 'unwatched'))
           .slice(0, HOME_SHELF_LIMIT).map(renderMovieCard)
       );
 
@@ -485,7 +485,7 @@ body[data-locked="true"] .app-main{overflow:hidden}
           document.querySelectorAll('.movie-card,.continue-item').forEach(card => {
             if (card.dataset.title !== title) return;
             card.dataset.status = activeMovie.dataset.status;
-            if (card.closest('#unwatchedSection')) card.hidden = card.dataset.status !== 'unwatched';
+            if (card.closest('#unwatchedSection')) card.hidden = !matchesLibraryView(card.dataset, 'unwatched');
             const state = card.querySelector('.continue-backdrop-meta');
             if (state) state.textContent = card.dataset.status === 'watched' ? '已看完 · 可重新播放' : '可重新播放';
             const progress = card.querySelector('.watch-progress');

@@ -38,6 +38,14 @@
     }];
   });
 
+  // Home previews and full library views share the same collection membership rules.
+  function matchesLibraryView(movie, view) {
+    if (view === 'favorites') return movie.favorite === true;
+    if (view === 'unwatched') return ['unwatched', 'watching'].includes(movie.status);
+    if (view === 'watched') return movie.status === 'watched';
+    return true;
+  }
+
   function renderMovieCard(movie) {
     const original = cards.find(card => card.dataset.itemType !== 'collection' && card.dataset.title === movie.title);
     const card = (original || movieTemplate).cloneNode(true);
@@ -58,7 +66,7 @@
     return card;
   }
 
-  window.PersonalCinemaLibraryMock = { movies, renderMovieCard };
+  window.PersonalCinemaLibraryMock = { movies, renderMovieCard, matchesLibraryView };
   const grid = document.getElementById('movieGrid');
   if (grid) grid.append(template.content.cloneNode(true));
 })();
