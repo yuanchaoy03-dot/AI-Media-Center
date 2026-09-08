@@ -1,9 +1,10 @@
 // Shared prototype cards. Existing data attributes remain the Mock source of truth.
 // No network request: the prototype also works when opened directly as a local file.
 (() => {
-  document.getElementById('movieGrid').innerHTML = `
+  const template = document.createElement('template');
+  template.innerHTML = `
 <article class="movie-card" data-title="星际穿越" data-year="2014" data-genre="科幻,剧情,冒险" data-status="watching" data-media-source-id="source-home-nas" data-added="15" data-watched="15" data-duration="169" data-favorite="true" data-od-id="movie-interstellar"><div class="poster-art"><img src="assets/tmdb-poster-interstellar.jpg" alt="星际穿越 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看星际穿越详情"></button><button class="play-mark" type="button" aria-label="播放星际穿越"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="星际穿越更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">星际穿越</strong><span class="poster-meta">2014 · 科幻</span></div></article>
-        <article class="movie-card" data-item-type="collection" data-collection-id="dune" data-movie-count="2" data-members='[{"title":"沙丘","year":2021,"genres":["科幻","冒险"],"status":"watched","sourceId":"source-home-nas","poster":"assets/tmdb-poster-dune.jpg","backdrop":"assets/tmdb-backdrop-dune.jpg","detailHref":"personal-cinema-movie-detail.html"},{"title":"沙丘2","year":2024,"genres":["科幻","冒险"],"status":"unwatched","sourceId":"source-home-nas","poster":"assets/tmdb-poster-dune-part-two.jpg","backdrop":"assets/tmdb-backdrop-dune-part-two.jpg"}]' data-collection-poster="assets/tmdb-collection-poster-dune.jpg" data-default-movie="沙丘" data-default-year="2021" data-default-detail-href="personal-cinema-movie-detail.html" data-default-movie-poster="assets/tmdb-poster-dune.jpg" data-default-movie-backdrop="assets/tmdb-backdrop-dune.jpg" data-title="沙丘" data-year="2021" data-genre="科幻,冒险" data-status="mixed" data-media-source-id="source-home-nas" data-added="14" data-watched="13" data-duration="155" data-od-id="collection-dune"><div class="poster-art"><img src="assets/tmdb-collection-poster-dune.jpg" alt="沙丘系列 TMDB 合集海报" /><button class="poster-detail-hit" type="button" aria-label="查看沙丘系列"></button><button class="series-mark" type="button" aria-label="查看沙丘系列"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></button><button class="poster-more-mark" type="button" aria-label="沙丘系列更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">沙丘</strong><span class="poster-meta">2 部电影</span></div></article>
+        <article class="movie-card" data-item-type="collection" data-collection-id="dune" data-movie-count="2" data-members='[{"title":"沙丘","added":14,"watched":13,"duration":155,"year":2021,"genres":["科幻","冒险"],"status":"watched","sourceId":"source-home-nas","poster":"assets/tmdb-poster-dune.jpg","backdrop":"assets/tmdb-backdrop-dune.jpg","detailHref":"personal-cinema-movie-detail.html"},{"title":"沙丘2","added":8,"watched":0,"duration":166,"year":2024,"genres":["科幻","冒险"],"status":"unwatched","sourceId":"source-home-nas","poster":"assets/tmdb-poster-dune-part-two.jpg","backdrop":"assets/tmdb-backdrop-dune-part-two.jpg"}]' data-collection-poster="assets/tmdb-collection-poster-dune.jpg" data-default-movie="沙丘" data-default-year="2021" data-default-detail-href="personal-cinema-movie-detail.html" data-default-movie-poster="assets/tmdb-poster-dune.jpg" data-default-movie-backdrop="assets/tmdb-backdrop-dune.jpg" data-title="沙丘" data-year="2021" data-genre="科幻,冒险" data-status="mixed" data-media-source-id="source-home-nas" data-added="14" data-watched="13" data-duration="155" data-od-id="collection-dune"><div class="poster-art"><img src="assets/tmdb-collection-poster-dune.jpg" alt="沙丘系列 TMDB 合集海报" /><button class="poster-detail-hit" type="button" aria-label="查看沙丘系列"></button><button class="series-mark" type="button" aria-label="查看沙丘系列"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></button><button class="poster-more-mark" type="button" aria-label="沙丘系列更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">沙丘</strong><span class="poster-meta">2 部电影</span></div></article>
         <article class="movie-card" data-title="银翼杀手2049" data-year="2017" data-genre="科幻,剧情" data-status="watching" data-media-source-id="source-home-nas" data-added="13" data-watched="12" data-duration="164" data-favorite="true" data-od-id="movie-blade-runner-2049"><div class="poster-art"><img src="assets/tmdb-poster-blade-runner-2049.jpg" alt="银翼杀手2049 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看银翼杀手2049详情"></button><button class="play-mark" type="button" aria-label="播放银翼杀手2049"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="银翼杀手2049更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">银翼杀手2049</strong><span class="poster-meta">2017 · 科幻</span></div></article>
         <article class="movie-card" data-title="降临" data-year="2016" data-genre="剧情,科幻,悬疑" data-status="watching" data-media-source-id="source-alist" data-added="12" data-watched="11" data-duration="116" data-favorite="true" data-od-id="movie-arrival"><div class="poster-art"><img src="assets/tmdb-poster-arrival.jpg" alt="降临 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看降临详情"></button><button class="play-mark" type="button" aria-label="播放降临"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="降临更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">降临</strong><span class="poster-meta">2016 · 科幻</span></div></article>
         <article class="movie-card" data-title="奥本海默" data-year="2023" data-genre="剧情,历史" data-status="watching" data-media-source-id="source-nextcloud" data-added="11" data-watched="14" data-duration="181" data-favorite="false" data-od-id="movie-oppenheimer"><div class="poster-art"><img src="assets/tmdb-poster-oppenheimer.jpg" alt="奥本海默 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看奥本海默详情"></button><button class="play-mark" type="button" aria-label="播放奥本海默"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="奥本海默更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">奥本海默</strong><span class="poster-meta">2023 · 剧情</span></div></article>
@@ -17,4 +18,47 @@
         <article class="movie-card" data-title="消失的爱人" data-year="2014" data-genre="剧情,悬疑" data-status="watched" data-media-source-id="source-alist" data-added="2" data-watched="5" data-duration="149" data-favorite="false" data-od-id="movie-gone-girl"><div class="poster-art"><img src="assets/tmdb-poster-gone-girl.jpg" alt="消失的爱人 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看消失的爱人详情"></button><button class="play-mark" type="button" aria-label="播放消失的爱人"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="消失的爱人更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">消失的爱人</strong><span class="poster-meta">2014 · 悬疑</span></div></article>
         <article class="movie-card" data-title="机械姬" data-year="2015" data-genre="科幻,悬疑,剧情" data-status="unwatched" data-media-source-id="source-alist" data-added="1" data-watched="0" data-duration="108" data-favorite="true" data-od-id="movie-ex-machina"><div class="poster-art"><img src="assets/tmdb-poster-ex-machina.jpg" alt="机械姬 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看机械姬详情"></button><button class="play-mark" type="button" aria-label="播放机械姬"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="机械姬更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">机械姬</strong><span class="poster-meta">2015 · 科幻</span></div></article>
   `;
+  const cards = [...template.content.querySelectorAll('.movie-card')];
+  const movieTemplate = cards.find(card => card.dataset.itemType !== 'collection');
+  // The existing card attributes remain the single Mock source. Flatten collection
+  // members for movie previews without changing the library's collection layout.
+  const movies = cards.flatMap(card => {
+    if (card.dataset.itemType === 'collection') {
+      return JSON.parse(card.dataset.members).map(member => ({
+        ...member, favorite: member.favorite === true
+      }));
+    }
+    return [{
+      title: card.dataset.title, year: Number(card.dataset.year),
+      genres: card.dataset.genre.split(','), status: card.dataset.status,
+      sourceId: card.dataset.mediaSourceId, added: Number(card.dataset.added),
+      watched: Number(card.dataset.watched), duration: Number(card.dataset.duration),
+      favorite: card.dataset.favorite === 'true',
+      poster: card.querySelector('.poster-art > img').getAttribute('src')
+    }];
+  });
+
+  function renderMovieCard(movie) {
+    const original = cards.find(card => card.dataset.itemType !== 'collection' && card.dataset.title === movie.title);
+    const card = (original || movieTemplate).cloneNode(true);
+    Object.assign(card.dataset, {
+      title: movie.title, year: movie.year, genre: movie.genres.join(','),
+      status: movie.status, mediaSourceId: movie.sourceId, added: movie.added,
+      watched: movie.watched, duration: movie.duration, favorite: String(movie.favorite)
+    });
+    if (!original) card.removeAttribute('data-od-id');
+    const image = card.querySelector('.poster-art > img');
+    image.src = movie.poster;
+    image.alt = `${movie.title} TMDB 官方电影海报`;
+    card.querySelector('.poster-title').textContent = movie.title;
+    if (!original) card.querySelector('.poster-meta').textContent = `${movie.year} · ${movie.genres[0]}`;
+    card.querySelector('.poster-detail-hit').setAttribute('aria-label', `查看${movie.title}详情`);
+    card.querySelector('.play-mark').setAttribute('aria-label', `播放${movie.title}`);
+    card.querySelector('.poster-more-mark').setAttribute('aria-label', `${movie.title}更多操作`);
+    return card;
+  }
+
+  window.PersonalCinemaLibraryMock = { movies, renderMovieCard };
+  const grid = document.getElementById('movieGrid');
+  if (grid) grid.append(template.content.cloneNode(true));
 })();
