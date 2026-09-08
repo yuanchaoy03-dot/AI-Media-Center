@@ -6,6 +6,7 @@
   <title>影片识别 · Personal Cinema</title>
   <link rel="stylesheet" href="assets/css/personal-cinema-base.css" />
   <link rel="stylesheet" href="assets/css/personal-cinema-ingest.css" />
+  <link rel="stylesheet" href="assets/css/personal-cinema-workflow.css" />
 </head>
 <body>
   <svg class="icon-sprite" fill="currentColor" aria-hidden="true" focusable="false">
@@ -63,8 +64,17 @@
             <div class="header-actions"><a class="secondary-action" href="personal-cinema-media-sources.html">返回媒体来源</a></div>
           </header>
 
+          <section class="surface-card scan-hero" data-mode="complete" aria-label="识别结果概览">
+            <div class="scan-hero-head"><div class="scan-source"><span>整理你的片库</span><strong>影片识别</strong></div><span class="status-label" data-state="pending">确认队列</span></div>
+            <div class="scan-hero-body"><div class="scan-message"><h2 id="matchingCount" aria-live="polite">正在读取待确认项目</h2><span>为文件找到正确的电影，补全海报与影片信息。</span></div></div>
+            <div class="user-summary" aria-label="当前确认队列统计">
+              <div class="summary-item"><strong class="summary-value" id="matchedTotal">0</strong><span class="summary-label">已识别 · 本次确认</span></div>
+              <div class="summary-item"><strong class="summary-value" id="pendingTotal">0</strong><span class="summary-label">待确认</span></div>
+              <div class="summary-item"><strong class="summary-value">—</strong><span class="summary-label">异常 · 请查看扫描结果</span></div>
+            </div>
+          </section>
           <section class="workflow-section" aria-labelledby="pendingTitle">
-            <div class="workflow-section-heading"><div><h2 class="section-title" id="pendingTitle">等待确认</h2><p class="matching-count" id="matchingCount">正在读取待确认项目</p></div><p>点击项目查看 TMDB 候选</p></div>
+            <div class="workflow-section-heading"><div><h2 class="section-title" id="pendingTitle">等待确认</h2></div><p>选择影片，确认系统候选</p></div>
             <div class="matching-list" id="matchingList"></div>
             <div class="empty-state" id="matchingEmpty" hidden>
               <span class="empty-icon"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span>

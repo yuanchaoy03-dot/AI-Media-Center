@@ -66,6 +66,8 @@
     const pending = pendingIds().map(id => items[id]).filter(Boolean);
     const count = pendingTotal();
     $('matchingCount').innerHTML = `还有 <strong>${count}</strong> 个文件等待确认`;
+    $('pendingTotal').textContent = count;
+    $('matchedTotal').textContent = state.resolved.filter(item => item.disposition === 'matched').length;
     $('matchingList').hidden = count === 0;
     $('matchingEmpty').hidden = count !== 0;
     $('matchingList').innerHTML = pending.map(item => {
