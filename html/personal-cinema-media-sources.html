@@ -607,7 +607,8 @@
     accountWrap.querySelectorAll('[data-action]').forEach(button => button.addEventListener('click',() => {accountWrap.dataset.open='false';accountButton.setAttribute('aria-expanded','false');announce(button.dataset.action === 'profile' ? '已准备打开个人资料' : '退出登录为演示操作');}));
     document.addEventListener('click',event => {if(!accountWrap.contains(event.target)){accountWrap.dataset.open='false';accountButton.setAttribute('aria-expanded','false');}});
 
-    const routeFiles = {home:'personal-cinema-app-shell-v2.html',movies:'personal-cinema-movie-library.html',ai:'personal-cinema-ai-discovery.html'};
+    const routeFiles = {
+        recent: 'personal-cinema-recently-added.html', favorites: 'personal-cinema-favorites.html', unwatched: 'personal-cinema-unwatched.html', watched: 'personal-cinema-watched.html',home:'personal-cinema-app-shell-v2.html',movies:'personal-cinema-movie-library.html',ai:'personal-cinema-ai-discovery.html'};
     document.querySelectorAll('.sidebar-link[data-route]').forEach(button => button.addEventListener('click',() => {
       const route = button.dataset.route;
       if(routeFiles[route]) window.location.href = routeFiles[route];

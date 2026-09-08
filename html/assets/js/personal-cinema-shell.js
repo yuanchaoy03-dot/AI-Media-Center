@@ -10,6 +10,7 @@
   window.PersonalCinemaShell = { announce };
 
   const routes = {
+        recent: 'personal-cinema-recently-added.html', favorites: 'personal-cinema-favorites.html', unwatched: 'personal-cinema-unwatched.html', watched: 'personal-cinema-watched.html',
     home: 'personal-cinema-app-shell-v2.html',
     movies: 'personal-cinema-movie-library.html',
     ai: 'personal-cinema-ai-discovery.html',

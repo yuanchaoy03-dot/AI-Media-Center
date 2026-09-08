@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Personal Cinema · 电影</title>
+  <title>Personal Cinema · 收藏</title>
   <link rel="prefetch" href="personal-cinema-app-shell-v2.html" as="document" />
   <!-- Movie metadata and imagery sourced from TMDB. This product uses TMDB data but is not endorsed or certified by TMDB. -->
   <link rel="stylesheet" href="assets/css/personal-cinema-library-view.css" />
   <link rel="stylesheet" href="assets/css/personal-cinema-movie-card.css" />
 </head>
-<body>
+<body data-library-view="favorites">
   <svg class="icon-sprite" fill="currentColor" aria-hidden="true">
     <symbol id="ph-film-reel-fill" viewBox="0 0 256 256"><path d="M232,216H183.36A103.95,103.95,0,1,0,128,232H232a8,8,0,0,0,0-16ZM80,148a20,20,0,1,1,20-20A20,20,0,0,1,80,148Zm48,48a20,20,0,1,1,20-20A20,20,0,0,1,128,196Zm0-96a20,20,0,1,1,20-20A20,20,0,0,1,128,100Zm28,28a20,20,0,1,1,20,20A20,20,0,0,1,156,128Z"/></symbol>
     <symbol id="ph-magnifying-glass" viewBox="0 0 256 256"><path d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"/></symbol>
@@ -36,14 +36,14 @@
     <nav class="sidebar-nav" aria-label="主导航">
       <div class="nav-group top-group">
         <button class="sidebar-link" data-route="home" data-od-id="nav-home"><svg class="icon icon-regular" aria-hidden="true"><use href="#ph-house"></use></svg><svg class="icon icon-selected" aria-hidden="true"><use href="#ph-house-fill"></use></svg>主页</button>
-        <button class="sidebar-link" data-route="movies" data-od-id="nav-movies" aria-current="page"><svg class="icon" aria-hidden="true"><use href="#ph-film-slate"></use></svg>电影</button>
+        <button class="sidebar-link" data-route="movies" data-od-id="nav-movies"><svg class="icon" aria-hidden="true"><use href="#ph-film-slate"></use></svg>电影</button>
         <button class="sidebar-link" data-route="ai" data-od-id="nav-ai-discovery"><svg class="icon" aria-hidden="true"><use href="#ph-sparkle"></use></svg>AI 发现</button>
         <button class="sidebar-link" data-route="sources" data-od-id="nav-media-sources"><svg class="icon" aria-hidden="true"><use href="#ph-hard-drives"></use></svg>媒体来源</button>
       </div>
       <div class="nav-group library-group">
         <p class="nav-label">资料库</p>
         <button class="sidebar-link" data-route="recent" data-od-id="nav-recently-added"><svg class="icon" aria-hidden="true"><use href="#ph-clock-counter-clockwise"></use></svg>最近添加</button>
-        <button class="sidebar-link" data-route="favorites" data-od-id="nav-favorites"><svg class="icon" aria-hidden="true"><use href="#ph-heart"></use></svg>收藏</button>
+        <button class="sidebar-link" data-route="favorites" aria-current="page" data-od-id="nav-favorites"><svg class="icon" aria-hidden="true"><use href="#ph-heart"></use></svg>收藏</button>
         <button class="sidebar-link" data-route="unwatched" data-od-id="nav-unwatched"><svg class="icon" aria-hidden="true"><use href="#ph-eye-slash"></use></svg>未看</button>
         <button class="sidebar-link" data-route="watched" data-od-id="nav-watched"><svg class="icon" aria-hidden="true"><use href="#ph-check-circle"></use></svg>已看</button>
       </div>
@@ -57,10 +57,10 @@
     </div>
   </aside>
 
-  <main class="app-main" data-od-id="movie-library-page">
+  <main class="app-main" data-od-id="favorites-page">
     <div class="content">
       <header class="movie-page-heading" data-od-id="movie-page-header">
-        <h1 class="page-title">电影</h1>
+        <div><h1 class="page-title">收藏</h1><p class="page-subtitle">你收藏的影片</p></div>
       </header>
 
       <div class="movie-toolbar" data-od-id="movie-toolbar">
@@ -112,7 +112,7 @@
         </div>
       </div>
 
-      <section class="movie-grid" id="movieGrid" data-od-id="movie-poster-grid" aria-label="电影收藏"></section>
+      <section class="movie-grid" id="movieGrid" data-od-id="movie-poster-grid" aria-label="收藏影片"></section>
 
       <section class="movie-loading" id="movieLoading" aria-label="正在载入电影" hidden></section>
       <section class="movie-loading movie-loading-next" id="movieBatchLoading" data-od-id="movie-batch-loading" aria-label="正在载入更多电影" hidden></section>

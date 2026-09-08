@@ -820,7 +820,8 @@ button:focus-visible,a:focus-visible,.search-input:focus-visible,.ai-query-input
 
       const accountWrap=$('accountWrap');const accountButton=$('accountButton');
       accountButton.addEventListener('click',event=>{event.stopPropagation();const open=accountWrap.dataset.open!=='true';accountWrap.dataset.open=String(open);accountButton.setAttribute('aria-expanded',String(open))});
-      const routes={home:'personal-cinema-app-shell-v2.html',movies:'personal-cinema-movie-library.html',ai:'personal-cinema-ai-discovery.html',sources:'personal-cinema-media-sources.html'};
+      const routes={
+        recent: 'personal-cinema-recently-added.html', favorites: 'personal-cinema-favorites.html', unwatched: 'personal-cinema-unwatched.html', watched: 'personal-cinema-watched.html',home:'personal-cinema-app-shell-v2.html',movies:'personal-cinema-movie-library.html',ai:'personal-cinema-ai-discovery.html',sources:'personal-cinema-media-sources.html'};
       document.addEventListener('click',event=>{const route=event.target.closest('[data-route]');if(route){const target=routes[route.dataset.route];if(target)window.location.href=target;else announcement.textContent=route.dataset.route==='sources'?'进入媒体来源':'进入电影资料库';}if(!contextMenu.contains(event.target)&&!event.target.closest('.poster-more-mark'))closeContextMenu();if(!accountWrap.contains(event.target)){accountWrap.dataset.open='false';accountButton.setAttribute('aria-expanded','false')}});
       document.addEventListener('keydown',event=>{if(event.key==='/'&&document.activeElement!==searchInput&&document.activeElement!==queryInput){event.preventDefault();openSearch()}if(event.key==='Escape'){closeSearch();closeContextMenu(true);accountWrap.dataset.open='false';accountButton.setAttribute('aria-expanded','false')}});
     })();
