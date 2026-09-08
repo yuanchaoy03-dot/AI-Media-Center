@@ -339,6 +339,22 @@
 
   window.setMovieLibraryLoading = setMovieLibraryLoading;
   window.setMovieBatchLoading = setMovieBatchLoading;
+  // Home genre links initialize the existing filter state; unknown genres are ignored.
+  if (libraryView === 'movies') {
+    const genre = new URLSearchParams(window.location.search).get('genre');
+    // Some Mock genres exist on movies but are absent from the static checkbox list.
+    const genreInputs = [...filterPopover.querySelectorAll('input[name="genre"]')];
+    const knownGenre = movieCards.some(card => card.dataset.genre.split(',').includes(genre));
+    if (knownGenre && !genreInputs.some(input => input.value === genre)) {
+      const option = genreInputs[0].closest('label').cloneNode(true);
+      option.querySelector('input').value = genre;
+      option.querySelector('span').textContent = genre;
+      genreInputs[0].closest('.filter-list').append(option);
+    }
+    filterPopover.querySelectorAll('input[name="genre"]').forEach(input => {
+      input.checked = input.value === genre;
+    });
+  }
   libraryEmpty.hidden = movieCards.length > 0;
   applyFilters();
 

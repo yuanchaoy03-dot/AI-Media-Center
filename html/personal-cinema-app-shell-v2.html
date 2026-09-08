@@ -74,19 +74,6 @@ body[data-locked="true"] .app-main{overflow:hidden}
 .page-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:28px}
 .page-title{font:700 clamp(30px,2vw,32px)/1.12 var(--font-display);letter-spacing:-.032em}
 
-/* Featured editorial cards */
-.feature-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
-.feature-card{position:relative;min-width:0;aspect-ratio:1.92/1;overflow:hidden;border:0;border-radius:var(--radius-editorial);background:var(--panel);padding:0;text-align:left;box-shadow:0 8px 24px color-mix(in oklch,var(--bg) 42%,transparent);transition:box-shadow .2s ease-out}
-.feature-card>img{width:100%;height:100%;border-radius:inherit;object-fit:cover;opacity:1;filter:none;transform:none;transition:none}
-.feature-card::before,.recommendation-card::before{content:"";position:absolute;inset:0;z-index:1;border-radius:inherit;background:rgba(0,0,0,.38);opacity:0;pointer-events:none;transition:opacity 110ms ease-in}
-.feature-card::after{content:"";position:absolute;inset:38% 0 0;z-index:2;border-radius:inherit;background:linear-gradient(to bottom,transparent,color-mix(in oklch,var(--bg) 84%,transparent));pointer-events:none}
-.feature-card:hover::before,.feature-card:focus-visible::before,.recommendation-card:hover::before,.recommendation-card:focus-visible::before{opacity:1}
-.feature-card:focus-visible,.recommendation-card:focus-visible{outline:2px solid rgba(255,255,255,.34);outline-offset:3px}
-.feature-copy{position:absolute;z-index:3;left:18px;right:18px;bottom:16px;max-width:78%;padding:0}
-.feature-kicker{display:block;margin-bottom:3px;color:var(--text-tertiary);font-size:10px;font-weight:600;letter-spacing:.045em}
-.feature-title{display:block;font-size:17px;font-weight:600;line-height:1.25}
-.feature-meta{display:block;overflow:hidden;margin-top:3px;color:var(--text-secondary);font-size:12px;line-height:1.35;text-overflow:ellipsis;white-space:nowrap}
-
 /* Section headings and shelves */
 .section{margin-top:40px}
 .section-heading{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:14px}
@@ -100,64 +87,44 @@ body[data-locked="true"] .app-main{overflow:hidden}
 #continueSection .shelf-arrow{border-color:rgba(255,255,255,.13);color:var(--icon-hover)}
 #continueSection .shelf-arrow svg{fill:currentColor;opacity:1}
 #continueSection .shelf-arrow:hover,#continueSection .shelf-arrow:focus-visible{border-color:rgba(255,255,255,.18);color:var(--icon-active)}
-.poster-shelf{display:flex;width:max-content;max-width:100%;gap:20px;overflow-x:auto;overflow-y:hidden;padding:3px 2px 10px;scrollbar-width:none;scroll-snap-type:x proximity}
+.poster-shelf{display:flex;width:100%;max-width:100%;gap:20px;overflow-x:auto;overflow-y:hidden;padding:3px 2px 10px;scrollbar-width:none;scroll-snap-type:x proximity}
 .poster-shelf::-webkit-scrollbar{display:none}
-.poster-card,.library-end-card{flex:0 0 clamp(142px,9.4vw,174px);min-width:0;border:0;background:transparent;padding:0;text-align:left;scroll-snap-align:start}
+.poster-card{flex:0 0 clamp(142px,9.4vw,174px);min-width:0;border:0;background:transparent;padding:0;text-align:left;scroll-snap-align:start}
 .poster-card:has(.poster-art button:focus-visible) .poster-art::after{opacity:1}
 .poster-detail-hit{position:absolute;inset:0;z-index:3;width:100%;height:100%;padding:0;border:0;border-radius:inherit;background:transparent}
 .poster-detail-hit:focus-visible{outline:2px solid var(--accent);outline-offset:-3px}
 .poster-copy{display:grid;gap:2px;padding-top:8px}
 
 /* Artwork controls */
-.play-mark,.poster-more-mark,.editorial-action-mark{position:absolute;z-index:5;display:grid;place-items:center;width:30px;height:30px;padding:0;border-radius:var(--radius-circle);opacity:0;transform:none;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);transition:opacity 110ms ease-in,background-color 110ms ease-in,color 110ms ease-in}
+.play-mark,.poster-more-mark{position:absolute;z-index:5;display:grid;place-items:center;width:30px;height:30px;padding:0;border-radius:var(--radius-circle);opacity:0;transform:none;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);transition:opacity 110ms ease-in,background-color 110ms ease-in,color 110ms ease-in}
 .play-mark{left:10px;bottom:12px;border:1px solid rgba(255,255,255,.16);background:rgba(246,246,246,.74);color:#111113;box-shadow:0 5px 16px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.1)}
 .play-mark svg{width:13px;height:13px;fill:currentColor;stroke:none}
 .poster-more-mark{right:10px;bottom:12px;border:1px solid rgba(255,255,255,.16);background:rgba(246,246,246,.20);color:rgba(245,245,247,.94);box-shadow:0 5px 16px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.1)}
-.poster-more-mark svg,.editorial-action-mark svg{width:15px;height:15px;fill:currentColor}
-.editorial-action-mark{right:14px;top:14px;border:1px solid rgba(255,255,255,.12);background:rgba(246,246,246,.20);color:rgba(245,245,247,.94);box-shadow:0 5px 16px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.055)}
-.editorial-action-mark{pointer-events:none}
-.poster-card:hover .play-mark,.poster-card:has(button:focus-visible) .play-mark,.poster-card:hover .poster-more-mark,.poster-card:has(button:focus-visible) .poster-more-mark,.feature-card:hover .editorial-action-mark,.feature-card:focus-visible .editorial-action-mark,.recommendation-card:hover .editorial-action-mark,.recommendation-card:focus-visible .editorial-action-mark{opacity:1}
-.poster-card:hover .play-mark,.poster-card:has(button:focus-visible) .play-mark{background:rgba(245,245,247,.9)}
-.poster-card:hover .poster-more-mark,.poster-card:has(button:focus-visible) .poster-more-mark{background:rgba(245,245,247,.24)}
-.poster-card .poster-more-mark[aria-expanded="true"]{opacity:1;background:rgba(245,245,247,.28)}
+.poster-more-mark svg svg{width:15px;height:15px;fill:currentColor}
+.movie-card:hover .play-mark,.poster-card:hover .play-mark,.poster-card:has(button:focus-visible) .play-mark{background:rgba(245,245,247,.9)}
+.movie-card:hover .poster-more-mark,.poster-card:hover .poster-more-mark,.poster-card:has(button:focus-visible) .poster-more-mark{background:rgba(245,245,247,.24)}
+.movie-card .poster-more-mark[aria-expanded="true"]{opacity:1;background:rgba(245,245,247,.28)}
 
 /* Continue Watching */
 .continue-shell{min-width:0}
-#continueSection .continue-poster-art,#continueSection .continue-backdrop-art,#continueSection .library-end-art{overflow:hidden;border-radius:var(--radius-sm);isolation:isolate}
+#continueSection .continue-poster-art,#continueSection .continue-backdrop-art{overflow:hidden;border-radius:var(--radius-sm);isolation:isolate}
 #continueSection .continue-poster-art>img,#continueSection .continue-backdrop-art>img{display:block;width:100%;height:100%;border-radius:inherit;object-fit:cover;opacity:1;filter:none;transform:none;transition:none}
-#continueSection .poster-shelf[data-layout="poster-row"],#continueSection .poster-shelf[data-layout="carousel"]{align-items:flex-start}
-#continueSection .poster-shelf[data-layout="poster-row"]>.continue-item,#continueSection .poster-shelf[data-layout="carousel"]>.continue-item{display:grid;grid-template-rows:auto 41px;align-self:flex-start}
-#continueSection .poster-shelf[data-layout="carousel"]>.library-end-card{display:grid;grid-template-rows:auto;align-self:flex-start}
-#continueSection .continue-poster-art,#continueSection .library-end-art{width:100%;aspect-ratio:2/3}
-#continueSection .poster-shelf[data-layout="poster-row"] .poster-copy,#continueSection .poster-shelf[data-layout="carousel"] .poster-copy{display:grid;grid-template-rows:16px 15px;align-content:start;gap:2px;height:41px;padding-top:8px}
+#continueSection .continue-poster-art{width:100%;aspect-ratio:2/3}
 #continueSection .continue-poster-art .play-mark{left:12px;bottom:21px}
 #continueSection .continue-poster-art .poster-more-mark{right:12px;bottom:21px}
-.continue-backdrop-art{display:none;position:relative;min-width:0;aspect-ratio:16/7.7;background:var(--panel);box-shadow:0 8px 24px color-mix(in oklch,var(--bg) 42%,transparent);transform:none;transition:box-shadow .2s ease-out}
+.continue-backdrop-art{display:none;position:relative;min-width:0;aspect-ratio:16/9;background:var(--panel);box-shadow:0 8px 24px color-mix(in oklch,var(--bg) 42%,transparent);transform:none;transition:box-shadow .2s ease-out}
 .continue-backdrop-art::before{content:"";position:absolute;inset:0;z-index:1;border-radius:inherit;background:rgba(0,0,0,.38);opacity:0;pointer-events:none;transition:opacity 110ms ease-in}
 .continue-backdrop-art::after{content:"";position:absolute;inset:32% 0 0;z-index:2;border-radius:inherit;background:linear-gradient(to bottom,transparent,color-mix(in oklch,var(--bg) 88%,transparent));pointer-events:none}
-.continue-backdrop-copy{position:absolute;z-index:3;left:18px;right:64px;bottom:17px;display:grid;gap:3px}
-.continue-backdrop-kicker{color:color-mix(in oklch,var(--fg) 72%,transparent);font-size:11px;font-weight:600;letter-spacing:.045em}
+.continue-backdrop-copy{position:absolute;z-index:3;left:18px;right:64px;bottom:17px;display:grid;gap:3px;pointer-events:none}
 .continue-backdrop-title{overflow:hidden;color:var(--fg);font-size:17px;font-weight:600;text-overflow:ellipsis;white-space:nowrap}
 .continue-backdrop-meta{color:color-mix(in oklch,var(--fg) 76%,transparent);font-size:12px}
 #continueSection .continue-backdrop-art .play-mark{left:auto;right:14px;bottom:21px}
 #continueSection .continue-backdrop-art .poster-more-mark{right:62px;bottom:21px}
-.continue-adaptive[data-layout="backdrop"]{display:grid;width:min(100%,1120px);max-width:1120px;gap:16px;overflow:visible;padding:3px 2px 10px}
-.continue-adaptive[data-layout="backdrop"][data-count="1"]{grid-template-columns:minmax(0,min(58vw,760px))}
-.continue-adaptive[data-layout="backdrop"][data-count="2"]{grid-template-columns:repeat(2,minmax(0,1fr))}
-.continue-adaptive[data-layout="backdrop"] .continue-item{width:auto;max-width:none;flex:none}
+.continue-adaptive[data-layout="backdrop"]{display:flex;width:100%;max-width:100%;gap:20px;overflow-x:auto;padding:3px 2px 10px}
+.continue-adaptive[data-layout="backdrop"] .continue-item{width:auto;max-width:none;flex:0 0 calc((100% - 40px)/3)}
 .continue-adaptive[data-layout="backdrop"] .continue-poster-art,.continue-adaptive[data-layout="backdrop"] .poster-copy{display:none}
 .continue-adaptive[data-layout="backdrop"] .continue-backdrop-art{display:block}
 .continue-adaptive[data-layout="backdrop"] .continue-item:hover .continue-backdrop-art::before,.continue-adaptive[data-layout="backdrop"] .continue-item:has(.continue-backdrop-art button:focus-visible) .continue-backdrop-art::before{opacity:1}
-.poster-shelf[data-count="3"] .poster-card{flex-basis:clamp(182px,12vw,218px)}
-.poster-shelf[data-count="4"] .poster-card{flex-basis:clamp(168px,10.8vw,198px)}
-.poster-shelf[data-count="5"] .poster-card{flex-basis:clamp(156px,10vw,184px)}
-.poster-shelf[data-layout="poster-row"]{overflow-x:visible;scroll-snap-type:none}
-.poster-shelf[data-layout="carousel"]{overflow-x:auto;scroll-snap-type:x proximity}
-.library-end-art{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:9px;padding:0 0 8px;border:1px solid var(--line);background:color-mix(in oklch,var(--panel) 50%,transparent);color:var(--muted);transition:background .2s ease-out,color .2s ease-out,border-color .2s ease-out}
-.library-end-icon{display:grid;place-items:center;width:40px;height:40px;border:1px solid rgba(255,255,255,.09);border-radius:var(--radius-circle);background:rgba(28,28,30,.68);color:var(--icon-default);box-shadow:inset 0 1px 0 rgba(255,255,255,.045),0 6px 18px rgba(0,0,0,.2);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);transition:background .2s ease-out,color .2s ease-out,border-color .2s ease-out}
-.library-end-icon svg{width:19px;height:19px;fill:currentColor;opacity:1}
-.library-end-label{font-size:13px;font-weight:600}
-.library-end-card:hover .library-end-art,.library-end-card:focus-visible .library-end-art{background:color-mix(in oklch,var(--panel) 72%,transparent);border-color:var(--line-strong);color:var(--fg)}
 
 /* Poster context menu */
 .context-menu{position:fixed;z-index:38;width:182px;padding:6px;border:1px solid rgba(255,255,255,.1);border-radius:var(--radius-editorial);background:rgba(28,28,30,.88);box-shadow:0 18px 48px rgba(0,0,0,.36),inset 0 1px 0 rgba(255,255,255,.045);opacity:0;pointer-events:none;-webkit-backdrop-filter:blur(18px) saturate(115%);backdrop-filter:blur(18px) saturate(115%);transform:translateY(-4px);transition:opacity .16s ease-out,transform .16s ease-out}
@@ -167,33 +134,6 @@ body[data-locked="true"] .app-main{overflow:hidden}
 .context-action:hover{background:rgba(255,255,255,.06);color:var(--fg)}
 .context-action:hover svg{color:var(--icon-hover)}
 .context-divider{height:1px;margin:5px 7px;background:var(--line)}
-.library-end-card:hover .library-end-icon,.library-end-card:focus-visible .library-end-icon{border-color:rgba(255,255,255,.15);background:rgba(44,44,47,.82);color:var(--icon-active)}
-
-/* Recommendations */
-.recommendation-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
-.recommendation-card{position:relative;height:clamp(230px,14vw,280px);min-height:0;max-height:280px;overflow:hidden;border:0;border-radius:var(--radius-editorial);background:var(--panel);padding:0;text-align:left;box-shadow:0 8px 24px color-mix(in oklch,var(--bg) 40%,transparent);transition:box-shadow .2s ease-out}
-.recommendation-card::after{content:"";position:absolute;inset:30% 0 0;z-index:2;border-radius:inherit;background:linear-gradient(to bottom,transparent,color-mix(in oklch,var(--bg) 88%,transparent));pointer-events:none}
-.recommendation-art{position:absolute;inset:0;overflow:hidden;border-radius:inherit}
-.recommendation-art>img{display:block;width:100%;height:100%;border-radius:inherit;object-fit:cover;opacity:1;filter:none;transform:none;transition:none}
-.recommendation-card[data-od-id="recommendation-quiet-scifi"] .recommendation-art img{object-position:center 50%}
-.recommendation-card[data-od-id="recommendation-cold-mystery"] .recommendation-art img{object-position:center 42%}
-.recommendation-copy{position:absolute;z-index:3;left:18px;right:18px;bottom:15px;display:grid;min-width:0}
-.recommendation-kicker{color:var(--text-tertiary);font-size:11px;font-weight:600;line-height:1.3;letter-spacing:.045em}
-.recommendation-title{overflow:hidden;margin-top:3px;font-size:17px;font-weight:600;line-height:1.3;text-overflow:ellipsis;white-space:nowrap}
-.recommendation-text{display:-webkit-box;overflow:hidden;margin-top:3px;max-width:48ch;color:var(--text-secondary);font-size:12px;line-height:1.4;-webkit-box-orient:vertical;-webkit-line-clamp:2}
-
-/* Recently added */
-.media-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:26px}
-.media-row{display:grid;grid-template-columns:32px minmax(0,1fr) auto auto 32px;align-items:center;gap:11px;min-width:0;min-height:58px;border:0;border-top:1px solid var(--line);background:transparent;padding:5px 4px;text-align:left;transition:background .2s ease-out}
-.media-row:hover{background:color-mix(in oklch,var(--panel) 44%,transparent)}
-.media-thumb{width:32px;aspect-ratio:2/3;border-radius:var(--radius-xs);object-fit:cover;opacity:1;filter:none;transform:none}
-.media-copy{display:grid;min-width:0;gap:2px}
-.media-copy strong{overflow:hidden;font-size:14px;font-weight:600;text-overflow:ellipsis;white-space:nowrap}
-.media-copy small,.media-duration{color:var(--text-tertiary);font-size:12px}
-.quality{padding:2px 5px;border-radius:var(--radius-pill);background:var(--panel);color:var(--weak);font-family:var(--font-mono);font-size:9px}
-.more-button{width:32px;height:32px;border:1px solid rgba(255,255,255,.09);border-radius:var(--radius-circle);background:rgba(28,28,30,.68);color:var(--icon-default);box-shadow:inset 0 1px 0 rgba(255,255,255,.045),0 6px 18px rgba(0,0,0,.2);opacity:1;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
-.more-button:hover,.media-row:hover .more-button{border-color:rgba(255,255,255,.13);background:rgba(34,34,37,.82);color:var(--icon-active)}
-.more-button svg{width:18px;height:18px;fill:currentColor;opacity:1}
 
 /* Spotlight search */
 .search-scrim{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.38);opacity:0;pointer-events:none;-webkit-backdrop-filter:blur(2px) saturate(92%);backdrop-filter:blur(2px) saturate(92%);transition:opacity .2s ease-out}
@@ -245,9 +185,6 @@ body[data-locked="true"] .app-main{overflow:hidden}
   .app-main{margin-left:calc(var(--sidebar) + 16px)}
 }
 @media(max-width:1180px){
-  .feature-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .feature-card:last-child{display:none}
-  .media-list{grid-template-columns:1fr}
 }
 @media(max-width:900px){
   html,body{height:auto;overflow:auto;scrollbar-width:none;-ms-overflow-style:none}
@@ -268,9 +205,6 @@ body[data-locked="true"] .app-main{overflow:hidden}
   .app-main{height:auto;min-height:100vh;margin-left:0;overflow:visible}
   .content{padding-top:28px;padding-inline:28px}
   .poster-shelf{gap:16px}
-  .continue-adaptive[data-layout="backdrop"][data-count="1"]{grid-template-columns:minmax(0,min(82vw,680px))}
-  .continue-adaptive[data-layout="backdrop"][data-count="2"]{grid-template-columns:repeat(2,minmax(260px,1fr));overflow-x:auto;padding-bottom:8px}
-  .poster-shelf[data-layout="poster-row"]{overflow-x:auto;scroll-snap-type:x proximity}
 }
 @media(max-width:680px){
   .brand{width:40px}
@@ -279,15 +213,8 @@ body[data-locked="true"] .app-main{overflow:hidden}
   .top-group .sidebar-link .icon{width:20px}
   .content{padding-inline:18px}
   .page-heading{align-items:flex-start;flex-direction:column}
-  .feature-grid{grid-template-columns:1fr}
-  .feature-card:last-child{display:block}
-  .poster-card,.library-end-card{flex-basis:42vw}
-  .recommendation-grid{grid-template-columns:1fr;gap:16px}
-  .recommendation-copy{left:17px;right:17px}
-  .media-row{grid-template-columns:34px minmax(0,1fr) auto 32px}
-  .media-duration{display:none}
+  .poster-card{flex-basis:42vw}
   .section{margin-top:32px}
-  .continue-adaptive[data-layout="backdrop"][data-count="1"],.continue-adaptive[data-layout="backdrop"][data-count="2"]{grid-template-columns:minmax(280px,86vw)}
   .continue-backdrop-art{aspect-ratio:16/9}
   .continue-backdrop-copy{left:15px;right:56px;bottom:14px}
   .search-dialog{top:7vh;width:calc(100% - 24px)}
@@ -296,14 +223,33 @@ body[data-locked="true"] .app-main{overflow:hidden}
   .search-key{display:none}
 }
 @media(hover:none){
-  .feature-card:hover::before,.recommendation-card:hover::before,.poster-card:hover .poster-art::after,.continue-adaptive[data-layout="backdrop"] .continue-item:hover .continue-backdrop-art::before,.poster-card:hover .play-mark{opacity:0}
-  .poster-more-mark,.editorial-action-mark{opacity:1}
+  .poster-more-mark{opacity:1}
   .context-action{min-height:44px}
 }
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{scroll-behavior:auto!important;transition-duration:.01ms!important}
 }
-  </style>
+  /* Home shelf layout; poster surfaces remain in the shared Movie Card stylesheet. */
+#continueSection{margin-top:0}
+.shelf-navigation{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.shelf-navigation .view-all{margin-right:8px}
+.view-all{flex-shrink:0;color:var(--muted);font-size:13px;text-decoration:none;white-space:nowrap}
+.view-all:hover{color:var(--fg)}
+.movie-shelf>.movie-card{flex:0 0 clamp(180px,12vw,260px);scroll-snap-align:start}
+.genre-card{position:relative;flex:0 0 calc((100% - 80px)/5);aspect-ratio:16/9;overflow:hidden;border-radius:var(--radius-sm);color:var(--fg);text-decoration:none;scroll-snap-align:start}
+.genre-card img{width:100%;height:100%;object-fit:cover}
+.genre-card::after{content:"";position:absolute;inset:0;background:linear-gradient(transparent,rgba(0,0,0,.8))}
+.genre-card strong{position:absolute;z-index:1;left:20px;bottom:16px;font-size:clamp(20px,1.3vw,30px)}
+.watch-progress{position:absolute;z-index:4;bottom:0;left:0;width:100%;height:3px;border:0;appearance:none}
+.watch-progress::-webkit-progress-bar{background:#ffffff30}
+.watch-progress::-webkit-progress-value{background:var(--accent)}
+[hidden]{display:none!important}
+.movie-card:hover .play-mark,.movie-card:hover .poster-more-mark,.poster-card:hover .play-mark,.poster-card:hover .poster-more-mark,:is(.movie-card,.poster-card):has(button:focus-visible) :is(.play-mark,.poster-more-mark){opacity:1}
+@media(min-width:3000px){.continue-adaptive[data-layout="backdrop"] .continue-item{flex-basis:calc((100% - 60px)/4)}}
+@media(max-width:1500px){.continue-adaptive[data-layout="backdrop"] .continue-item{flex-basis:calc((100% - 20px)/2)}.genre-card{flex-basis:calc((100% - 60px)/4)}}
+@media(max-width:900px){.continue-adaptive[data-layout="backdrop"] .continue-item{flex-basis:82%}.genre-card{flex-basis:42%}.movie-shelf>.movie-card{flex-basis:clamp(150px,30vw,210px)}}
+@media(hover:none){:is(.movie-card,.poster-card):hover .play-mark{opacity:0}.poster-more-mark{opacity:1}}
+</style>
   <link rel="stylesheet" href="assets/css/personal-cinema-movie-card.css" />
 </head>
 <body>
@@ -360,55 +306,44 @@ body[data-locked="true"] .app-main{overflow:hidden}
     <main class="content" id="content" data-od-id="home-content">
       <header class="page-heading" data-od-id="home-page-header"><h1 class="page-title" data-od-id="home-page-title">主页</h1></header>
 
-      <section class="feature-grid" data-od-id="editorial-features-section" aria-label="今日精选">
-        <button class="feature-card" data-title="星际穿越" data-od-id="feature-interstellar"><img src="assets/tmdb-backdrop-interstellar.jpg" alt="星际穿越 TMDB 官方电影剧照" /><span class="feature-copy"><span class="feature-kicker">今晚继续</span><strong class="feature-title">星际穿越</strong><span class="feature-meta">观看中 · 最近播放 · 今天</span></span></button>
-        <button class="feature-card" data-title="银翼杀手2049" data-od-id="feature-blade-runner-2049"><img src="assets/tmdb-backdrop-blade-runner-2049.jpg" alt="银翼杀手2049 TMDB 官方电影剧照" /><span class="feature-copy"><span class="feature-kicker">AI 为你精选</span><strong class="feature-title">银翼杀手2049</strong><span class="feature-meta">因为你常看科幻悬疑</span></span></button>
-        <button class="feature-card" data-title="沙丘2" data-od-id="feature-dune-part-two"><img src="assets/tmdb-backdrop-dune-part-two.jpg" alt="沙丘2 TMDB 官方电影剧照" /><span class="feature-copy"><span class="feature-kicker">最近加入</span><strong class="feature-title">沙丘2</strong><span class="feature-meta">新加入片库</span></span></button>
-      </section>
-
-      <section class="section" id="continueSection" data-od-id="continue-watching-section">
-        <div class="section-heading"><button class="section-link" data-route="continue" data-od-id="continue-watching-heading">继续观看</button><div class="section-actions" id="recentActions" data-visible="false"><button class="shelf-arrow" id="recentPrev" aria-label="向前浏览"><svg aria-hidden="true"><use href="#ph-caret-left"></use></svg></button><button class="shelf-arrow" id="recentNext" aria-label="向后浏览"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></button></div></div>
+<section class="section" id="continueSection" data-od-id="continue-watching-section">
+        <div class="section-heading"><h2 class="section-link">最近观看</h2><div class="section-actions" id="recentActions" data-visible="false"><button class="shelf-arrow" id="recentPrev" aria-label="向前浏览"><svg aria-hidden="true"><use href="#ph-caret-left"></use></svg></button><button class="shelf-arrow" id="recentNext" aria-label="向后浏览"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></button></div></div>
         <div class="continue-shell" id="continueContent" aria-live="polite">
-          <div class="continue-adaptive poster-shelf" id="recentTrack" data-layout="carousel" data-count="15" tabindex="0" aria-label="继续观看影片横向列表">
-            <article class="continue-item poster-card" data-title="星际穿越" data-od-id="continue-interstellar"><span class="poster-art continue-poster-art"><img src="assets/tmdb-poster-interstellar.jpg" alt="星际穿越 TMDB 官方电影海报" /><button class="play-mark" type="button"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button></span><span class="poster-copy"><strong class="poster-title">星际穿越</strong><span class="poster-meta">观看中 · 最近播放 · 今天</span></span><span class="continue-backdrop-art"><img src="assets/tmdb-backdrop-interstellar.jpg" alt="星际穿越 TMDB 官方电影剧照" /><span class="continue-backdrop-copy"><span class="continue-backdrop-kicker">继续观看</span><strong class="continue-backdrop-title">星际穿越</strong><span class="continue-backdrop-meta">观看中 · 最近播放 · 今天</span></span><button class="play-mark" type="button"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button></span></article>
-            <article class="continue-item poster-card" data-title="沙丘" data-od-id="continue-dune"><span class="poster-art continue-poster-art"><img src="assets/tmdb-poster-dune.jpg" alt="沙丘 TMDB 官方电影海报" /><button class="play-mark" type="button"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button></span><span class="poster-copy"><strong class="poster-title">沙丘</strong><span class="poster-meta">观看中 · 最近播放 · 昨天</span></span><span class="continue-backdrop-art"><img src="assets/tmdb-backdrop-dune.jpg" alt="沙丘 TMDB 官方电影剧照" /><span class="continue-backdrop-copy"><span class="continue-backdrop-kicker">继续观看</span><strong class="continue-backdrop-title">沙丘</strong><span class="continue-backdrop-meta">观看中 · 最近播放 · 昨天</span></span><button class="play-mark" type="button"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button></span></article>
-            <article class="continue-item poster-card" data-title="银翼杀手2049" data-od-id="continue-blade-runner-2049"><span class="poster-art continue-poster-art"><img src="assets/tmdb-poster-blade-runner-2049.jpg" alt="银翼杀手2049 TMDB 官方电影海报" /><button class="play-mark" type="button"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button></span><span class="poster-copy"><strong class="poster-title">银翼杀手2049</strong><span class="poster-meta">观看中 · 最近播放 · 8 月 29 日</span></span><span class="continue-backdrop-art"><img src="assets/tmdb-backdrop-blade-runner-2049.jpg" alt="银翼杀手2049 TMDB 官方电影剧照" /><span class="continue-backdrop-copy"><span class="continue-backdrop-kicker">继续观看</span><strong class="continue-backdrop-title">银翼杀手2049</strong><span class="continue-backdrop-meta">观看中 · 最近播放 · 8 月 29 日</span></span><button class="play-mark" type="button"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button></span></article>
-            <article class="continue-item poster-card" data-title="降临" data-od-id="continue-arrival"><span class="poster-art continue-poster-art"><img src="assets/tmdb-poster-arrival.jpg" alt="降临 TMDB 官方电影海报" /><button class="play-mark" type="button"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button></span><span class="poster-copy"><strong class="poster-title">降临</strong><span class="poster-meta">观看中 · 最近播放 · 8 月 28 日</span></span><span class="continue-backdrop-art"><img src="assets/tmdb-backdrop-arrival.jpg" alt="降临 TMDB 官方电影剧照" /><span class="continue-backdrop-copy"><span class="continue-backdrop-kicker">继续观看</span><strong class="continue-backdrop-title">降临</strong><span class="continue-backdrop-meta">观看中 · 最近播放 · 8 月 28 日</span></span><button class="play-mark" type="button"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button></span></article>
-            <article class="continue-item poster-card" data-title="奥本海默" data-od-id="continue-oppenheimer"><span class="poster-art continue-poster-art"><img src="assets/tmdb-poster-oppenheimer.jpg" alt="奥本海默 TMDB 官方电影海报" /><button class="play-mark" type="button"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button></span><span class="poster-copy"><strong class="poster-title">奥本海默</strong><span class="poster-meta">观看中 · 最近播放 · 今天</span></span><span class="continue-backdrop-art"><img src="assets/tmdb-backdrop-oppenheimer.jpg" alt="奥本海默 TMDB 官方电影剧照" /><span class="continue-backdrop-copy"><span class="continue-backdrop-kicker">继续观看</span><strong class="continue-backdrop-title">奥本海默</strong><span class="continue-backdrop-meta">观看中 · 最近播放 · 今天</span></span><button class="play-mark" type="button"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button></span></article>
-            <article class="continue-item poster-card" data-title="新蝙蝠侠" data-od-id="continue-the-batman"><span class="poster-art continue-poster-art"><img src="assets/tmdb-poster-the-batman.jpg" alt="新蝙蝠侠 TMDB 官方电影海报" /><button class="play-mark" type="button"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button></span><span class="poster-copy"><strong class="poster-title">新蝙蝠侠</strong><span class="poster-meta">观看中 · 最近播放 · 昨天</span></span><span class="continue-backdrop-art"><img src="assets/tmdb-backdrop-the-batman.jpg" alt="新蝙蝠侠 TMDB 官方电影剧照" /><span class="continue-backdrop-copy"><span class="continue-backdrop-kicker">继续观看</span><strong class="continue-backdrop-title">新蝙蝠侠</strong><span class="continue-backdrop-meta">观看中 · 最近播放 · 昨天</span></span><button class="play-mark" type="button"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button></span></article>
-            <article class="continue-item poster-card" data-title="盗梦空间" data-od-id="continue-inception"><span class="poster-art continue-poster-art"><img src="assets/tmdb-poster-inception.jpg" alt="盗梦空间 TMDB 官方电影海报" /><button class="play-mark" type="button"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button></span><span class="poster-copy"><strong class="poster-title">盗梦空间</strong><span class="poster-meta">观看中 · 最近播放 · 8 月 29 日</span></span><span class="continue-backdrop-art"><img src="assets/tmdb-backdrop-inception.jpg" alt="盗梦空间 TMDB 官方电影剧照" /><span class="continue-backdrop-copy"><span class="continue-backdrop-kicker">继续观看</span><strong class="continue-backdrop-title">盗梦空间</strong><span class="continue-backdrop-meta">观看中 · 最近播放 · 8 月 29 日</span></span><button class="play-mark" type="button"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button></span></article>
-            <article class="continue-item poster-card" data-title="沙丘2" data-tmdb-id="693134" data-od-id="continue-dune-part-two"><span class="poster-art continue-poster-art"><img src="assets/tmdb-poster-dune-part-two.jpg" alt="沙丘2 TMDB 官方电影海报" /><button class="play-mark" type="button"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button></span><span class="poster-copy"><strong class="poster-title">沙丘2</strong><span class="poster-meta">观看中 · 最近播放 · 8 月 28 日</span></span></article>
-            <article class="continue-item poster-card" data-title="囚徒" data-tmdb-id="146233" data-od-id="continue-prisoners"><span class="poster-art continue-poster-art"><img src="assets/tmdb-poster-prisoners.jpg" alt="囚徒 TMDB 官方电影海报" /><button class="play-mark" type="button"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button></span><span class="poster-copy"><strong class="poster-title">囚徒</strong><span class="poster-meta">观看中 · 最近播放 · 今天</span></span></article>
-            <article class="continue-item poster-card" data-title="1917" data-tmdb-id="530915" data-od-id="continue-1917"><span class="poster-art continue-poster-art"><img src="assets/tmdb-poster-1917.jpg" alt="1917 TMDB 官方电影海报" /><button class="play-mark" type="button"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button></span><span class="poster-copy"><strong class="poster-title">1917</strong><span class="poster-meta">观看中 · 最近播放 · 昨天</span></span></article>
-            <article class="continue-item poster-card" data-title="疯狂的麦克斯4：狂暴之路" data-tmdb-id="76341" data-od-id="continue-mad-max-fury-road"><span class="poster-art continue-poster-art"><img src="assets/tmdb-poster-mad-max-fury-road.jpg" alt="疯狂的麦克斯4：狂暴之路 TMDB 官方电影海报" /><button class="play-mark" type="button"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button></span><span class="poster-copy"><strong class="poster-title">疯狂的麦克斯4：狂暴之路</strong><span class="poster-meta">观看中 · 最近播放 · 8 月 29 日</span></span></article>
-            <article class="continue-item poster-card" data-title="寄生虫" data-tmdb-id="496243" data-od-id="continue-parasite"><span class="poster-art continue-poster-art"><img src="assets/tmdb-poster-parasite.jpg" alt="寄生虫 TMDB 官方电影海报" /><button class="play-mark" type="button"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button></span><span class="poster-copy"><strong class="poster-title">寄生虫</strong><span class="poster-meta">观看中 · 最近播放 · 8 月 28 日</span></span></article>
-            <article class="continue-item poster-card" data-title="爆裂鼓手" data-tmdb-id="244786" data-od-id="continue-whiplash"><span class="poster-art continue-poster-art"><img src="assets/tmdb-poster-whiplash.jpg" alt="爆裂鼓手 TMDB 官方电影海报" /><button class="play-mark" type="button"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button></span><span class="poster-copy"><strong class="poster-title">爆裂鼓手</strong><span class="poster-meta">观看中 · 最近播放 · 今天</span></span></article>
-            <article class="continue-item poster-card" data-title="消失的爱人" data-tmdb-id="210577" data-od-id="continue-gone-girl"><span class="poster-art continue-poster-art"><img src="assets/tmdb-poster-gone-girl.jpg" alt="消失的爱人 TMDB 官方电影海报" /><button class="play-mark" type="button"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button></span><span class="poster-copy"><strong class="poster-title">消失的爱人</strong><span class="poster-meta">观看中 · 最近播放 · 昨天</span></span></article>
-            <article class="continue-item poster-card" data-title="机械姬" data-tmdb-id="264660" data-od-id="continue-ex-machina"><span class="poster-art continue-poster-art"><img src="assets/tmdb-poster-ex-machina.jpg" alt="机械姬 TMDB 官方电影海报" /><button class="play-mark" type="button"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button></span><span class="poster-copy"><strong class="poster-title">机械姬</strong><span class="poster-meta">观看中 · 最近播放 · 8 月 29 日</span></span></article>
-            <button class="library-end-card" data-route="movies" data-od-id="continue-view-library"><span class="library-end-art"><span class="library-end-icon"><svg aria-hidden="true"><use href="#ph-arrow-right"></use></svg></span><span class="library-end-label">查看全部</span></span></button>
+          <div class="continue-adaptive poster-shelf" id="recentTrack" data-layout="backdrop" data-count="6" tabindex="0" aria-label="最近观看横向剧照">
+            <article class="continue-item poster-card" data-last-played="15" data-status="watching" data-title="星际穿越" data-od-id="continue-interstellar"><span class="poster-art continue-poster-art"><img src="assets/tmdb-poster-interstellar.jpg" alt="星际穿越 TMDB 官方电影海报" /><button class="play-mark" type="button"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button></span><span class="poster-copy"><strong class="poster-title">星际穿越</strong><span class="poster-meta">继续播放 · 已看 42%</span></span><span class="continue-backdrop-art"><img src="assets/tmdb-backdrop-interstellar.jpg" alt="星际穿越 TMDB 官方电影剧照" /><span class="continue-backdrop-copy"><strong class="continue-backdrop-title">星际穿越</strong><span class="continue-backdrop-meta">继续播放 · 已看 42%</span></span><button class="play-mark" type="button"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><progress class="watch-progress" value="42" max="100" aria-label="观看进度 42%"></progress></span></article>
+
+            <article class="continue-item poster-card" data-last-played="12" data-status="watching" data-title="银翼杀手2049" data-od-id="continue-blade-runner-2049"><span class="poster-art continue-poster-art"><img src="assets/tmdb-poster-blade-runner-2049.jpg" alt="银翼杀手2049 TMDB 官方电影海报" /><button class="play-mark" type="button"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button></span><span class="poster-copy"><strong class="poster-title">银翼杀手2049</strong><span class="poster-meta">继续播放 · 已看 68%</span></span><span class="continue-backdrop-art"><img src="assets/tmdb-backdrop-blade-runner-2049.jpg" alt="银翼杀手2049 TMDB 官方电影剧照" /><span class="continue-backdrop-copy"><strong class="continue-backdrop-title">银翼杀手2049</strong><span class="continue-backdrop-meta">继续播放 · 已看 68%</span></span><button class="play-mark" type="button"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><progress class="watch-progress" value="68" max="100" aria-label="观看进度 68%"></progress></span></article>
+            <article class="continue-item poster-card" data-last-played="11" data-status="watching" data-title="降临" data-od-id="continue-arrival"><span class="poster-art continue-poster-art"><img src="assets/tmdb-poster-arrival.jpg" alt="降临 TMDB 官方电影海报" /><button class="play-mark" type="button"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button></span><span class="poster-copy"><strong class="poster-title">降临</strong><span class="poster-meta">继续播放 · 已看 19%</span></span><span class="continue-backdrop-art"><img src="assets/tmdb-backdrop-arrival.jpg" alt="降临 TMDB 官方电影剧照" /><span class="continue-backdrop-copy"><strong class="continue-backdrop-title">降临</strong><span class="continue-backdrop-meta">继续播放 · 已看 19%</span></span><button class="play-mark" type="button"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><progress class="watch-progress" value="19" max="100" aria-label="观看进度 19%"></progress></span></article>
+            <article class="continue-item poster-card" data-last-played="14" data-status="watching" data-title="奥本海默" data-od-id="continue-oppenheimer"><span class="poster-art continue-poster-art"><img src="assets/tmdb-poster-oppenheimer.jpg" alt="奥本海默 TMDB 官方电影海报" /><button class="play-mark" type="button"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button></span><span class="poster-copy"><strong class="poster-title">奥本海默</strong><span class="poster-meta">继续播放 · 已看 27%</span></span><span class="continue-backdrop-art"><img src="assets/tmdb-backdrop-oppenheimer.jpg" alt="奥本海默 TMDB 官方电影剧照" /><span class="continue-backdrop-copy"><strong class="continue-backdrop-title">奥本海默</strong><span class="continue-backdrop-meta">继续播放 · 已看 27%</span></span><button class="play-mark" type="button"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><progress class="watch-progress" value="27" max="100" aria-label="观看进度 27%"></progress></span></article>
+            <article class="continue-item poster-card" data-last-played="10" data-status="watched" data-title="新蝙蝠侠" data-od-id="continue-the-batman"><span class="poster-art continue-poster-art"><img src="assets/tmdb-poster-the-batman.jpg" alt="新蝙蝠侠 TMDB 官方电影海报" /><button class="play-mark" type="button"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button></span><span class="poster-copy"><strong class="poster-title">新蝙蝠侠</strong><span class="poster-meta">已看完 · 可重新播放</span></span><span class="continue-backdrop-art"><img src="assets/tmdb-backdrop-the-batman.jpg" alt="新蝙蝠侠 TMDB 官方电影剧照" /><span class="continue-backdrop-copy"><strong class="continue-backdrop-title">新蝙蝠侠</strong><span class="continue-backdrop-meta">已看完 · 可重新播放</span></span><button class="play-mark" type="button"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button></span></article>
+            <article class="continue-item poster-card" data-last-played="9" data-status="watching" data-title="盗梦空间" data-od-id="continue-inception"><span class="poster-art continue-poster-art"><img src="assets/tmdb-poster-inception.jpg" alt="盗梦空间 TMDB 官方电影海报" /><button class="play-mark" type="button"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button></span><span class="poster-copy"><strong class="poster-title">盗梦空间</strong><span class="poster-meta">继续播放 · 已看 81%</span></span><span class="continue-backdrop-art"><img src="assets/tmdb-backdrop-inception.jpg" alt="盗梦空间 TMDB 官方电影剧照" /><span class="continue-backdrop-copy"><strong class="continue-backdrop-title">盗梦空间</strong><span class="continue-backdrop-meta">继续播放 · 已看 81%</span></span><button class="play-mark" type="button"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><progress class="watch-progress" value="81" max="100" aria-label="观看进度 81%"></progress></span></article>
+
           </div>
         </div>
       </section>
 
-      <section class="section" id="recommendationSection" data-od-id="personal-recommendations-section">
-        <div class="section-heading"><button class="section-link" data-route="recommendations" data-od-id="personal-recommendations-heading">为你推荐<svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></button></div>
-        <div class="recommendation-grid">
-          <button class="recommendation-card" data-title="今晚的安静科幻" data-od-id="recommendation-quiet-scifi"><span class="recommendation-art"><img src="assets/tmdb-backdrop-blade-runner-2049.jpg" alt="银翼杀手2049 TMDB 官方电影剧照" /></span><span class="recommendation-copy"><span class="recommendation-kicker">AI 片库精选</span><strong class="recommendation-title">今晚的安静科幻</strong><span class="recommendation-text">银翼杀手2049、降临与星际穿越，适合安静夜晚。</span></span></button>
-          <button class="recommendation-card" data-title="冷峻悬疑" data-od-id="recommendation-cold-mystery"><span class="recommendation-art"><img src="assets/tmdb-backdrop-prisoners.jpg" alt="囚徒 TMDB 官方电影剧照" /></span><span class="recommendation-copy"><span class="recommendation-kicker">片库组合</span><strong class="recommendation-title">冷峻悬疑</strong><span class="recommendation-text">囚徒与十二宫，冷静压抑，适合专注观看。</span></span></button>
-        </div>
-      </section>
-
-      <section class="section" data-od-id="recently-added-section">
-        <div class="section-heading"><button class="section-link" data-route="recent" data-od-id="recently-added-heading">最近添加<svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></button></div>
-        <div class="media-list" aria-label="最近添加影片列表">
-          <button class="media-row" data-title="沙丘2" data-od-id="recent-row-dune-part-two"><img class="media-thumb" src="assets/tmdb-poster-dune-part-two.jpg" alt="沙丘2 TMDB 官方电影海报" /><span class="media-copy"><strong>沙丘2</strong><small>2024 · 科幻 / 冒险 · 8.1</small></span><span class="quality">4K</span><span class="media-duration">2 小时 46 分</span><span class="more-button" aria-label="沙丘2更多操作"><svg><use href="#ph-dots-three-bold"></use></svg></span></button>
-          <button class="media-row" data-title="奥本海默" data-od-id="recent-row-oppenheimer"><img class="media-thumb" src="assets/tmdb-poster-oppenheimer.jpg" alt="奥本海默 TMDB 官方电影海报" /><span class="media-copy"><strong>奥本海默</strong><small>2023 · 剧情 / 历史 · 8.0</small></span><span class="quality">HDR</span><span class="media-duration">3 小时 01 分</span><span class="more-button" aria-label="奥本海默更多操作"><svg><use href="#ph-dots-three-bold"></use></svg></span></button>
-          <button class="media-row" data-title="新蝙蝠侠" data-od-id="recent-row-the-batman"><img class="media-thumb" src="assets/tmdb-poster-the-batman.jpg" alt="新蝙蝠侠 TMDB 官方电影海报" /><span class="media-copy"><strong>新蝙蝠侠</strong><small>2022 · 犯罪 / 悬疑 · 7.7</small></span><span class="quality">4K</span><span class="media-duration">2 小时 56 分</span><span class="more-button" aria-label="新蝙蝠侠更多操作"><svg><use href="#ph-dots-three-bold"></use></svg></span></button>
-          <button class="media-row" data-title="1917" data-od-id="recent-row-1917"><img class="media-thumb" src="assets/tmdb-poster-1917.jpg" alt="1917 TMDB 官方电影海报" /><span class="media-copy"><strong>1917</strong><small>2019 · 战争 / 剧情 · 8.0</small></span><span class="quality">4K</span><span class="media-duration">1 小时 59 分</span><span class="more-button" aria-label="1917更多操作"><svg><use href="#ph-dots-three-bold"></use></svg></span></button>
-          <button class="media-row" data-title="疯狂的麦克斯4：狂暴之路" data-od-id="recent-row-mad-max-fury-road"><img class="media-thumb" src="assets/tmdb-poster-mad-max-fury-road.jpg" alt="疯狂的麦克斯4：狂暴之路 TMDB 官方电影海报" /><span class="media-copy"><strong>疯狂的麦克斯4：狂暴之路</strong><small>2015 · 动作 / 冒险 · 7.6</small></span><span class="quality">HDR</span><span class="media-duration">2 小时</span><span class="more-button" aria-label="疯狂的麦克斯4：狂暴之路更多操作"><svg><use href="#ph-dots-three-bold"></use></svg></span></button>
-          <button class="media-row" data-title="囚徒" data-od-id="recent-row-prisoners"><img class="media-thumb" src="assets/tmdb-poster-prisoners.jpg" alt="囚徒 TMDB 官方电影海报" /><span class="media-copy"><strong>囚徒</strong><small>2013 · 剧情 / 犯罪 · 8.1</small></span><span class="quality">1080p</span><span class="media-duration">2 小时 33 分</span><span class="more-button" aria-label="囚徒更多操作"><svg><use href="#ph-dots-three-bold"></use></svg></span></button>
-        </div>
-      </section>
+<section class="section" id="genreSection"><div class="section-heading"><h2 class="section-link">电影类型</h2><div class="shelf-navigation"><a class="view-all" href="personal-cinema-movie-library.html">查看全部 ›</a><button class="shelf-arrow" data-shelf-step="-1" aria-label="向前浏览"><svg aria-hidden="true"><use href="#ph-caret-left"></use></svg></button><button class="shelf-arrow" data-shelf-step="1" aria-label="向后浏览"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></button></div></div><div class="poster-shelf genre-shelf" tabindex="0" aria-label="电影类型"><a class="genre-card" href="personal-cinema-movie-library.html?genre=科幻"><img src="assets/tmdb-backdrop-blade-runner-2049.jpg" alt="" /><strong>科幻</strong></a><a class="genre-card" href="personal-cinema-movie-library.html?genre=悬疑"><img src="assets/tmdb-backdrop-prisoners.jpg" alt="" /><strong>悬疑</strong></a><a class="genre-card" href="personal-cinema-movie-library.html?genre=动作"><img src="assets/tmdb-backdrop-inception.jpg" alt="" /><strong>动作</strong></a><a class="genre-card" href="personal-cinema-movie-library.html?genre=犯罪"><img src="assets/tmdb-backdrop-the-batman.jpg" alt="" /><strong>犯罪</strong></a><a class="genre-card" href="personal-cinema-movie-library.html?genre=冒险"><img src="assets/tmdb-backdrop-dune-part-two.jpg" alt="" /><strong>冒险</strong></a><a class="genre-card" href="personal-cinema-movie-library.html?genre=剧情"><img src="assets/tmdb-backdrop-oppenheimer.jpg" alt="" /><strong>剧情</strong></a></div></section>
+<section class="section" id="addedSection"><div class="section-heading"><h2 class="section-link">最近添加</h2><div class="shelf-navigation"><a class="view-all" href="personal-cinema-recently-added.html">查看全部 ›</a><button class="shelf-arrow" data-shelf-step="-1" aria-label="向前浏览"><svg aria-hidden="true"><use href="#ph-caret-left"></use></svg></button><button class="shelf-arrow" data-shelf-step="1" aria-label="向后浏览"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></button></div></div><div class="poster-shelf movie-shelf" tabindex="0" aria-label="最近添加"><article class="movie-card" data-title="星际穿越" data-year="2014" data-genre="科幻,剧情,冒险" data-status="watching" data-media-source-id="source-home-nas" data-added="15" data-watched="15" data-duration="169" data-favorite="true" data-od-id="movie-interstellar"><div class="poster-art"><img src="assets/tmdb-poster-interstellar.jpg" alt="星际穿越 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看星际穿越详情"></button><button class="play-mark" type="button" aria-label="播放星际穿越"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="星际穿越更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">星际穿越</strong><span class="poster-meta">2014 · 科幻</span></div></article>
+<article class="movie-card" data-title="银翼杀手2049" data-year="2017" data-genre="科幻,剧情" data-status="watching" data-media-source-id="source-home-nas" data-added="13" data-watched="12" data-duration="164" data-favorite="true" data-od-id="movie-blade-runner-2049"><div class="poster-art"><img src="assets/tmdb-poster-blade-runner-2049.jpg" alt="银翼杀手2049 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看银翼杀手2049详情"></button><button class="play-mark" type="button" aria-label="播放银翼杀手2049"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="银翼杀手2049更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">银翼杀手2049</strong><span class="poster-meta">2017 · 科幻</span></div></article>
+<article class="movie-card" data-title="降临" data-year="2016" data-genre="剧情,科幻,悬疑" data-status="watching" data-media-source-id="source-alist" data-added="12" data-watched="11" data-duration="116" data-favorite="true" data-od-id="movie-arrival"><div class="poster-art"><img src="assets/tmdb-poster-arrival.jpg" alt="降临 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看降临详情"></button><button class="play-mark" type="button" aria-label="播放降临"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="降临更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">降临</strong><span class="poster-meta">2016 · 科幻</span></div></article>
+<article class="movie-card" data-title="奥本海默" data-year="2023" data-genre="剧情,历史" data-status="watching" data-media-source-id="source-nextcloud" data-added="11" data-watched="14" data-duration="181" data-favorite="false" data-od-id="movie-oppenheimer"><div class="poster-art"><img src="assets/tmdb-poster-oppenheimer.jpg" alt="奥本海默 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看奥本海默详情"></button><button class="play-mark" type="button" aria-label="播放奥本海默"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="奥本海默更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">奥本海默</strong><span class="poster-meta">2023 · 剧情</span></div></article>
+<article class="movie-card" data-title="新蝙蝠侠" data-year="2022" data-genre="犯罪,悬疑,剧情" data-status="watched" data-media-source-id="source-home-nas" data-added="10" data-watched="10" data-duration="176" data-favorite="false" data-od-id="movie-the-batman"><div class="poster-art"><img src="assets/tmdb-poster-the-batman.jpg" alt="新蝙蝠侠 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看新蝙蝠侠详情"></button><button class="play-mark" type="button" aria-label="播放新蝙蝠侠"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="新蝙蝠侠更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">新蝙蝠侠</strong><span class="poster-meta">2022 · 悬疑</span></div></article>
+<article class="movie-card" data-title="盗梦空间" data-year="2010" data-genre="动作,科幻,冒险" data-status="watching" data-media-source-id="source-alist" data-added="9" data-watched="9" data-duration="148" data-favorite="true" data-od-id="movie-inception"><div class="poster-art"><img src="assets/tmdb-poster-inception.jpg" alt="盗梦空间 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看盗梦空间详情"></button><button class="play-mark" type="button" aria-label="播放盗梦空间"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="盗梦空间更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">盗梦空间</strong><span class="poster-meta">2010 · 科幻</span></div></article>
+<article class="movie-card" data-title="沙丘2" data-year="2024" data-genre="科幻,冒险" data-status="unwatched" data-media-source-id="source-home-nas" data-added="8" data-watched="0" data-duration="166" data-favorite="true" data-od-id="movie-dune-part-two"><div class="poster-art"><img src="assets/tmdb-poster-dune-part-two.jpg" alt="沙丘2 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看沙丘2详情"></button><button class="play-mark" type="button" aria-label="播放沙丘2"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="沙丘2更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">沙丘2</strong><span class="poster-meta">2024 · 科幻</span></div></article>
+<article class="movie-card" data-title="囚徒" data-year="2013" data-genre="剧情,悬疑,犯罪" data-status="watching" data-media-source-id="source-alist" data-added="7" data-watched="8" data-duration="153" data-favorite="false" data-od-id="movie-prisoners"><div class="poster-art"><img src="assets/tmdb-poster-prisoners.jpg" alt="囚徒 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看囚徒详情"></button><button class="play-mark" type="button" aria-label="播放囚徒"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="囚徒更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">囚徒</strong><span class="poster-meta">2013 · 悬疑</span></div></article>
+<article class="movie-card" data-title="1917" data-year="2019" data-genre="战争,剧情" data-status="watched" data-media-source-id="source-nextcloud" data-added="6" data-watched="7" data-duration="119" data-favorite="false" data-od-id="movie-1917"><div class="poster-art"><img src="assets/tmdb-poster-1917.jpg" alt="1917 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看1917详情"></button><button class="play-mark" type="button" aria-label="播放1917"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="1917更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">1917</strong><span class="poster-meta">2019 · 剧情</span></div></article>
+<article class="movie-card" data-title="疯狂的麦克斯4：狂暴之路" data-year="2015" data-genre="动作,冒险,科幻" data-status="unwatched" data-media-source-id="source-home-nas" data-added="5" data-watched="0" data-duration="120" data-favorite="true" data-od-id="movie-mad-max-fury-road"><div class="poster-art"><img src="assets/tmdb-poster-mad-max-fury-road.jpg" alt="疯狂的麦克斯4：狂暴之路 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看疯狂的麦克斯4：狂暴之路详情"></button><button class="play-mark" type="button" aria-label="播放疯狂的麦克斯4：狂暴之路"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="疯狂的麦克斯4：狂暴之路更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">疯狂的麦克斯4：狂暴之路</strong><span class="poster-meta">2015 · 动作</span></div></article>
+<article class="movie-card" data-title="寄生虫" data-year="2019" data-genre="剧情,悬疑" data-status="watched" data-media-source-id="source-nextcloud" data-added="4" data-watched="6" data-duration="133" data-favorite="true" data-od-id="movie-parasite"><div class="poster-art"><img src="assets/tmdb-poster-parasite.jpg" alt="寄生虫 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看寄生虫详情"></button><button class="play-mark" type="button" aria-label="播放寄生虫"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="寄生虫更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">寄生虫</strong><span class="poster-meta">2019 · 剧情</span></div></article></div></section>
+<section class="section" id="unwatchedSection"><div class="section-heading"><h2 class="section-link">未看</h2><div class="shelf-navigation"><a class="view-all" href="personal-cinema-unwatched.html">查看全部 ›</a><button class="shelf-arrow" data-shelf-step="-1" aria-label="向前浏览"><svg aria-hidden="true"><use href="#ph-caret-left"></use></svg></button><button class="shelf-arrow" data-shelf-step="1" aria-label="向后浏览"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></button></div></div><div class="poster-shelf movie-shelf" tabindex="0" aria-label="未看"><article class="movie-card" data-title="星际穿越" data-year="2014" data-genre="科幻,剧情,冒险" data-status="watching" data-media-source-id="source-home-nas" data-added="15" data-watched="15" data-duration="169" data-favorite="true" data-od-id="movie-interstellar"><div class="poster-art"><img src="assets/tmdb-poster-interstellar.jpg" alt="星际穿越 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看星际穿越详情"></button><button class="play-mark" type="button" aria-label="播放星际穿越"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="星际穿越更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">星际穿越</strong><span class="poster-meta">2014 · 科幻</span></div></article>
+<article class="movie-card" data-title="银翼杀手2049" data-year="2017" data-genre="科幻,剧情" data-status="watching" data-media-source-id="source-home-nas" data-added="13" data-watched="12" data-duration="164" data-favorite="true" data-od-id="movie-blade-runner-2049"><div class="poster-art"><img src="assets/tmdb-poster-blade-runner-2049.jpg" alt="银翼杀手2049 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看银翼杀手2049详情"></button><button class="play-mark" type="button" aria-label="播放银翼杀手2049"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="银翼杀手2049更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">银翼杀手2049</strong><span class="poster-meta">2017 · 科幻</span></div></article>
+<article class="movie-card" data-title="降临" data-year="2016" data-genre="剧情,科幻,悬疑" data-status="watching" data-media-source-id="source-alist" data-added="12" data-watched="11" data-duration="116" data-favorite="true" data-od-id="movie-arrival"><div class="poster-art"><img src="assets/tmdb-poster-arrival.jpg" alt="降临 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看降临详情"></button><button class="play-mark" type="button" aria-label="播放降临"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="降临更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">降临</strong><span class="poster-meta">2016 · 科幻</span></div></article>
+<article class="movie-card" data-title="奥本海默" data-year="2023" data-genre="剧情,历史" data-status="watching" data-media-source-id="source-nextcloud" data-added="11" data-watched="14" data-duration="181" data-favorite="false" data-od-id="movie-oppenheimer"><div class="poster-art"><img src="assets/tmdb-poster-oppenheimer.jpg" alt="奥本海默 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看奥本海默详情"></button><button class="play-mark" type="button" aria-label="播放奥本海默"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="奥本海默更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">奥本海默</strong><span class="poster-meta">2023 · 剧情</span></div></article>
+<article class="movie-card" data-title="盗梦空间" data-year="2010" data-genre="动作,科幻,冒险" data-status="watching" data-media-source-id="source-alist" data-added="9" data-watched="9" data-duration="148" data-favorite="true" data-od-id="movie-inception"><div class="poster-art"><img src="assets/tmdb-poster-inception.jpg" alt="盗梦空间 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看盗梦空间详情"></button><button class="play-mark" type="button" aria-label="播放盗梦空间"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="盗梦空间更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">盗梦空间</strong><span class="poster-meta">2010 · 科幻</span></div></article>
+<article class="movie-card" data-title="沙丘2" data-year="2024" data-genre="科幻,冒险" data-status="unwatched" data-media-source-id="source-home-nas" data-added="8" data-watched="0" data-duration="166" data-favorite="true" data-od-id="movie-dune-part-two"><div class="poster-art"><img src="assets/tmdb-poster-dune-part-two.jpg" alt="沙丘2 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看沙丘2详情"></button><button class="play-mark" type="button" aria-label="播放沙丘2"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="沙丘2更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">沙丘2</strong><span class="poster-meta">2024 · 科幻</span></div></article>
+<article class="movie-card" data-title="囚徒" data-year="2013" data-genre="剧情,悬疑,犯罪" data-status="watching" data-media-source-id="source-alist" data-added="7" data-watched="8" data-duration="153" data-favorite="false" data-od-id="movie-prisoners"><div class="poster-art"><img src="assets/tmdb-poster-prisoners.jpg" alt="囚徒 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看囚徒详情"></button><button class="play-mark" type="button" aria-label="播放囚徒"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="囚徒更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">囚徒</strong><span class="poster-meta">2013 · 悬疑</span></div></article>
+<article class="movie-card" data-title="疯狂的麦克斯4：狂暴之路" data-year="2015" data-genre="动作,冒险,科幻" data-status="unwatched" data-media-source-id="source-home-nas" data-added="5" data-watched="0" data-duration="120" data-favorite="true" data-od-id="movie-mad-max-fury-road"><div class="poster-art"><img src="assets/tmdb-poster-mad-max-fury-road.jpg" alt="疯狂的麦克斯4：狂暴之路 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看疯狂的麦克斯4：狂暴之路详情"></button><button class="play-mark" type="button" aria-label="播放疯狂的麦克斯4：狂暴之路"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="疯狂的麦克斯4：狂暴之路更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">疯狂的麦克斯4：狂暴之路</strong><span class="poster-meta">2015 · 动作</span></div></article>
+<article class="movie-card" data-title="爆裂鼓手" data-year="2014" data-genre="剧情,音乐" data-status="unwatched" data-media-source-id="source-alist" data-added="3" data-watched="0" data-duration="107" data-favorite="false" data-od-id="movie-whiplash"><div class="poster-art"><img src="assets/tmdb-poster-whiplash.jpg" alt="爆裂鼓手 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看爆裂鼓手详情"></button><button class="play-mark" type="button" aria-label="播放爆裂鼓手"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="爆裂鼓手更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">爆裂鼓手</strong><span class="poster-meta">2014 · 剧情</span></div></article>
+<article class="movie-card" data-title="机械姬" data-year="2015" data-genre="科幻,悬疑,剧情" data-status="unwatched" data-media-source-id="source-alist" data-added="1" data-watched="0" data-duration="108" data-favorite="true" data-od-id="movie-ex-machina"><div class="poster-art"><img src="assets/tmdb-poster-ex-machina.jpg" alt="机械姬 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看机械姬详情"></button><button class="play-mark" type="button" aria-label="播放机械姬"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="机械姬更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">机械姬</strong><span class="poster-meta">2015 · 科幻</span></div></article></div></section>
     </main>
   </div>
 
@@ -465,24 +400,21 @@ body[data-locked="true"] .app-main{overflow:hidden}
       let activeMoreButton = null;
       let searchActiveIndex = -1;
 
-      const phosphorMark = (className, symbol) => {
-        const mark = document.createElement('span');
-        mark.className = className;
-        mark.setAttribute('aria-hidden', 'true');
-        mark.innerHTML = `<svg><use href="#${symbol}"></use></svg>`;
-        return mark;
-      };
-
-      document
-        .querySelectorAll('.feature-card,.recommendation-card')
-        .forEach(card => card.append(phosphorMark('editorial-action-mark', 'ph-arrow-right')));
-
       const continueSection = $('continueSection');
       const continueContent = $('continueContent');
       const recentTrack = $('recentTrack');
       const recentActions = $('recentActions');
       const continueCards = [...recentTrack.querySelectorAll('.continue-item')];
-      const libraryEndCard = recentTrack.querySelector('.library-end-card');
+      // Mock ordinal stands in for last_played_at; newest playback comes first.
+      continueCards.sort((a, b) => Number(b.dataset.lastPlayed) - Number(a.dataset.lastPlayed));
+      continueCards.forEach(card => recentTrack.append(card));
+
+      function openMovieDetail(card) {
+        const detailPages = {'星际穿越':'interstellar', '奥本海默':'oppenheimer', '沙丘2':'dune-part-two'};
+        const page = detailPages[card.dataset.title];
+        if (page) window.location.href = `personal-cinema-movie-detail-${page}.html`;
+        else announcement.textContent = `进入《${card.dataset.title}》详情（Mock）`;
+      }
 
       function closeContextMenu() {
         contextMenu.dataset.open = 'false';
@@ -511,28 +443,28 @@ body[data-locked="true"] .app-main{overflow:hidden}
         contextMenu.style.top = `${Math.max(10, top)}px`;
       }
 
-      continueCards.forEach(card => {
+      [...continueCards, ...document.querySelectorAll('.movie-shelf .movie-card')].forEach(card => {
         const title = card.dataset.title;
         card.dataset.status ||= 'watching';
         card.dataset.favorite ||= 'false';
         card.querySelectorAll('.poster-art,.continue-backdrop-art').forEach(art => {
-          const detailHit = document.createElement('button');
+          const detailHit = art.querySelector('.poster-detail-hit') || document.createElement('button');
           detailHit.className = 'poster-detail-hit';
           detailHit.type = 'button';
-          detailHit.setAttribute('aria-label', `继续播放《${title}》`);
+          detailHit.setAttribute('aria-label', `查看《${title}》详情`);
           detailHit.addEventListener('click', () => {
-            announcement.textContent = `正在获取当前 PlaybackLocator，并通过 mpv:// 调用 Windows 本机 mpv 继续播放《${title}》`;
+            openMovieDetail(card);
           });
           art.append(detailHit);
 
           const playButton = art.querySelector('.play-mark');
-          playButton.setAttribute('aria-label', `继续播放《${title}》`);
+          playButton.setAttribute('aria-label', `${card.dataset.status === 'watching' ? '继续播放' : '播放'}《${title}》`);
           playButton.addEventListener('click', event => {
             event.stopPropagation();
-            announcement.textContent = `继续播放《${title}》`;
+            announcement.textContent = `${card.dataset.status === 'watching' ? '继续播放' : '播放'}《${title}》`;
           });
 
-          const moreButton = document.createElement('button');
+          const moreButton = art.querySelector('.poster-more-mark') || document.createElement('button');
           moreButton.className = 'poster-more-mark';
           moreButton.type = 'button';
           moreButton.setAttribute('aria-label', `${title}更多操作`);
@@ -557,11 +489,20 @@ body[data-locked="true"] .app-main{overflow:hidden}
           announcement.textContent = `${title}${activeMovie.dataset.favorite === 'true' ? '已加入收藏' : '已取消收藏'}`;
         } else if (action.dataset.menuAction === 'watched') {
           activeMovie.dataset.status = activeMovie.dataset.status === 'watched' ? 'unwatched' : 'watched';
+          document.querySelectorAll('.movie-card,.continue-item').forEach(card => {
+            if (card.dataset.title !== title) return;
+            card.dataset.status = activeMovie.dataset.status;
+            if (card.closest('#unwatchedSection')) card.hidden = card.dataset.status === 'watched';
+            const state = card.querySelector('.continue-backdrop-meta');
+            if (state) state.textContent = card.dataset.status === 'watched' ? '已看完 · 可重新播放' : '可重新播放';
+            const progress = card.querySelector('.watch-progress');
+            if (progress) progress.hidden = true;
+          });
           announcement.textContent = `${title}${activeMovie.dataset.status === 'watched' ? '已标记为已看' : '已标记为未看'}`;
         } else if (action.dataset.menuAction === 'play') {
-          announcement.textContent = `正在获取当前 PlaybackLocator，并通过 mpv:// 调用 Windows 本机 mpv 继续播放《${title}》`;
+          announcement.textContent = `${activeMovie.dataset.status === "watching" ? "继续播放" : "播放"}《${title}》`;
         } else if (action.dataset.menuAction === 'detail') {
-          announcement.textContent = `进入《${title}》详情`;
+          openMovieDetail(activeMovie);
         } else {
           announcement.textContent = `查看《${title}》的媒体版本`;
         }
@@ -572,7 +513,6 @@ body[data-locked="true"] .app-main{overflow:hidden}
         const track = $('recentTrack');
         recentActions.dataset.visible = String(Boolean(
           track &&
-          track.dataset.layout === 'carousel' &&
           track.scrollWidth > track.clientWidth + 2
         ));
       }
@@ -582,19 +522,11 @@ body[data-locked="true"] .app-main{overflow:hidden}
         continueSection.hidden = count === 0;
         continueCards.forEach((card, index) => card.hidden = index >= count);
 
-        const layout = count <= 2 ? 'backdrop' : count >= 6 ? 'carousel' : 'poster-row';
+        const layout = 'backdrop';
         recentTrack.dataset.layout = layout;
         recentTrack.dataset.count = String(count);
-        recentTrack.tabIndex = count >= 3 ? 0 : -1;
-        recentTrack.setAttribute(
-          'aria-label',
-          count <= 2
-            ? '继续观看横向内容卡'
-            : count >= 6
-              ? '继续观看影片横向列表'
-              : '继续观看海报列表'
-        );
-        libraryEndCard.hidden = count < 6;
+        recentTrack.tabIndex = 0;
+        recentTrack.setAttribute('aria-label', '最近观看横向剧照');
         recentActions.dataset.visible = 'false';
         requestAnimationFrame(updateShelfControls);
       }
@@ -738,6 +670,12 @@ body[data-locked="true"] .app-main{overflow:hidden}
         });
       });
 
+      document.querySelectorAll('[data-shelf-step]').forEach(button => {
+        button.addEventListener('click', () => {
+          const track = button.closest('.section').querySelector('.poster-shelf');
+          track.scrollBy({left: Number(button.dataset.shelfStep) * track.clientWidth * .85, behavior: 'smooth'});
+        });
+      });
       $('recentPrev').addEventListener('click', () => {
         const track = $('recentTrack');
         if (track) track.scrollBy({ left: -600, behavior: 'smooth' });
@@ -746,7 +684,7 @@ body[data-locked="true"] .app-main{overflow:hidden}
         const track = $('recentTrack');
         if (track) track.scrollBy({ left: 600, behavior: 'smooth' });
       });
-      window.addEventListener('resize', updateShelfControls);
+      window.addEventListener('resize', () => { updateShelfControls(); closeContextMenu(); });
       if ('ResizeObserver' in window) {
         new ResizeObserver(updateShelfControls).observe(continueContent);
       }
