@@ -1,10 +1,13 @@
 /* Scan and matching workflow components extend the existing Personal Cinema language. */
 .workflow-stack{display:grid;gap:42px}.workflow-section{display:grid;gap:15px}.workflow-section-heading{display:flex;align-items:end;justify-content:space-between;gap:18px}.workflow-section-heading p{color:var(--text-tertiary);font-size:12px}
-.app-main[data-od-id="scan-task-page"] .content-inner{width:min(100%,1240px)}
-/* Completed results fill the app canvas; task states keep their focused width. */
-.app-main[data-od-id="scan-task-page"] .content-inner:has(#scanContent[data-mode="complete"]){width:100%}
+/* Match the media sources workspace in personal-cinema-workflow.css in every scan state. */
+.app-main[data-od-id="scan-task-page"] .content-inner{width:100%}
 @media(min-width:901px){
-  .app-main[data-od-id="scan-task-page"] .content:has(#scanContent[data-mode="complete"]){padding-inline:40px}
+  .app-main[data-od-id="scan-task-page"] .content{padding-inline:40px}
+}
+.app-main[data-od-id="scan-task-page"] .page-heading{margin-bottom:38px}
+@media(max-width:900px){
+  .app-main[data-od-id="scan-task-page"] .page-heading{margin-bottom:32px}
 }
 .app-main[data-od-id="scan-task-page"] .workflow-stack{gap:32px;grid-template-columns:minmax(0,1fr)}
 .section-heading-copy{display:grid;gap:5px;min-width:0}.section-title-line{display:flex;flex-wrap:wrap;align-items:baseline;gap:5px 9px}.section-count{color:var(--text-secondary);font-size:13px;font-weight:600}.section-link{display:inline-flex;flex-shrink:0;align-items:center;gap:5px;min-height:32px;color:var(--text-secondary);font-size:12px;font-weight:600;text-decoration:none}.section-link svg{width:12px;height:12px;fill:currentColor}.section-link:hover{color:var(--text-primary)}
@@ -78,7 +81,6 @@
 }
 @media(max-width:560px){
   .workflow-stack{gap:34px}.header-actions{justify-content:flex-start}.scan-hero-head{padding-inline:17px}.scan-hero-body{padding:21px 17px}.scan-message h2{font-size:22px}.user-summary{padding-inline:5px}.user-summary .summary-item{padding-inline:10px}.user-summary .summary-value{font-size:22px}.pending-nudge{align-items:flex-start;flex-direction:column}.result-actions{align-items:stretch}.result-actions .primary-action,.result-actions .secondary-action{flex:1 1 auto}.task-summary{padding-inline:8px}.summary-item{padding-inline:10px}.pipeline-step{padding:15px 12px}.file-row{padding-inline:13px}.match-card{grid-template-columns:62px minmax(0,1fr) 18px;gap:13px;padding:13px}.match-poster{width:62px}.match-file{white-space:normal;overflow-wrap:anywhere}.dialog-scrim{align-items:end;padding:10px;padding-bottom:max(10px,env(safe-area-inset-bottom))}.matching-dialog{max-height:calc(100dvh - 20px);border-radius:24px}.dialog-scroll{padding:16px}.likely-match{grid-template-columns:86px minmax(0,1fr)}.candidate-search{grid-template-columns:1fr}.dialog-actions-secondary{grid-template-columns:1fr 1fr}.dialog-actions-primary{grid-template-columns:1fr}.primary-action,.secondary-action{height:42px}
-  .app-main[data-od-id="scan-task-page"] .workflow-stack{gap:28px}
   .scan-hero[data-mode="complete"]{--result-inset:17px}
   .scan-hero[data-mode="complete"] .user-summary .summary-item,
   .scan-hero[data-mode="complete"] .user-summary .summary-item:first-child{flex:1 1 76px;padding-inline:10px}
