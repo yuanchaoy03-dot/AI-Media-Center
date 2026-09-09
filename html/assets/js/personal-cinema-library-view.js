@@ -254,32 +254,25 @@
       }, { once: true });
     });
 
-  function announceOpenItem(card) {
+  function openItemDetail(card) {
+    const { getMovieDetailHref } = window.PersonalCinemaLibraryMock;
     if (card.dataset.itemType !== 'collection') {
-      announcement.textContent = `进入《${card.dataset.title}》详情`;
+      window.location.href = getMovieDetailHref(card.dataset.movieId || card.dataset.odId);
       return;
     }
-
-    const hasActiveFilters = filterButton.dataset.active === 'true' || libraryView !== 'movies';
-    const movieTitle = hasActiveFilters && card.dataset.matchedMemberTitle
-      ? card.dataset.matchedMemberTitle
-      : card.dataset.defaultMovie;
-    const movieYear = hasActiveFilters && card.dataset.matchedMemberYear
-      ? card.dataset.matchedMemberYear
-      : card.dataset.defaultYear;
-    if (card.dataset.defaultDetailHref && movieTitle === card.dataset.defaultMovie) {
-      window.location.href = card.dataset.defaultDetailHref;
-      return;
-    }
-    announcement.textContent = `查看${card.dataset.title}系列，打开${hasActiveFilters ? '匹配' : '默认'}影片《${movieTitle}》（${movieYear}）详情`;
+    const filtered = filterButton.dataset.active === 'true' || libraryView !== 'movies';
+    const members = collectionMembers(card);
+    const movie = filtered ? matchingMovieForCard(card, readFilterQuery())
+      : members.find(member => member.title === card.dataset.defaultMovie) || members[0];
+    window.location.href = getMovieDetailHref(movie);
   }
 
   movieCards.forEach(card => {
-    card.querySelector('.poster-detail-hit').addEventListener('click', () => announceOpenItem(card));
+    card.querySelector('.poster-detail-hit').addEventListener('click', () => openItemDetail(card));
     card.querySelector('.play-mark')?.addEventListener('click', () => {
       announcement.textContent = `正在获取当前 PlaybackLocator，并通过 mpv:// 调用 Windows 本机 mpv 播放《${card.dataset.title}》`;
     });
-    card.querySelector('.series-mark')?.addEventListener('click', () => announceOpenItem(card));
+    card.querySelector('.series-mark')?.addEventListener('click', () => openItemDetail(card));
     const moreButton = card.querySelector('.poster-more-mark');
     moreButton.setAttribute('aria-haspopup', 'menu');
     moreButton.setAttribute('aria-expanded', 'false');
@@ -305,7 +298,7 @@
     } else if (action.dataset.menuAction === 'play') {
       announcement.textContent = `正在获取当前 PlaybackLocator，并通过 mpv:// 调用 Windows 本机 mpv 播放《${title}》`;
     } else if (action.dataset.menuAction === 'detail') {
-      announceOpenItem(activeMovie);
+      openItemDetail(activeMovie);
     } else {
       announcement.textContent = `查看《${title}》的媒体版本`;
     }
@@ -442,7 +435,7 @@
       : searchActiveIndex <= 0 ? items.length - 1 : searchActiveIndex - 1;
     setSearchActive(next);
   });
-  searchResultItems.forEach(item => item.addEventListener('click', closeSearch));
+  searchResultItems.forEach(item => item.addEventListener('click', () => { closeSearch(); window.location.href = window.PersonalCinemaLibraryMock.getMovieDetailHref(item.dataset.movieId); }));
 
   const accountWrap = $('accountWrap');
   const accountButton = $('accountButton');

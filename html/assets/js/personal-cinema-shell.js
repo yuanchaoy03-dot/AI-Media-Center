@@ -138,7 +138,7 @@
     searchResultList.addEventListener('click', event => {
       const item = event.target.closest('.search-result');
       if (!item) return;
-      if (item.dataset.href) window.location.href = item.dataset.href;
+      if (item.dataset.movieId) window.location.href = window.PersonalCinemaLibraryMock.getMovieDetailHref(item.dataset.movieId);
       else {
         announce(`已选择${item.querySelector('strong')?.textContent || '影片'}`);
         closeSearch();

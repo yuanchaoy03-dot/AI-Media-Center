@@ -298,10 +298,10 @@
   <section class="search-dialog" id="searchDialog" data-open="false" role="dialog" aria-modal="true" aria-label="搜索影片" data-od-id="global-search-dialog">
     <div class="search-field"><label class="sr-only" for="globalSearch">搜索片名、导演或演员</label><svg class="icon" aria-hidden="true"><use href="#ph-magnifying-glass"></use></svg><input class="search-input" id="globalSearch" type="search" autocomplete="off" placeholder="搜索片名、导演或演员" /><button class="search-clear" id="clearSearch" type="button" aria-label="清空搜索关键词" hidden><svg aria-hidden="true"><use href="#ph-x"></use></svg></button><span class="search-key">ESC</span></div>
     <div class="search-results"><p class="search-caption" id="searchCaption">最近内容</p><div class="search-result-list" id="searchResultList" aria-live="polite">
-      <button class="search-result" type="button" data-href="personal-cinema-movie-detail-interstellar.html" data-movie-id="movie-interstellar"></button>
-      <button class="search-result" type="button" data-href="personal-cinema-movie-detail.html" data-movie-id="movie-dune"></button>
-      <button class="search-result" type="button" data-href="personal-cinema-movie-detail-oppenheimer.html" data-movie-id="movie-oppenheimer"></button>
-      <button class="search-result" type="button" data-href="personal-cinema-movie-detail-dune-part-two.html" data-movie-id="movie-dune-part-two"></button>
+      <button class="search-result" type="button" data-movie-id="movie-interstellar"></button>
+      <button class="search-result" type="button" data-movie-id="movie-dune"></button>
+      <button class="search-result" type="button" data-movie-id="movie-oppenheimer"></button>
+      <button class="search-result" type="button" data-movie-id="movie-dune-part-two"></button>
       <button class="search-result" type="button" data-movie-id="movie-arrival"></button>
     </div><div class="search-empty" id="searchEmpty" hidden><strong>没有找到匹配的影片</strong><span>尝试搜索片名、导演或演员</span></div></div>
   </section>
@@ -370,7 +370,7 @@
       recentMediaGrid.replaceChildren(...recentMedia.map(movie => {
         const card = document.createElement('a');
         card.className = 'movie-card';
-        card.href = movie.detailHref || 'personal-cinema-movie-library.html';
+        card.href = window.PersonalCinemaLibraryMock.getMovieDetailHref(movie);
         card.dataset.movieId = movie.id;
         card.dataset.odId = `recent-media-${movie.id}`;
         card.setAttribute('aria-label', `查看${movie.title}`);
@@ -614,7 +614,7 @@
     searchScrim.addEventListener('click',closeSearch);
     searchInput.addEventListener('input',renderSearch);
     clearSearch.addEventListener('click',()=>{searchInput.value='';renderSearch();searchInput.focus();});
-    searchResultList.addEventListener('click',event=>{const item=event.target.closest('.search-result');if(!item)return;if(item.dataset.href)window.location.href=item.dataset.href;else{announce(`已选择${item.querySelector('strong').textContent}`);closeSearch();}});
+    searchResultList.addEventListener('click',event=>{const item=event.target.closest('.search-result');if(!item)return;if (item.dataset.movieId) window.location.href = window.PersonalCinemaLibraryMock.getMovieDetailHref(item.dataset.movieId);else{announce(`已选择${item.querySelector('strong').textContent}`);closeSearch();}});
     searchInput.addEventListener('keydown',event=>{if(!['ArrowDown','ArrowUp','Enter'].includes(event.key))return;const visible=searchItems.filter(item=>!item.hidden);if(!visible.length)return;if(event.key==='Enter'){if(searchIndex>=0){event.preventDefault();visible[searchIndex].click();}return;}event.preventDefault();searchIndex=event.key==='ArrowDown'?(searchIndex+1)%visible.length:searchIndex<=0?visible.length-1:searchIndex-1;searchItems.forEach(item=>item.removeAttribute('data-active'));visible[searchIndex].dataset.active='true';});
 
     document.addEventListener('keydown',event => {

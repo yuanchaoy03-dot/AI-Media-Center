@@ -415,8 +415,7 @@ body[data-locked="true"] .app-main{overflow:hidden}
 
       function openMovieDetail(card) {
         const movie = getMovieById(card.dataset.movieId);
-        if (movie?.detailHref) window.location.href = movie.detailHref;
-        else announcement.textContent = `进入《${card.dataset.title}》详情（Mock）`;
+        window.location.href = window.PersonalCinemaLibraryMock.getMovieDetailHref(movie);
       }
 
       function closeContextMenu() {
@@ -641,7 +640,7 @@ body[data-locked="true"] .app-main{overflow:hidden}
             : searchActiveIndex - 1;
         setSearchActive(next);
       });
-      searchResultItems.forEach(item => item.addEventListener('click', closeSearch));
+      searchResultItems.forEach(item => item.addEventListener('click', () => { closeSearch(); window.location.href = window.PersonalCinemaLibraryMock.getMovieDetailHref(item.dataset.movieId); }));
 
       accountButton.addEventListener('click', () => {
         const open = accountWrap.dataset.open !== 'true';

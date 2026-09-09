@@ -138,7 +138,7 @@
     const card = document.createElement('a');
     card.className = 'movie-card mini-movie';
     card.dataset.movieId = movie.id;
-    card.href = movie.detailHref || 'personal-cinema-movie-library.html';
+    card.href = window.PersonalCinemaLibraryMock.getMovieDetailHref(movie);
     card.innerHTML = '<span class="poster-art"><img alt="" /></span><span class="poster-copy"><strong class="poster-title"></strong><span class="poster-meta"></span></span>';
     card.querySelector('.poster-art').dataset.fallback = movie.title;
     const image = card.querySelector('img');

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Personal Cinema · 沙丘</title>
+  <title>Personal Cinema · 电影详情</title>
   <link rel="prefetch" href="personal-cinema-movie-library.html" as="document" />
   <!-- Movie metadata and imagery sourced from TMDB. This product uses TMDB data but is not endorsed or certified by TMDB. -->
   <style>
@@ -267,7 +267,7 @@ html:has(body[data-locked="true"]){overflow:hidden}
 </head>
 <body>
   <div class="detail-backdrop-stage" data-od-id="detail-backdrop-stage" data-artwork-role="movie-backdrop" aria-hidden="true">
-    <img src="assets/tmdb-backdrop-dune.jpg" alt="" />
+    <img alt="" />
   </div>
   <svg class="icon-sprite" fill="currentColor" aria-hidden="true">
     <symbol id="ph-film-reel-fill" viewBox="0 0 256 256"><path d="M232,216H183.36A103.95,103.95,0,1,0,128,232H232a8,8,0,0,0,0-16ZM80,148a20,20,0,1,1,20-20A20,20,0,0,1,80,148Zm48,48a20,20,0,1,1,20-20A20,20,0,0,1,128,196Zm0-96a20,20,0,1,1,20-20A20,20,0,0,1,128,100Zm28,28a20,20,0,1,1,20,20A20,20,0,0,1,156,128Z"/></symbol>
@@ -316,26 +316,27 @@ html:has(body[data-locked="true"]){overflow:hidden}
     </div>
   </aside>
 
-  <main class="app-main" id="content" data-entity-type="movie" data-movie-id="dune-2021" data-title="沙丘" data-year="2021" data-od-id="movie-detail-page">
-    <section class="movie-hero" data-od-id="dune-hero" aria-labelledby="movieTitle">
+  <main class="app-main" id="content" data-entity-type="movie" data-od-id="movie-detail-page">
+    <section id="movieMissing" class="hero-content" hidden><div class="hero-copy"><h1 class="movie-title">未找到这部电影</h1><a class="overview-more" href="personal-cinema-movie-library.html">返回电影资料库</a></div></section>
+    <section class="movie-hero" data-od-id="movie-hero" aria-labelledby="movieTitle">
       <button class="hero-control back-button" id="backButton" data-od-id="detail-back-button" type="button" aria-label="返回电影片库"><svg aria-hidden="true"><use href="#ph-arrow-left"></use></svg></button>
-      <button class="hero-control hero-more-button" id="heroMoreButton" data-od-id="movie-more-button" type="button" aria-label="沙丘更多操作" aria-haspopup="menu" aria-expanded="false"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button>
-      <div class="hero-menu" id="heroMenu" data-open="false" role="menu" aria-label="沙丘操作" inert>
+      <button class="hero-control hero-more-button" id="heroMoreButton" data-od-id="movie-more-button" type="button" aria-label="电影更多操作" aria-haspopup="menu" aria-expanded="false"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button>
+      <div class="hero-menu" id="heroMenu" data-open="false" role="menu" aria-label="电影操作" inert>
         <button type="button" role="menuitem" data-action="watched">标记为已看</button>
         <button type="button" role="menuitem" data-action="version">查看媒体版本</button>
       </div>
       <div class="hero-content">
-        <div class="hero-copy" data-od-id="dune-identity">
-          <h1 class="movie-title" id="movieTitle" data-od-id="movie-title">沙丘</h1>
-          <p class="original-title">Dune</p>
-          <p class="primary-meta">2021 · 2小时35分钟 · PG-13</p>
-          <div class="secondary-meta"><span>科幻 · 冒险</span><span class="quality-label">4K</span><span class="quality-label">HDR10</span></div>
+        <div class="hero-copy" data-od-id="movie-identity">
+          <h1 class="movie-title" id="movieTitle" data-od-id="movie-title"></h1>
+          <p class="original-title"></p>
+          <p class="primary-meta"></p>
+          <div class="secondary-meta"></div>
           <div class="hero-actions" data-od-id="primary-actions">
-            <button class="play-button" id="playButton" data-od-id="play-dune" type="button"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg><span>播放</span></button>
-            <button class="secondary-action" id="favoriteButton" data-od-id="favorite-dune" type="button" aria-label="收藏沙丘" aria-pressed="false"><svg aria-hidden="true"><use href="#ph-heart"></use></svg></button>
+            <button class="play-button" id="playButton" data-od-id="play-movie" type="button"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg><span>播放</span></button>
+            <button class="secondary-action" id="favoriteButton" data-od-id="favorite-movie" type="button" aria-label="收藏电影" aria-pressed="false"><svg aria-hidden="true"><use href="#ph-heart"></use></svg></button>
           </div>
           <div class="overview-wrap">
-            <p class="overview" id="overview" data-expanded="false">天赋异禀的少年保罗·厄崔迪随家族前往宇宙中最危险的星球厄拉科斯。围绕珍贵香料的争夺迅速演变为战争，他必须直面自己的命运，并在恐惧与责任之间作出选择。</p>
+            <p class="overview" id="overview" data-expanded="false"></p>
             <button class="overview-more" id="overviewMore" data-od-id="overview-more" type="button" aria-expanded="false" aria-controls="overview">更多</button>
           </div>
         </div>
@@ -344,7 +345,7 @@ html:has(body[data-locked="true"]){overflow:hidden}
 
     <div class="detail-content">
       <section class="ratings" data-od-id="movie-ratings" aria-label="影片评分">
-        <div class="rating"><span class="rating-label">TMDB</span><span class="rating-score">7.8</span></div>
+        <div class="rating"><span class="rating-label">TMDB</span><span class="rating-score"></span></div>
       </section>
 
       <section class="detail-section ai-assistant-section" data-od-id="ai-movie-assistant" aria-labelledby="aiAssistantTitle">
@@ -367,35 +368,21 @@ html:has(body[data-locked="true"]){overflow:hidden}
       <section class="detail-section" data-od-id="cast-and-crew" aria-labelledby="castTitle">
         <div class="section-heading"><h2 class="section-title" id="castTitle">演职员</h2><div class="shelf-controls" hidden><button class="shelf-arrow" type="button" data-shelf="peopleShelf" data-direction="-1" aria-label="向左浏览演职员"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></button><button class="shelf-arrow" type="button" data-shelf="peopleShelf" data-direction="1" aria-label="向右浏览演职员"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></button></div></div>
         <div class="people-shelf" id="peopleShelf" tabindex="0" aria-label="演职员列表">
-          <article class="person-card" data-od-id="person-denis-villeneuve"><img src="assets/tmdb-person-denis-villeneuve.jpg" alt="Denis Villeneuve 肖像" /><strong class="person-name">Denis Villeneuve</strong><span class="person-role">导演</span></article>
-          <article class="person-card" data-od-id="person-timothee-chalamet"><img src="assets/tmdb-person-timothee-chalamet.jpg" alt="Timothée Chalamet 肖像" /><strong class="person-name">Timothée Chalamet</strong><span class="person-role">Paul Atreides</span></article>
-          <article class="person-card" data-od-id="person-rebecca-ferguson"><img src="assets/tmdb-person-rebecca-ferguson.jpg" alt="Rebecca Ferguson 肖像" /><strong class="person-name">Rebecca Ferguson</strong><span class="person-role">Lady Jessica</span></article>
-          <article class="person-card" data-od-id="person-oscar-isaac"><img src="assets/tmdb-person-oscar-isaac.jpg" alt="Oscar Isaac 肖像" /><strong class="person-name">Oscar Isaac</strong><span class="person-role">Duke Leto Atreides</span></article>
-          <article class="person-card" data-od-id="person-zendaya"><img src="assets/tmdb-person-zendaya.jpg" alt="Zendaya 肖像" /><strong class="person-name">Zendaya</strong><span class="person-role">Chani</span></article>
-          <article class="person-card" data-od-id="person-jason-momoa"><img src="assets/tmdb-person-jason-momoa.jpg" alt="Jason Momoa 肖像" /><strong class="person-name">Jason Momoa</strong><span class="person-role">Duncan Idaho</span></article>
         </div>
       </section>
 
-      <section class="detail-section" data-od-id="dune-series" aria-labelledby="seriesTitle">
-        <div class="section-heading"><h2 class="section-title" id="seriesTitle">沙丘（系列）</h2><div class="shelf-controls" hidden><button class="shelf-arrow" type="button" data-shelf="seriesShelf" data-direction="-1" aria-label="向左浏览系列影片"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></button><button class="shelf-arrow" type="button" data-shelf="seriesShelf" data-direction="1" aria-label="向右浏览系列影片"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></button></div></div>
-        <div class="series-shelf" id="seriesShelf" aria-label="当前片库中的沙丘系列电影">
-          <article class="series-card current" data-entity-type="movie" data-movie-id="dune-2021" data-title="沙丘" data-year="2021" data-status="watched" data-favorite="false" data-od-id="series-movie-dune">
-            <div class="poster-art"><img src="assets/tmdb-poster-dune.jpg" alt="沙丘（2021）电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看沙丘（2021）详情"></button><button class="play-mark" type="button" aria-label="播放沙丘"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="沙丘更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div>
-            <div class="poster-copy"><strong class="poster-title">沙丘</strong><span class="poster-meta">2021 · 科幻</span></div>
-          </article>
-          <article class="series-card" data-entity-type="movie" data-movie-id="dune-part-two-2024" data-title="沙丘2" data-year="2024" data-href="personal-cinema-movie-detail-dune-part-two.html" data-status="unwatched" data-favorite="false" data-od-id="series-movie-dune-part-two">
-            <div class="poster-art"><img src="assets/tmdb-poster-dune-part-two.jpg" alt="沙丘2（2024）电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看沙丘2（2024）详情"></button><button class="play-mark" type="button" aria-label="播放沙丘2"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="沙丘2更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div>
-            <div class="poster-copy"><strong class="poster-title">沙丘2</strong><span class="poster-meta">2024 · 科幻</span></div>
-          </article>
+      <section class="detail-section" data-od-id="movie-series" aria-labelledby="seriesTitle">
+        <div class="section-heading"><h2 class="section-title" id="seriesTitle">电影</h2><div class="shelf-controls" hidden><button class="shelf-arrow" type="button" data-shelf="seriesShelf" data-direction="-1" aria-label="向左浏览系列影片"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></button><button class="shelf-arrow" type="button" data-shelf="seriesShelf" data-direction="1" aria-label="向右浏览系列影片"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></button></div></div>
+        <div class="series-shelf" id="seriesShelf" aria-label="当前片库电影">
         </div>
       </section>
 
       <section class="detail-section" data-od-id="media-information" aria-labelledby="mediaTitle">
         <div class="section-heading"><h2 class="section-title" id="mediaTitle">媒体信息</h2></div>
-        <div class="media-panel" data-od-id="media-version-4k-remux">
-          <p class="media-source">家庭 NAS · WebDAV</p>
-          <p class="media-file" title="Dune.2021.2160p.UHD.BluRay.REMUX.HEVC.HDR.TrueHD.7.1.mkv">Dune.2021.2160p.UHD.BluRay.REMUX.HEVC.HDR.TrueHD.7.1.mkv</p>
-          <div class="media-specs"><span>51.5 GB</span><span>HEVC</span><span>4K HDR10</span><span>TrueHD 7.1</span><span>54.1 Mbps</span><span>23.976 fps</span></div>
+        <div class="media-panel" data-od-id="media-version">
+          <p class="media-source"></p>
+          <p class="media-file"></p>
+          <div class="media-specs"></div>
         </div>
       </section>
       <p class="sr-only" id="detailAnnouncement" aria-live="polite"></p>
@@ -414,341 +401,12 @@ html:has(body[data-locked="true"]){overflow:hidden}
   <div class="search-scrim" id="searchScrim" data-open="false"></div>
   <section class="search-dialog" id="searchDialog" data-open="false" role="dialog" aria-modal="true" aria-label="搜索影片" data-od-id="global-search-dialog" inert>
     <div class="search-field"><label class="sr-only" for="globalSearch">搜索片名、导演或演员</label><svg class="icon" aria-hidden="true"><use href="#ph-magnifying-glass"></use></svg><input class="search-input" id="globalSearch" type="search" autocomplete="off" aria-controls="searchResultList" placeholder="搜索片名、导演或演员" /><button class="search-clear" id="clearSearch" type="button" aria-label="清空搜索关键词" data-od-id="search-clear-button" hidden><svg aria-hidden="true"><use href="#ph-x"></use></svg></button><span class="search-key">ESC</span></div>
-    <div class="search-results"><p class="search-caption" id="searchCaption">最近内容</p><div class="search-result-list" id="searchResultList" aria-live="polite">
-      <button class="search-result" type="button" data-od-id="search-result-dune" data-href="personal-cinema-movie-detail.html" data-search="沙丘 Dune 2021 科幻 冒险 Denis Villeneuve Timothée Chalamet"><img class="search-thumb" src="assets/tmdb-poster-dune.jpg" alt="沙丘电影海报" /><span><strong>沙丘</strong><small>2021 · 科幻 / 冒险 · 7.8</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
-      <button class="search-result" type="button" data-od-id="search-result-dune-part-two" data-href="personal-cinema-movie-detail-dune-part-two.html" data-search="沙丘2 Dune Part Two 2024 科幻 冒险 Denis Villeneuve Zendaya"><img class="search-thumb" src="assets/tmdb-poster-dune-part-two.jpg" alt="沙丘2电影海报" /><span><strong>沙丘2</strong><small>2024 · 科幻 / 冒险 · 8.1</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
-      <button class="search-result" type="button" data-od-id="search-result-interstellar" data-href="personal-cinema-movie-detail-interstellar.html" data-search="星际穿越 Interstellar 2014 科幻 剧情 冒险 Christopher Nolan Matthew McConaughey Anne Hathaway"><img class="search-thumb" src="assets/tmdb-poster-interstellar.jpg" alt="星际穿越电影海报" /><span><strong>星际穿越</strong><small>2014 · 科幻 / 剧情 / 冒险 · 8.5</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
-      <button class="search-result" type="button" data-od-id="search-result-oppenheimer" data-href="personal-cinema-movie-detail-oppenheimer.html" data-search="奥本海默 Oppenheimer 2023 剧情 历史 传记 Christopher Nolan Cillian Murphy Emily Blunt"><img class="search-thumb" src="assets/tmdb-poster-oppenheimer.jpg" alt="奥本海默电影海报" /><span><strong>奥本海默</strong><small>2023 · 剧情 / 历史 / 传记 · 8.0</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
-    </div><div class="search-empty" id="searchEmpty" hidden><strong>没有找到匹配的影片</strong><span>尝试搜索片名、导演或演员</span></div></div>
+    <div class="search-results"><p class="search-caption" id="searchCaption">最近内容</p><div class="search-result-list" id="searchResultList" aria-live="polite"></div><div class="search-empty" id="searchEmpty" hidden><strong>没有找到匹配的影片</strong><span>尝试搜索片名、导演或演员</span></div></div>
   </section>
 
-  <script>
-    (() => {
-      const $ = id => document.getElementById(id);
-      const announcement = $('detailAnnouncement');
-      const detailPage = $('content');
-      const currentMovieTitle = detailPage.dataset.title;
-      const heroMoreButton = $('heroMoreButton');
-      const heroMenu = $('heroMenu');
-      const contextMenu = $('movieContextMenu');
-      const favoriteAction = $('favoriteAction');
-      const watchedAction = $('watchedAction');
-      let activeMovie = null;
-      let activeMoreButton = null;
-
-      function closeHeroMenu() {
-        heroMenu.dataset.open = 'false';
-        heroMenu.setAttribute('inert', '');
-        heroMoreButton.setAttribute('aria-expanded', 'false');
-      }
-
-      function closeContextMenu() {
-        contextMenu.dataset.open = 'false';
-        contextMenu.setAttribute('inert', '');
-        activeMoreButton?.setAttribute('aria-expanded', 'false');
-        activeMoreButton = null;
-        activeMovie = null;
-      }
-
-      function openContextMenu(button, card) {
-        closeHeroMenu();
-        closeContextMenu();
-        activeMovie = card;
-        activeMoreButton = button;
-        activeMoreButton.setAttribute('aria-expanded', 'true');
-        favoriteAction.querySelector('span').textContent = card.dataset.favorite === 'true' ? '取消收藏' : '加入收藏';
-        watchedAction.querySelector('span').textContent = card.dataset.status === 'watched' ? '标记为未看' : '标记为已看';
-        contextMenu.removeAttribute('inert');
-        contextMenu.dataset.open = 'true';
-        const rect = button.getBoundingClientRect();
-        const menuRect = contextMenu.getBoundingClientRect();
-        const left = Math.min(window.innerWidth - menuRect.width - 10, Math.max(10, rect.right - menuRect.width));
-        let top = rect.bottom + 8;
-        if (top + menuRect.height > window.innerHeight - 10) top = rect.top - menuRect.height - 8;
-        contextMenu.style.left = `${left}px`;
-        contextMenu.style.top = `${Math.max(10, top)}px`;
-      }
-
-      $('backButton').addEventListener('click', () => {
-        window.location.href = 'personal-cinema-movie-library.html';
-      });
-      $('playButton').addEventListener('click', () => announcement.textContent = `正在获取当前 PlaybackLocator，并通过 mpv:// 调用 Windows 本机 mpv 播放《${currentMovieTitle}》`);
-      $('favoriteButton').addEventListener('click', event => {
-        const button = event.currentTarget;
-        const selected = button.getAttribute('aria-pressed') !== 'true';
-        button.setAttribute('aria-pressed', String(selected));
-        button.setAttribute('aria-label', selected ? `取消收藏${currentMovieTitle}` : `收藏${currentMovieTitle}`);
-        announcement.textContent = selected ? `《${currentMovieTitle}》已加入收藏` : `《${currentMovieTitle}》已取消收藏`;
-      });
-      $('overviewMore').addEventListener('click', event => {
-        const expanded = event.currentTarget.getAttribute('aria-expanded') !== 'true';
-        event.currentTarget.setAttribute('aria-expanded', String(expanded));
-        event.currentTarget.textContent = expanded ? '收起' : '更多';
-        $('overview').dataset.expanded = String(expanded);
-      });
-      const assistantForm = $('aiAssistantForm');
-      const assistantInput = $('aiAssistantInput');
-      const assistantAnswer = $('aiAssistantAnswer');
-      const spoilerConfirm = $('spoilerConfirm');
-      const spoilerModeBadge = $('spoilerModeBadge');
-      let spoilerMode = false;
-      let pendingSpoilerQuestion = '';
-
-      function renderAssistantAnswer(label, text) {
-        assistantAnswer.innerHTML = `<strong>${label}</strong><p>${text}</p>`;
-      }
-
-      function answerMovieQuestion(question) {
-        const asksForSpoilers = /结局|剧透|真相|死亡|凶手/.test(question);
-        if (asksForSpoilers && !spoilerMode) {
-          pendingSpoilerQuestion = question;
-          spoilerConfirm.hidden = false;
-          renderAssistantAnswer('需要确认剧透', `“${question}”可能透露《${currentMovieTitle}》的关键情节。请先明确确认是否进入剧透模式。`);
-          return;
-        }
-        spoilerConfirm.hidden = true;
-        const answer = asksForSpoilers
-          ? `已在剧透模式下分析《${currentMovieTitle}》的结局结构、人物选择与主题呼应。此处为 RAG 原型状态，正式回答将引用当前影片检索资料。`
-          : `《${currentMovieTitle}》的回答将基于当前影片的 TMDB 元数据、简介、演职员与语义资料生成，并保持无剧透。你问的是：“${question}”`;
-        renderAssistantAnswer(spoilerMode ? '剧透模式' : '无剧透回答', answer);
-        announcement.textContent = `AI 影片助手已回答关于《${currentMovieTitle}》的问题`;
-      }
-
-      document.querySelectorAll('[data-ai-question]').forEach(button => button.addEventListener('click', () => answerMovieQuestion(button.dataset.aiQuestion)));
-      assistantForm.addEventListener('submit', event => {
-        event.preventDefault();
-        const question = assistantInput.value.trim();
-        if (!question) return assistantInput.focus();
-        answerMovieQuestion(question);
-      });
-      $('confirmSpoiler').addEventListener('click', () => {
-        spoilerMode = true;
-        spoilerModeBadge.textContent = '剧透模式';
-        spoilerConfirm.hidden = true;
-        answerMovieQuestion(pendingSpoilerQuestion || '分析结局');
-      });
-      $('cancelSpoiler').addEventListener('click', () => {
-        pendingSpoilerQuestion = '';
-        spoilerConfirm.hidden = true;
-        renderAssistantAnswer('无剧透', '已保持无剧透模式。可以继续询问影片风格、观看氛围或背景信息。');
-        assistantInput.focus();
-      });
-
-      heroMoreButton.addEventListener('click', event => {
-        event.stopPropagation();
-        closeContextMenu();
-        const open = heroMenu.dataset.open !== 'true';
-        heroMenu.dataset.open = String(open);
-        if (open) heroMenu.removeAttribute('inert');
-        else heroMenu.setAttribute('inert', '');
-        heroMoreButton.setAttribute('aria-expanded', String(open));
-      });
-      heroMenu.addEventListener('click', event => {
-        const action = event.target.closest('[data-action]');
-        if (!action) return;
-        announcement.textContent = action.dataset.action === 'watched' ? `《${currentMovieTitle}》已标记为已看` : `查看《${currentMovieTitle}》的媒体版本`;
-        closeHeroMenu();
-      });
-
-      const shelfArrows = [...document.querySelectorAll('.shelf-arrow')];
-      const controlledShelves = [...new Set(shelfArrows.map(button => $(button.dataset.shelf)).filter(Boolean))];
-
-      function updateShelfControls(shelf) {
-        const buttons = shelfArrows.filter(button => button.dataset.shelf === shelf.id);
-        const controls = buttons[0]?.closest('.shelf-controls');
-        if (!controls) return;
-        const maxScrollLeft = Math.max(0, shelf.scrollWidth - shelf.clientWidth);
-        const hasOverflow = maxScrollLeft > 1;
-        controls.hidden = !hasOverflow;
-        buttons.forEach(button => {
-          const atBoundary = Number(button.dataset.direction) < 0
-            ? shelf.scrollLeft <= 1
-            : shelf.scrollLeft >= maxScrollLeft - 1;
-          button.hidden = !hasOverflow || atBoundary;
-          button.disabled = !hasOverflow || atBoundary;
-        });
-      }
-
-      function updateShelves() {
-        controlledShelves.forEach(updateShelfControls);
-      }
-
-      shelfArrows.forEach(button => {
-        button.addEventListener('click', () => {
-          const shelf = $(button.dataset.shelf);
-          shelf.scrollBy({ left: Number(button.dataset.direction) * 360, behavior: 'smooth' });
-        });
-      });
-      controlledShelves.forEach(shelf => shelf.addEventListener('scroll', () => updateShelfControls(shelf), { passive: true }));
-      window.addEventListener('resize', updateShelves);
-      window.addEventListener('load', updateShelves, { once: true });
-      updateShelves();
-
-      document.querySelectorAll('.series-card').forEach(card => {
-        card.querySelector('.poster-detail-hit').addEventListener('click', () => {
-          if (card.dataset.href) window.location.href = card.dataset.href;
-          else announcement.textContent = card.classList.contains('current') ? `当前正在查看《${card.dataset.title}》` : `《${card.dataset.title}》详情页尚未创建`;
-        });
-        card.querySelector('.play-mark').addEventListener('click', () => announcement.textContent = `正在获取当前 PlaybackLocator，并通过 mpv:// 调用 Windows 本机 mpv 播放《${card.dataset.title}》`);
-        const moreButton = card.querySelector('.poster-more-mark');
-        moreButton.setAttribute('aria-haspopup', 'menu');
-        moreButton.setAttribute('aria-expanded', 'false');
-        moreButton.setAttribute('aria-controls', 'movieContextMenu');
-        moreButton.addEventListener('click', event => {
-          event.stopPropagation();
-          openContextMenu(event.currentTarget, card);
-        });
-      });
-
-      contextMenu.addEventListener('click', event => {
-        const action = event.target.closest('[data-menu-action]');
-        if (!action || !activeMovie) return;
-        const title = activeMovie.dataset.title;
-        if (action.dataset.menuAction === 'favorite') {
-          activeMovie.dataset.favorite = String(activeMovie.dataset.favorite !== 'true');
-          announcement.textContent = `${title}${activeMovie.dataset.favorite === 'true' ? '已加入收藏' : '已取消收藏'}`;
-        } else if (action.dataset.menuAction === 'watched') {
-          activeMovie.dataset.status = activeMovie.dataset.status === 'watched' ? 'unwatched' : 'watched';
-          announcement.textContent = `${title}${activeMovie.dataset.status === 'watched' ? '已标记为已看' : '已标记为未看'}`;
-        } else if (action.dataset.menuAction === 'play') {
-          announcement.textContent = `正在获取当前 PlaybackLocator，并通过 mpv:// 调用 Windows 本机 mpv 播放《${title}》`;
-        } else if (action.dataset.menuAction === 'detail') {
-          const target = activeMovie.dataset.href;
-          if (target) {
-            window.location.href = target;
-            return;
-          }
-        } else {
-          announcement.textContent = `查看《${title}》的媒体版本`;
-        }
-        closeContextMenu();
-      });
-
-      const searchButton = $('searchButton');
-      const searchDialog = $('searchDialog');
-      const searchScrim = $('searchScrim');
-      const searchInput = $('globalSearch');
-      const clearSearch = $('clearSearch');
-      const searchCaption = $('searchCaption');
-      const searchResultItems = [...$('searchResultList').querySelectorAll('.search-result')];
-      const searchEmpty = $('searchEmpty');
-      let searchActiveIndex = -1;
-
-      function visibleSearchItems() {
-        return searchResultItems.filter(item => !item.hidden);
-      }
-      function renderSearch(query = '') {
-        const normalized = query.trim().toLowerCase();
-        let hasResults = false;
-        clearSearch.hidden = !searchInput.value;
-        searchCaption.textContent = normalized ? '搜索结果' : '最近内容';
-        searchResultItems.forEach(item => {
-          const matches = !normalized || item.dataset.search.toLowerCase().includes(normalized);
-          item.hidden = !matches;
-          if (matches) hasResults = true;
-          item.removeAttribute('data-active');
-        });
-        searchEmpty.hidden = hasResults;
-        searchActiveIndex = -1;
-      }
-      function openSearch() {
-        closeHeroMenu();
-        closeContextMenu();
-        renderSearch(searchInput.value);
-        searchDialog.removeAttribute('inert');
-        searchDialog.dataset.open = 'true';
-        searchScrim.dataset.open = 'true';
-        searchButton.setAttribute('aria-expanded', 'true');
-        document.body.dataset.locked = 'true';
-        setTimeout(() => searchInput.focus(), 0);
-      }
-      function closeSearch() {
-        searchDialog.dataset.open = 'false';
-        searchDialog.setAttribute('inert', '');
-        searchScrim.dataset.open = 'false';
-        searchButton.setAttribute('aria-expanded', 'false');
-        document.body.dataset.locked = 'false';
-      }
-      function setSearchActive(index) {
-        const items = visibleSearchItems();
-        searchActiveIndex = items.length ? Math.max(0, Math.min(index, items.length - 1)) : -1;
-        searchResultItems.forEach(item => item.removeAttribute('data-active'));
-        if (searchActiveIndex >= 0) items[searchActiveIndex].dataset.active = 'true';
-      }
-
-      searchButton.addEventListener('click', openSearch);
-      searchScrim.addEventListener('click', closeSearch);
-      searchInput.addEventListener('input', () => renderSearch(searchInput.value));
-      clearSearch.addEventListener('click', () => {
-        searchInput.value = '';
-        renderSearch();
-        searchInput.focus();
-      });
-      searchInput.addEventListener('keydown', event => {
-        if (!['ArrowDown', 'ArrowUp', 'Enter'].includes(event.key)) return;
-        const items = visibleSearchItems();
-        if (!items.length) return;
-        if (event.key === 'Enter') {
-          if (searchActiveIndex >= 0) items[searchActiveIndex].click();
-          return;
-        }
-        event.preventDefault();
-        const next = event.key === 'ArrowDown'
-          ? (searchActiveIndex + 1) % items.length
-          : searchActiveIndex <= 0 ? items.length - 1 : searchActiveIndex - 1;
-        setSearchActive(next);
-      });
-      searchResultItems.forEach(item => item.addEventListener('click', () => {
-        closeSearch();
-        if (item.dataset.href) window.location.href = item.dataset.href;
-      }));
-
-      const accountWrap = $('accountWrap');
-      const accountButton = $('accountButton');
-      accountButton.addEventListener('click', event => {
-        event.stopPropagation();
-        const open = accountWrap.dataset.open !== 'true';
-        accountWrap.dataset.open = String(open);
-        accountButton.setAttribute('aria-expanded', String(open));
-      });
-
-      const routes = {
-        recent: 'personal-cinema-recently-added.html', favorites: 'personal-cinema-favorites.html', unwatched: 'personal-cinema-unwatched.html', watched: 'personal-cinema-watched.html',
-        home: 'personal-cinema-app-shell-v2.html',
-        movies: 'personal-cinema-movie-library.html',
-        ai: 'personal-cinema-ai-discovery.html',
-        sources: 'personal-cinema-media-sources.html'
-      };
-      document.querySelectorAll('[data-route]').forEach(button => {
-        button.addEventListener('click', () => {
-          const target = routes[button.dataset.route];
-          if (target) window.location.href = target;
-          else announcement.textContent = `进入${button.textContent.trim()}`;
-        });
-      });
-
-      document.addEventListener('click', event => {
-        if (!contextMenu.contains(event.target) && event.target !== activeMoreButton) closeContextMenu();
-        if (!heroMenu.contains(event.target) && event.target !== heroMoreButton) closeHeroMenu();
-        if (!accountWrap.contains(event.target)) {
-          accountWrap.dataset.open = 'false';
-          accountButton.setAttribute('aria-expanded', 'false');
-        }
-      });
-      document.addEventListener('keydown', event => {
-        if (event.key === '/' && document.activeElement !== searchInput) {
-          event.preventDefault();
-          openSearch();
-        }
-        if (event.key === 'Escape') {
-          closeSearch();
-          closeHeroMenu();
-          closeContextMenu();
-          accountWrap.dataset.open = 'false';
-          accountButton.setAttribute('aria-expanded', 'false');
-        }
-      });
-    })();
-  </script>
+  <script src="assets/js/personal-cinema-media-source-mock.js"></script>
+  <script src="assets/js/personal-cinema-library-mock.js"></script>
+  <script src="assets/js/personal-cinema-scan-mock.js"></script>
+  <script src="assets/js/personal-cinema-movie-detail.js"></script>
 </body>
 </html>

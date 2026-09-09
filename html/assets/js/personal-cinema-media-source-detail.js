@@ -66,8 +66,7 @@
   let activeMovie = null;
   let menuTrigger = null;
   function openMovie(movie) {
-    if (movie.detailHref) window.location.href = movie.detailHref;
-    else announce(`查看《${movie.title}》详情`);
+    window.location.href = window.PersonalCinemaLibraryMock.getMovieDetailHref(movie);
   }
   function playMovie(movie) {
     announce(`正在获取当前 PlaybackLocator，并通过 mpv:// 调用 Windows 本机 mpv 播放《${movie.title}》`);

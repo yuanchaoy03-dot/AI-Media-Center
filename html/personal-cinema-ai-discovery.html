@@ -273,14 +273,15 @@ button:focus-visible,a:focus-visible,.search-input:focus-visible,.ai-query-input
   <section class="search-dialog" id="searchDialog" data-open="false" role="dialog" aria-modal="true" aria-label="搜索影片" data-od-id="global-search-dialog">
     <div class="search-field"><label class="sr-only" for="globalSearch">搜索片名、导演或演员</label><svg class="icon" aria-hidden="true"><use href="#ph-magnifying-glass"></use></svg><input class="search-input" id="globalSearch" type="search" autocomplete="off" placeholder="搜索片名、导演或演员" /><button class="search-clear" id="clearSearch" type="button" aria-label="清空搜索关键词" hidden><svg aria-hidden="true"><use href="#ph-x"></use></svg></button><span class="search-key">ESC</span></div>
     <div class="search-results"><p class="search-caption" id="searchCaption">最近内容</p><div class="search-result-list" id="searchResultList" aria-live="polite">
-      <button class="search-result" type="button" data-search="星际穿越 2014 科幻" data-href="personal-cinema-movie-detail-interstellar.html"><img class="search-thumb" src="assets/tmdb-poster-interstellar.jpg" alt="星际穿越电影海报" /><span><strong>星际穿越</strong><small>2014 · 科幻 / 剧情 / 冒险 · 8.5</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
-      <button class="search-result" type="button" data-search="沙丘 2021 科幻" data-href="personal-cinema-movie-detail.html"><img class="search-thumb" src="assets/tmdb-poster-dune.jpg" alt="沙丘电影海报" /><span><strong>沙丘</strong><small>2021 · 科幻 / 冒险 · 7.8</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
-      <button class="search-result" type="button" data-search="奥本海默 2023 剧情 历史" data-href="personal-cinema-movie-detail-oppenheimer.html"><img class="search-thumb" src="assets/tmdb-poster-oppenheimer.jpg" alt="奥本海默电影海报" /><span><strong>奥本海默</strong><small>2023 · 剧情 / 历史 · 8.0</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
-      <button class="search-result" type="button" data-search="沙丘2 2024 科幻" data-href="personal-cinema-movie-detail-dune-part-two.html"><img class="search-thumb" src="assets/tmdb-poster-dune-part-two.jpg" alt="沙丘2电影海报" /><span><strong>沙丘2</strong><small>2024 · 科幻 / 冒险 · 8.1</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
+      <button class="search-result" type="button" data-search="星际穿越 2014 科幻" data-movie-id="movie-interstellar"><img class="search-thumb" src="assets/tmdb-poster-interstellar.jpg" alt="星际穿越电影海报" /><span><strong>星际穿越</strong><small>2014 · 科幻 / 剧情 / 冒险 · 8.5</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
+      <button class="search-result" type="button" data-search="沙丘 2021 科幻" data-movie-id="movie-dune"><img class="search-thumb" src="assets/tmdb-poster-dune.jpg" alt="沙丘电影海报" /><span><strong>沙丘</strong><small>2021 · 科幻 / 冒险 · 7.8</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
+      <button class="search-result" type="button" data-search="奥本海默 2023 剧情 历史" data-movie-id="movie-oppenheimer"><img class="search-thumb" src="assets/tmdb-poster-oppenheimer.jpg" alt="奥本海默电影海报" /><span><strong>奥本海默</strong><small>2023 · 剧情 / 历史 · 8.0</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
+      <button class="search-result" type="button" data-search="沙丘2 2024 科幻" data-movie-id="movie-dune-part-two"><img class="search-thumb" src="assets/tmdb-poster-dune-part-two.jpg" alt="沙丘2电影海报" /><span><strong>沙丘2</strong><small>2024 · 科幻 / 冒险 · 8.1</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
       <button class="search-result" type="button" data-search="降临 2016 科幻 悬疑"><img class="search-thumb" src="assets/tmdb-poster-arrival.jpg" alt="降临电影海报" /><span><strong>降临</strong><small>2016 · 剧情 / 科幻 / 悬疑 · 7.6</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
     </div><div class="search-empty" id="searchEmpty" hidden><strong>没有找到匹配的影片</strong><span>尝试搜索片名、导演或演员</span></div></div>
   </section>
 
+  <script src="assets/js/personal-cinema-library-mock.js"></script>
   <script>
     (() => {
       const $ = id => document.getElementById(id);
@@ -331,12 +332,17 @@ button:focus-visible,a:focus-visible,.search-input:focus-visible,.ai-query-input
         whiplash:{title:'爆裂鼓手',year:'2014',genre:'剧情',duration:'107',status:'unwatched',statusLabel:'未看',mediaSourceName:'我的 Nextcloud',resourceAvailable:true,poster:'assets/tmdb-poster-whiplash.jpg',reason:'不到两小时，推进紧凑，适合今晚一次看完。'},
         prisoners:{title:'囚徒',year:'2013',genre:'悬疑',duration:'153',status:'watching',statusLabel:'观看中',mediaSourceName:'我的 Nextcloud',resourceAvailable:false,poster:'assets/tmdb-poster-prisoners.jpg',reason:'慢节奏调查逐层展开，悬疑与压迫感更强，人物压力持续累积。'},
         gonegirl:{title:'消失的爱人',year:'2014',genre:'悬疑',duration:'149',status:'watched',statusLabel:'已看',mediaSourceName:'AList · 迅雷云盘',resourceAvailable:true,poster:'assets/tmdb-poster-gone-girl.jpg',reason:'叙事从容但持续反转，适合想看人物博弈的时候。'},
-        oppenheimer:{title:'奥本海默',year:'2023',genre:'剧情',duration:'181',status:'watching',statusLabel:'观看中',mediaSourceName:'我的 Nextcloud',resourceAvailable:true,poster:'assets/tmdb-poster-oppenheimer.jpg',href:'personal-cinema-movie-detail-oppenheimer.html',reason:'我的 Nextcloud 资源状态正常，声音与画面版本完整。'},
-        interstellar:{title:'星际穿越',year:'2014',genre:'科幻',duration:'169',status:'watching',statusLabel:'观看中',mediaSourceName:'家庭 NAS',resourceAvailable:true,poster:'assets/tmdb-poster-interstellar.jpg',href:'personal-cinema-movie-detail-interstellar.html',reason:'家庭 NAS 通过 WebDAV 接入，当前资源可播放，适合沉浸式大屏观看。'},
-        dune:{title:'沙丘',year:'2021',genre:'科幻',duration:'155',status:'watched',statusLabel:'已看',mediaSourceName:'家庭 NAS',resourceAvailable:true,poster:'assets/tmdb-poster-dune.jpg',href:'personal-cinema-movie-detail.html',reason:'恢弘而克制的科幻史诗，适合沉浸式观看。'},
+        oppenheimer:{title:'奥本海默',year:'2023',genre:'剧情',duration:'181',status:'watching',statusLabel:'观看中',mediaSourceName:'我的 Nextcloud',resourceAvailable:true,poster:'assets/tmdb-poster-oppenheimer.jpg',reason:'我的 Nextcloud 资源状态正常，声音与画面版本完整。'},
+        interstellar:{title:'星际穿越',year:'2014',genre:'科幻',duration:'169',status:'watching',statusLabel:'观看中',mediaSourceName:'家庭 NAS',resourceAvailable:true,poster:'assets/tmdb-poster-interstellar.jpg',reason:'家庭 NAS 通过 WebDAV 接入，当前资源可播放，适合沉浸式大屏观看。'},
+        dune:{title:'沙丘',year:'2021',genre:'科幻',duration:'155',status:'watched',statusLabel:'已看',mediaSourceName:'家庭 NAS',resourceAvailable:true,poster:'assets/tmdb-poster-dune.jpg',reason:'恢弘而克制的科幻史诗，适合沉浸式观看。'},
         bladerunner:{title:'银翼杀手2049',year:'2017',genre:'科幻',duration:'164',status:'watched',statusLabel:'已看',mediaSourceName:'我的 Nextcloud',resourceAvailable:false,poster:'assets/tmdb-poster-blade-runner-2049.jpg',reason:'冷峻缓慢的未来氛围，适合安静完整地观看。'},
         nineteen:{title:'1917',year:'2019',genre:'剧情',duration:'119',status:'watched',statusLabel:'已看',mediaSourceName:'我的 Nextcloud',resourceAvailable:true,poster:'assets/tmdb-poster-1917.jpg',reason:'我的 Nextcloud 资源当前可播放，119 分钟，今晚可以完整看完。'}
       };
+
+      // AI keeps recommendation reasons/availability fixtures; identity comes from public Movie.
+      Object.values(movies).forEach(candidate => {
+        candidate.id = window.PersonalCinemaLibraryMock.movies.find(movie => movie.title === candidate.title)?.id;
+      });
 
       const presets = {
         science:{query:'找一部片库里没看过、两个小时以内、不太压抑的电影，优先科幻。',conditions:['未看','≤ 120 分钟','不太压抑','优先科幻'],answer:'我找到了 2 部符合核心条件的影片。《机械姬》更接近科幻偏好和克制氛围；《疯狂的麦克斯4》则更明快，适合想看紧张但不阴郁的选择。',results:['madmax','exmachina'],note:'你的片库中目前有 2 部符合这些条件。',nearby:[['interstellar','超出时长 49 分钟'],['bladerunner','氛围更沉重'],['dune','超出时长 35 分钟'],['arrival','当前正在观看']],refinements:[['放宽时长','tonight'],['包括已看','tonight'],['改看慢节奏悬疑','mystery'],['优先当前可播放资源','available']]},
@@ -413,7 +419,7 @@ button:focus-visible,a:focus-visible,.search-input:focus-visible,.ai-query-input
       }
 
       function movieCard(movie,key,includeAiDetails = true,candidateGap = '',odPrefix = 'ai-result') {
-        const attributes = `data-title="${movie.title}" data-status="${movie.status}" data-favorite="false" data-href="${movie.href || ''}"`;
+        const attributes = `data-title="${movie.title}" data-status="${movie.status}" data-favorite="false" data-movie-id="${movie.id}"`;
         const artwork = `<div class="poster-art"><img data-poster-key="${key}" alt="${movie.title}电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看${movie.title}详情"></button><button class="play-mark" type="button" aria-label="播放${movie.title}"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="${movie.title}更多操作" aria-haspopup="menu" aria-expanded="false" aria-controls="movieContextMenu"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div>`;
         if (!includeAiDetails) return `<article class="movie-card" ${attributes} data-od-id="${candidateGap ? 'ai-nearby' : 'ai-starter'}-${key}">${artwork}<div class="poster-copy"><strong class="poster-title">${movie.title}</strong><span class="poster-meta">${movie.year} · ${movie.genre}</span></div>${candidateGap ? `<p class="ai-candidate-gap">${candidateGap}</p>` : ''}</article>`;
         return `<article class="movie-card ai-result-row" ${attributes} data-od-id="${odPrefix}-${key}">
@@ -762,12 +768,11 @@ button:focus-visible,a:focus-visible,.search-input:focus-visible,.ai-query-input
         const card = event.target.closest('.movie-card');if(!card) return;
         const resultAction = event.target.closest('[data-result-action]');
         if(resultAction?.dataset.resultAction === 'play') return announcement.textContent=`正在获取当前 PlaybackLocator，并通过 mpv:// 调用 Windows 本机 mpv 播放《${card.dataset.title}》`;
-        if(resultAction?.dataset.resultAction === 'detail') { if(card.dataset.href) window.location.href=card.dataset.href;else announcement.textContent=`进入《${card.dataset.title}》详情`;return; }
+        if(resultAction?.dataset.resultAction === 'detail') { window.location.href=window.PersonalCinemaLibraryMock.getMovieDetailHref(card.dataset.movieId);return; }
         if(event.target.closest('.poster-more-mark')) return openContextMenu(event.target.closest('.poster-more-mark'),card);
         if(event.target.closest('.play-mark')) return announcement.textContent=`正在获取当前 PlaybackLocator，并通过 mpv:// 调用 Windows 本机 mpv 播放《${card.dataset.title}》`;
         if(event.target.closest('.poster-detail-hit')) {
-          if(card.dataset.href) window.location.href=card.dataset.href;
-          else announcement.textContent=`进入《${card.dataset.title}》详情`;
+          window.location.href=window.PersonalCinemaLibraryMock.getMovieDetailHref(card.dataset.movieId);
         }
       }
       resultList.addEventListener('click',handleMovieCardClick);
@@ -799,7 +804,7 @@ button:focus-visible,a:focus-visible,.search-input:focus-visible,.ai-query-input
         const action=event.target.closest('[data-menu-action]');if(!action||!activeMovie) return;
         const title=activeMovie.dataset.title;
         if(action.dataset.menuAction==='play') announcement.textContent=`正在获取当前 PlaybackLocator，并通过 mpv:// 调用 Windows 本机 mpv 播放《${title}》`;
-        else if(action.dataset.menuAction==='detail') { if(activeMovie.dataset.href) window.location.href=activeMovie.dataset.href; else announcement.textContent=`进入《${title}》详情`; }
+        else if(action.dataset.menuAction==='detail') { window.location.href=window.PersonalCinemaLibraryMock.getMovieDetailHref(activeMovie.dataset.movieId); }
         else if(action.dataset.menuAction==='favorite') { activeMovie.dataset.favorite=String(activeMovie.dataset.favorite!=='true');announcement.textContent=`${title}${activeMovie.dataset.favorite==='true'?'已加入收藏':'已取消收藏'}`; }
         else if(action.dataset.menuAction==='watched') { activeMovie.dataset.status=activeMovie.dataset.status==='watched'?'unwatched':'watched';announcement.textContent=`${title}${activeMovie.dataset.status==='watched'?'已标记为已看':'已标记为未看'}`; }
         else announcement.textContent=`查看《${title}》的媒体版本`;
@@ -815,7 +820,7 @@ button:focus-visible,a:focus-visible,.search-input:focus-visible,.ai-query-input
       function closeSearch(){searchDialog.dataset.open='false';searchScrim.dataset.open='false';searchButton.setAttribute('aria-expanded','false');document.body.dataset.locked='false';searchIndex=-1}
       searchButton.addEventListener('click',openSearch);searchScrim.addEventListener('click',closeSearch);searchInput.addEventListener('input',renderSearch);
       clearSearch.addEventListener('click',()=>{searchInput.value='';renderSearch();searchInput.focus()});
-      searchResultList.addEventListener('click',event=>{const item=event.target.closest('.search-result');if(!item)return;if(item.dataset.href)window.location.href=item.dataset.href;else{announcement.textContent=`进入《${item.querySelector('strong').textContent}》详情`;closeSearch();}});
+      searchResultList.addEventListener('click',event=>{const item=event.target.closest('.search-result');if(!item)return;if (item.dataset.movieId) window.location.href = window.PersonalCinemaLibraryMock.getMovieDetailHref(item.dataset.movieId);else{announcement.textContent=`进入《${item.querySelector('strong').textContent}》详情`;closeSearch();}});
       searchInput.addEventListener('keydown',event=>{if(!['ArrowDown','ArrowUp','Enter'].includes(event.key))return;const visible=searchItems.filter(item=>!item.hidden);if(!visible.length)return;if(event.key==='Enter'){if(searchIndex>=0){event.preventDefault();visible[searchIndex].click()}return}event.preventDefault();searchIndex=event.key==='ArrowDown'?(searchIndex+1)%visible.length:searchIndex<=0?visible.length-1:searchIndex-1;searchItems.forEach(item=>item.removeAttribute('data-active'));visible[searchIndex].dataset.active='true';});
 
       const accountWrap=$('accountWrap');const accountButton=$('accountButton');
