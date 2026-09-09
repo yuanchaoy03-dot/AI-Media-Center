@@ -210,37 +210,366 @@
       "backdrop": "assets/tmdb-backdrop-dune-part-two.jpg"
     },
     "movie-blade-runner-2049": {
-      "originalTitle": "Blade Runner 2049"
+      "originalTitle": "Blade Runner 2049",
+      "overview": "2049年的洛杉矶，复制人警探K负责追捕逃亡的旧型号复制人。一次例行任务中，他发现了一条可能动摇人类与复制人关系的线索。为查明这段被掩埋的往事，K穿行于城市与荒原，寻找失踪多年的前银翼杀手瑞克·戴克，并开始重新审视自己的身份。",
+      "certification": "R",
+      "cast": [
+        {
+          "name": "Denis Villeneuve",
+          "role": "导演",
+          "portrait": "assets/tmdb-person-denis-villeneuve.jpg"
+        },
+        {
+          "name": "Ryan Gosling",
+          "role": "K",
+          "portrait": ""
+        },
+        {
+          "name": "Harrison Ford",
+          "role": "Rick Deckard",
+          "portrait": ""
+        },
+        {
+          "name": "Ana de Armas",
+          "role": "Joi",
+          "portrait": ""
+        },
+        {
+          "name": "Robin Wright",
+          "role": "Joshi",
+          "portrait": ""
+        }
+      ]
     },
     "movie-arrival": {
-      "originalTitle": "Arrival"
+      "originalTitle": "Arrival",
+      "overview": "十二艘神秘飞船同时出现在地球各地，语言学家路易丝·班克斯受邀加入军方组织的接触团队，与物理学家伊恩·唐纳利一起尝试理解来访者的语言。面对不断升级的国际紧张局势，他们必须在有限时间里建立沟通，弄清对方的来意，避免恐惧与误解引发冲突。",
+      "certification": "PG-13",
+      "cast": [
+        {
+          "name": "Denis Villeneuve",
+          "role": "导演",
+          "portrait": "assets/tmdb-person-denis-villeneuve.jpg"
+        },
+        {
+          "name": "Amy Adams",
+          "role": "Louise Banks",
+          "portrait": ""
+        },
+        {
+          "name": "Jeremy Renner",
+          "role": "Ian Donnelly",
+          "portrait": ""
+        },
+        {
+          "name": "Forest Whitaker",
+          "role": "Colonel Weber",
+          "portrait": ""
+        },
+        {
+          "name": "Michael Stuhlbarg",
+          "role": "Agent Halpern",
+          "portrait": ""
+        }
+      ]
     },
     "movie-the-batman": {
-      "originalTitle": "The Batman"
+      "originalTitle": "The Batman",
+      "overview": "成为蝙蝠侠的第二年，布鲁斯·韦恩仍在哥谭市的阴影中摸索打击犯罪的方式。一连串针对城市权贵的案件留下了指向他的谜题，迫使他与警探戈登合作调查。在追寻线索的过程中，他遇见各怀目的的人物，也必须面对家族历史与城市腐败之间的复杂联系。",
+      "certification": "PG-13",
+      "cast": [
+        {
+          "name": "Matt Reeves",
+          "role": "导演",
+          "portrait": ""
+        },
+        {
+          "name": "Robert Pattinson",
+          "role": "Bruce Wayne / Batman",
+          "portrait": ""
+        },
+        {
+          "name": "Zoë Kravitz",
+          "role": "Selina Kyle",
+          "portrait": ""
+        },
+        {
+          "name": "Jeffrey Wright",
+          "role": "James Gordon",
+          "portrait": ""
+        },
+        {
+          "name": "Paul Dano",
+          "role": "Edward Nashton",
+          "portrait": ""
+        }
+      ]
     },
     "movie-inception": {
-      "originalTitle": "Inception"
+      "originalTitle": "Inception",
+      "overview": "柯布擅长潜入他人的梦境窃取秘密，却因个人困境无法回家与孩子团聚。一位委托人向他提出危险的交易：不再窃取信息，而是在目标的潜意识中植入一个想法。柯布召集团队，设计层层相扣的梦境计划，同时努力控制不断侵入任务的私人记忆。",
+      "certification": "PG-13",
+      "cast": [
+        {
+          "name": "Christopher Nolan",
+          "role": "导演",
+          "portrait": "assets/tmdb-person-christopher-nolan.jpg"
+        },
+        {
+          "name": "Leonardo DiCaprio",
+          "role": "Dom Cobb",
+          "portrait": ""
+        },
+        {
+          "name": "Joseph Gordon-Levitt",
+          "role": "Arthur",
+          "portrait": ""
+        },
+        {
+          "name": "Elliot Page",
+          "role": "Ariadne",
+          "portrait": ""
+        },
+        {
+          "name": "Tom Hardy",
+          "role": "Eames",
+          "portrait": ""
+        },
+        {
+          "name": "Cillian Murphy",
+          "role": "Robert Fischer",
+          "portrait": "assets/tmdb-person-cillian-murphy.jpg"
+        },
+        {
+          "name": "Michael Caine",
+          "role": "Miles",
+          "portrait": "assets/tmdb-person-michael-caine.jpg"
+        }
+      ]
     },
     "movie-prisoners": {
-      "originalTitle": "Prisoners"
+      "originalTitle": "Prisoners",
+      "overview": "感恩节聚会后，凯勒·多佛的小女儿与邻居家的女孩一同失踪，一辆曾停在附近的房车成为调查线索。警探洛基循着零散证据追查，焦急的父亲却越来越难以接受等待。随着搜寻陷入困境，两个家庭承受着巨大的压力，信任、判断与道德界限也受到考验。",
+      "certification": "R",
+      "cast": [
+        {
+          "name": "Denis Villeneuve",
+          "role": "导演",
+          "portrait": "assets/tmdb-person-denis-villeneuve.jpg"
+        },
+        {
+          "name": "Hugh Jackman",
+          "role": "Keller Dover",
+          "portrait": ""
+        },
+        {
+          "name": "Jake Gyllenhaal",
+          "role": "Detective Loki",
+          "portrait": ""
+        },
+        {
+          "name": "Viola Davis",
+          "role": "Nancy Birch",
+          "portrait": ""
+        },
+        {
+          "name": "Maria Bello",
+          "role": "Grace Dover",
+          "portrait": ""
+        }
+      ]
     },
     "movie-1917": {
-      "originalTitle": "1917"
+      "originalTitle": "1917",
+      "overview": "第一次世界大战期间，两名年轻的英国士兵斯科菲尔德和布雷克接到紧急任务：穿越敌军控制的地带，将停止进攻的命令送到前线部队。通信中断，时间所剩无几，而布雷克的兄长也在即将出击的队伍中。两人必须越过战壕、废墟与陌生村庄，在战场的不确定中继续前行。",
+      "certification": "R",
+      "cast": [
+        {
+          "name": "Sam Mendes",
+          "role": "导演",
+          "portrait": ""
+        },
+        {
+          "name": "George MacKay",
+          "role": "William Schofield",
+          "portrait": ""
+        },
+        {
+          "name": "Dean-Charles Chapman",
+          "role": "Tom Blake",
+          "portrait": ""
+        },
+        {
+          "name": "Mark Strong",
+          "role": "Captain Smith",
+          "portrait": ""
+        },
+        {
+          "name": "Andrew Scott",
+          "role": "Lieutenant Leslie",
+          "portrait": ""
+        }
+      ]
     },
     "movie-mad-max-fury-road": {
-      "originalTitle": "Mad Max: Fury Road"
+      "originalTitle": "Mad Max: Fury Road",
+      "overview": "在水源与燃料极度匮乏的荒漠世界，独行者麦克斯被卷入一场逃亡。驾驶重型战车的弗瑞奥萨试图带领几名女性离开暴君的控制，身后则是穷追不舍的武装车队。原本只求自保的麦克斯不得不与她们合作，在沙尘与追逐中寻找生路，并决定是否重新信任他人。",
+      "certification": "R",
+      "cast": [
+        {
+          "name": "George Miller",
+          "role": "导演",
+          "portrait": ""
+        },
+        {
+          "name": "Tom Hardy",
+          "role": "Max Rockatansky",
+          "portrait": ""
+        },
+        {
+          "name": "Charlize Theron",
+          "role": "Imperator Furiosa",
+          "portrait": ""
+        },
+        {
+          "name": "Nicholas Hoult",
+          "role": "Nux",
+          "portrait": ""
+        },
+        {
+          "name": "Hugh Keays-Byrne",
+          "role": "Immortan Joe",
+          "portrait": ""
+        }
+      ]
     },
     "movie-parasite": {
-      "originalTitle": "기생충"
+      "originalTitle": "기생충",
+      "overview": "金基宇一家住在狭小的半地下室，依靠零工维持生活。一次朋友的介绍让他获得为富裕的朴家女儿补习的机会，也让两个生活迥异的家庭产生交集。随着接触加深，一家人开始设法改善处境，而看似体面的工作与日常相处背后，阶层差距带来的不安逐渐浮现。",
+      "certification": "R",
+      "cast": [
+        {
+          "name": "Bong Joon-ho",
+          "role": "导演",
+          "portrait": ""
+        },
+        {
+          "name": "Song Kang-ho",
+          "role": "Kim Ki-taek",
+          "portrait": ""
+        },
+        {
+          "name": "Lee Sun-kyun",
+          "role": "Park Dong-ik",
+          "portrait": ""
+        },
+        {
+          "name": "Cho Yeo-jeong",
+          "role": "Choi Yeon-gyo",
+          "portrait": ""
+        },
+        {
+          "name": "Choi Woo-shik",
+          "role": "Kim Ki-woo",
+          "portrait": ""
+        }
+      ]
     },
     "movie-whiplash": {
-      "originalTitle": "Whiplash"
+      "originalTitle": "Whiplash",
+      "overview": "年轻鼓手安德鲁进入一所顶尖音乐学院，渴望成为出色的爵士乐演奏者。严厉的指挥弗莱彻将他选入乐团，也让他置身于近乎苛刻的训练与竞争之中。为了证明自己的天赋，安德鲁不断压缩生活的其他部分，逐渐面对追求卓越的代价，以及师生关系中令人不安的压力。",
+      "certification": "R",
+      "cast": [
+        {
+          "name": "Damien Chazelle",
+          "role": "导演",
+          "portrait": ""
+        },
+        {
+          "name": "Miles Teller",
+          "role": "Andrew Neiman",
+          "portrait": ""
+        },
+        {
+          "name": "J. K. Simmons",
+          "role": "Terence Fletcher",
+          "portrait": ""
+        },
+        {
+          "name": "Paul Reiser",
+          "role": "Jim Neiman",
+          "portrait": ""
+        },
+        {
+          "name": "Melissa Benoist",
+          "role": "Nicole",
+          "portrait": ""
+        }
+      ]
     },
     "movie-gone-girl": {
-      "originalTitle": "Gone Girl"
+      "originalTitle": "Gone Girl",
+      "overview": "结婚五周年纪念日，尼克回到家中，发现妻子艾米不知所踪，屋内留下令人不安的痕迹。警方展开搜寻，媒体的关注也迅速聚集到这对夫妇身上。随着两人的婚姻经历被不断审视，尼克必须应对来自公众与调查的压力，而一段看似理想的关系开始显露裂缝。",
+      "certification": "R",
+      "cast": [
+        {
+          "name": "David Fincher",
+          "role": "导演",
+          "portrait": ""
+        },
+        {
+          "name": "Ben Affleck",
+          "role": "Nick Dunne",
+          "portrait": ""
+        },
+        {
+          "name": "Rosamund Pike",
+          "role": "Amy Dunne",
+          "portrait": ""
+        },
+        {
+          "name": "Carrie Coon",
+          "role": "Margo Dunne",
+          "portrait": ""
+        },
+        {
+          "name": "Kim Dickens",
+          "role": "Detective Rhonda Boney",
+          "portrait": ""
+        }
+      ]
     },
     "movie-ex-machina": {
-      "originalTitle": "Ex Machina"
+      "originalTitle": "Ex Machina",
+      "overview": "年轻程序员凯莱布获邀前往公司创始人内森位于偏远山林的住所，参与一项保密实验：与具有人形外表的人工智能艾娃交流，评估她是否拥有独立意识。在封闭的环境里，日常测试逐渐变得复杂，凯莱布开始思考眼前的情感、信任与控制究竟意味着什么。",
+      "certification": "R",
+      "cast": [
+        {
+          "name": "Alex Garland",
+          "role": "导演",
+          "portrait": ""
+        },
+        {
+          "name": "Domhnall Gleeson",
+          "role": "Caleb Smith",
+          "portrait": ""
+        },
+        {
+          "name": "Alicia Vikander",
+          "role": "Ava",
+          "portrait": ""
+        },
+        {
+          "name": "Oscar Isaac",
+          "role": "Nathan Bateman",
+          "portrait": "assets/tmdb-person-oscar-isaac.jpg"
+        },
+        {
+          "name": "Sonoya Mizuno",
+          "role": "Kyoko",
+          "portrait": ""
+        }
+      ]
     }
   };
   // status/favorite/sourceId/added/watched are current-user library fields in this

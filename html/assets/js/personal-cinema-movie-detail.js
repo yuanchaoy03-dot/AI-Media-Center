@@ -44,7 +44,9 @@
       card.innerHTML = '<img alt="" /><strong class="person-name"></strong><span class="person-role"></span>';
       const image = card.querySelector('img');
       if (person.portrait) image.src = person.portrait;
-      image.alt = `${person.name} 肖像`;
+      // Match the existing error fallback, preserving the portrait's layout space.
+      else image.style.visibility = 'hidden';
+      image.alt = person.portrait ? `${person.name} 肖像` : '';
       image.addEventListener('error', () => { image.style.visibility = 'hidden'; });
       card.querySelector('strong').textContent = person.name;
       card.querySelector('span').textContent = person.role;
