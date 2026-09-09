@@ -12,3 +12,19 @@ a.movie-card .poster-copy{display:grid;grid-template-rows:16px 15px;gap:2px;heig
 .poster-art[data-fallback]:not(:has(img:not([hidden])))::before{content:attr(data-fallback);position:absolute;inset:0;display:grid;place-items:center;padding:12px;color:var(--text-secondary);text-align:center;font-size:13px}
 @media(hover:none){.movie-card:hover .poster-art::after,.poster-card:hover .poster-art::after{opacity:0}}
 @media(prefers-reduced-motion:reduce){.poster-art,.poster-art::after{transition-duration:.01ms!important}}
+
+/* Existing library controls for renderMovieCard article previews. */
+.recent-media-grid .movie-card:has(.play-mark:focus-visible) .poster-art::after,.recent-media-grid .movie-card:has(.series-mark:focus-visible) .poster-art::after,.recent-media-grid .movie-card:has(.poster-more-mark:focus-visible) .poster-art::after{opacity:1}
+.recent-media-grid .poster-detail-hit{position:absolute;inset:0;z-index:1;width:100%;border:0;border-radius:inherit;background:transparent;padding:0}
+.recent-media-grid .poster-detail-hit:focus-visible{outline:2px solid var(--accent);outline-offset:-3px}
+.recent-media-grid .poster-copy{display:grid;grid-template-rows:16px 15px;gap:2px;height:41px;padding-top:8px}
+.recent-media-grid .play-mark,.recent-media-grid .series-mark,.recent-media-grid .poster-more-mark{position:absolute;z-index:5;display:grid;place-items:center;width:30px;height:30px;border-radius:var(--radius-circle);opacity:0;transform:none;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);transition:opacity 110ms ease-in,background-color 110ms ease-in,color 110ms ease-in}
+.recent-media-grid .play-mark,.recent-media-grid .series-mark{left:10px;bottom:12px;border:1px solid rgba(255,255,255,.16);background:rgba(246,246,246,.74);color:#111113;box-shadow:0 5px 16px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.1)}
+.recent-media-grid .play-mark svg,.recent-media-grid .series-mark svg{width:13px;height:13px;fill:currentColor}
+.recent-media-grid .poster-more-mark{right:10px;bottom:12px;border:1px solid rgba(255,255,255,.16);background:rgba(246,246,246,.20);color:rgba(245,245,247,.94);box-shadow:0 5px 16px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.1)}
+.recent-media-grid .poster-more-mark svg{width:15px;height:15px;fill:currentColor}
+.recent-media-grid .movie-card:hover .play-mark,.recent-media-grid .movie-card:hover .series-mark,.recent-media-grid .movie-card:hover .poster-more-mark,.recent-media-grid .play-mark:focus-visible,.recent-media-grid .series-mark:focus-visible,.recent-media-grid .poster-more-mark:focus-visible{opacity:1}
+.recent-media-grid .movie-card:hover .play-mark,.recent-media-grid .movie-card:hover .series-mark,.recent-media-grid .play-mark:focus-visible,.recent-media-grid .series-mark:focus-visible{background:rgba(245,245,247,.9)}
+.recent-media-grid .movie-card:hover .poster-more-mark,.recent-media-grid .poster-more-mark:focus-visible{background:rgba(245,245,247,.24)}
+.movie-preview-menu{inset:auto;margin:0}
+.movie-preview-menu:popover-open{opacity:1;pointer-events:auto;transform:none}

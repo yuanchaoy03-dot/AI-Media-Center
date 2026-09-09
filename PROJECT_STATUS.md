@@ -15,3 +15,4 @@
 - 最近主页数据收尾：最近添加及未看从公共 library-mock 派生单片预览，按 added 倒序固定最多 8 部；主页与完整未看页共用 matchesLibraryView，未看统一定义为从未开始播放（status === 'unwatched'），watching 不属于未看。删除电影类型多余的查看全部，不改变 Collection、Genre 筛选及内容架溢出箭头规则。
 - 最近 Mock 数据整理：首页最近观看、各页搜索、扫描成功电影与媒体来源最近入库预览复用公共 library-mock，补齐稳定 Movie ID；来源与扫描任务 Mock 分离，任务通过 movie/source 引用派生成功数量与来源统计，候选和媒体版本信息保留在各自业务 Mock 中。
 - 最近扫描布局收尾：扫描运行态沿用媒体来源 / 最近扫描实际工作区规则（100% 内容宽度、桌面左右 40px），移除 1240px 限制并统一标题与 section 间距；运行态和完成态外层宽度保持稳定，保留 mini movie 尺寸、完成态结果网格及全部 Mock 逻辑。3840、2560、1920、1366、899、390 六档运行态、完成态和详情展开检查通过，无页面级横向溢出。
+- 最近媒体来源详情原型：来源卡片和菜单查看详情已统一接入单一 Source Detail 页面，通过 sourceId 复用 MediaSource / Movie / Scan Mock 派生来源概览、单片电影和扫描记录，沿用 workflow / movie-card 样式；立即扫描共用 URL helper，编辑来源返回列表并打开对应弹窗。三个来源入口、非法参数、内容空状态、file:// 直开和六档响应式检查通过，无新增网络 JSON 请求；仍为前端 Mock 原型。
