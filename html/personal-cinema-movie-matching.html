@@ -102,7 +102,7 @@
               <h3 id="originalFileTitle">原始文件</h3>
               <dl class="fact-list">
                 <div class="fact-row"><dt>文件</dt><dd class="file-value" id="detailFile"></dd></div>
-                <div class="fact-row"><dt>来源</dt><dd>家庭 NAS · WebDAV</dd></div>
+                <div class="fact-row"><dt>来源</dt><dd id="detailSource"></dd></div>
                 <div class="fact-row"><dt>路径</dt><dd class="file-value" id="detailPath"></dd></div>
                 <div class="fact-row"><dt>标题</dt><dd id="detailParsedTitle"></dd></div>
                 <div class="fact-row"><dt>年份</dt><dd id="detailYear"></dd></div>
@@ -137,14 +137,17 @@
   <section class="search-dialog" id="searchDialog" data-open="false" role="dialog" aria-modal="true" aria-label="搜索影片" inert>
     <div class="search-field"><label class="sr-only" for="globalSearch">搜索片名、导演或演员</label><svg class="icon" aria-hidden="true"><use href="#ph-magnifying-glass"></use></svg><input class="search-input" id="globalSearch" type="search" autocomplete="off" placeholder="搜索片名、导演或演员" /><button class="search-clear" id="clearSearch" type="button" aria-label="清空搜索关键词" hidden><svg aria-hidden="true"><use href="#ph-x"></use></svg></button><span class="search-key">ESC</span></div>
     <div class="search-results"><p class="search-caption" id="searchCaption">最近内容</p><div class="search-result-list" id="searchResultList" aria-live="polite">
-      <button class="search-result" type="button" data-search="星际穿越 2014 科幻" data-href="personal-cinema-movie-detail-interstellar.html"><img class="search-thumb" src="assets/tmdb-poster-interstellar.jpg" alt="" onerror="this.style.visibility='hidden'" /><span><strong>星际穿越</strong><small>2014 · 科幻 / 剧情 / 冒险 · 8.5</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
-      <button class="search-result" type="button" data-search="沙丘 2021 科幻" data-href="personal-cinema-movie-detail.html"><img class="search-thumb" src="assets/tmdb-poster-dune.jpg" alt="" onerror="this.style.visibility='hidden'" /><span><strong>沙丘</strong><small>2021 · 科幻 / 冒险 · 7.8</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
-      <button class="search-result" type="button" data-search="银翼杀手2049 2017 科幻 剧情"><img class="search-thumb" src="assets/tmdb-poster-blade-runner-2049.jpg" alt="" onerror="this.style.visibility='hidden'" /><span><strong>银翼杀手2049</strong><small>2017 · 科幻 / 剧情 · 7.6</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
-      <button class="search-result" type="button" data-search="奥本海默 2023 剧情 历史" data-href="personal-cinema-movie-detail-oppenheimer.html"><img class="search-thumb" src="assets/tmdb-poster-oppenheimer.jpg" alt="" onerror="this.style.visibility='hidden'" /><span><strong>奥本海默</strong><small>2023 · 剧情 / 历史 · 8.0</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
-      <button class="search-result" type="button" data-search="囚徒 2013 剧情 犯罪"><img class="search-thumb" src="assets/tmdb-poster-prisoners.jpg" alt="" onerror="this.style.visibility='hidden'" /><span><strong>囚徒</strong><small>2013 · 剧情 / 犯罪 · 8.1</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
+      <button class="search-result" type="button" data-href="personal-cinema-movie-detail-interstellar.html" data-movie-id="movie-interstellar"></button>
+      <button class="search-result" type="button" data-href="personal-cinema-movie-detail.html" data-movie-id="movie-dune"></button>
+      <button class="search-result" type="button" data-movie-id="movie-blade-runner-2049"></button>
+      <button class="search-result" type="button" data-href="personal-cinema-movie-detail-oppenheimer.html" data-movie-id="movie-oppenheimer"></button>
+      <button class="search-result" type="button" data-movie-id="movie-prisoners"></button>
     </div><div class="search-empty" id="searchEmpty" hidden><strong>没有找到匹配的影片</strong><span>尝试搜索片名、导演或演员</span></div></div>
   </section>
 
+  <script src="assets/js/personal-cinema-media-source-mock.js"></script>
+  <script src="assets/js/personal-cinema-library-mock.js"></script>
+  <script src="assets/js/personal-cinema-scan-mock.js"></script>
   <script src="assets/js/personal-cinema-shell.js"></script>
   <script src="assets/js/personal-cinema-movie-matching.js"></script>
 </body>

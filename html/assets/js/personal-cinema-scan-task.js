@@ -2,20 +2,19 @@
   const $ = id => document.getElementById(id);
   const icon = name => `<svg aria-hidden="true"><use href="#${name}"></use></svg>`;
   const params = new URLSearchParams(window.location.search);
-  const requestedTaskId = params.get('task') || 'scan_20260903_1032';
+  const { getTask, getAddedMovies, getPendingIds } = window.PersonalCinemaScanMock;
+  const scanTask = getTask(params.get('task'), params.get('source'));
+  const addedMovies = getAddedMovies(scanTask);
+  const requestedTaskId = scanTask.id;
+  const sourceProfile = window.PersonalCinemaMediaSourceMock.getSourceById(scanTask.sourceId)
+    || { name: '未找到媒体来源', type: 'WebDAV', rootPath: '/' };
   const storageKey = `personalCinema.scan.${requestedTaskId}`;
   const matchingKey = `personalCinema.matching.${requestedTaskId}`;
   const duration = 16000;
-  const totalFiles = 126;
-  const completedMovies = 119;
+  const completedMovies = addedMovies.length;
+  const totalFiles = completedMovies + scanTask.pendingIds.length + scanTask.skippedFiles.length;
   const phaseNames = ['连接来源', '扫描目录', '文件名解析', 'TMDB 识别', 'ffprobe 媒体探测', '入库'];
   const phaseNotes = ['WebDAV 已连接', '发现媒体文件', '保留 Edition / Cut', '按片名与年份匹配', 'best-effort 探测', '写入个人片库'];
-  const sourceProfiles = {
-    'source-home-nas': { name: '家庭 NAS', path: '/Movies' },
-    'source-alist': { name: 'AList · 迅雷云盘', path: '/Movies' },
-    'source-nextcloud': { name: '我的 Nextcloud', path: '/Cinema' }
-  };
-  const sourceProfile = sourceProfiles[params.get('source')] || sourceProfiles['source-home-nas'];
   let timer = null;
 
   function parseMovieFilename(filename) {
@@ -49,10 +48,10 @@
   window.PersonalCinemaPrototype = { ...(window.PersonalCinemaPrototype || {}), parseMovieFilename };
 
   $('sourceName').textContent = sourceProfile.name;
-  $('taskOverviewTitle').textContent = `${sourceProfile.name} · WebDAV`;
-  $('taskRootLabel').textContent = `扫描根路径 ${sourceProfile.path}`;
+  $('taskOverviewTitle').textContent = `${sourceProfile.name} · ${sourceProfile.type}`;
+  $('taskRootLabel').textContent = `扫描根路径 ${sourceProfile.rootPath}`;
   $('taskSourceMeta').lastChild.textContent = sourceProfile.name;
-  $('taskPathMeta').lastChild.textContent = sourceProfile.path;
+  $('taskPathMeta').lastChild.textContent = sourceProfile.rootPath;
   $('taskIdMeta').textContent = `task_id · ${requestedTaskId}`;
 
   function readJSON(key) {
@@ -68,8 +67,8 @@
   let task = readJSON(storageKey);
   let forceComplete = params.get('state') === 'complete';
   let forceFailed = params.get('state') === 'failed';
-  if (params.get('autostart') === '1' || !task) {
-    task = { id: requestedTaskId, createdAt: Date.now(), status: 'running' };
+  if (params.get('autostart') === '1' || !task || task.sourceId !== scanTask.sourceId) {
+    task = { id: requestedTaskId, sourceId: scanTask.sourceId, createdAt: Date.now(), status: 'running' };
     writeJSON(storageKey, task);
     if (params.get('autostart') === '1') {
       try { localStorage.removeItem(matchingKey); } catch { /* no-op */ }
@@ -79,10 +78,7 @@
     }
   }
 
-  function pendingIds() {
-    const stored = readJSON(matchingKey);
-    return Array.isArray(stored?.pendingIds) ? stored.pendingIds : ['blade-runner-2049', 'alien-1979', 'prisoners-2013'];
-  }
+  function pendingIds() { return getPendingIds(scanTask); }
 
   function pendingTotal() { return pendingIds().length; }
 
@@ -97,7 +93,7 @@
     if (progress < .27) return '正在查找电影文件……';
     if (progress < .46) return '正在整理文件信息……';
     if (progress < .58) return '正在识别影片……';
-    if (progress < .7) return '正在整理《奥本海默》……';
+    if (progress < .7) return addedMovies.length ? `正在整理《${addedMovies[0].title}》……` : '正在核对已有文件……';
     if (progress < .84) return '正在读取媒体信息……';
     return '正在加入你的片库……';
   }
@@ -114,8 +110,8 @@
       let state = index < activeIndex ? 'completed' : index === activeIndex ? 'active' : 'pending';
       let statusText = state === 'completed' ? '已完成' : state === 'active' ? '进行中' : '等待中';
       if (completed) {
-        state = index === 4 ? 'degraded' : 'completed';
-        statusText = index === 4 ? '1 个探测降级' : '已完成';
+        state = index === 4 && scanTask.degradedMovieId ? 'degraded' : 'completed';
+        statusText = state === 'degraded' ? '1 个探测降级' : '已完成';
       }
       if (failed && index === activeIndex) { state = 'failed'; statusText = '失败'; }
       const stateIcon = state === 'completed' ? 'ph-check-circle' : state === 'active' ? 'ph-spinner' : state === 'degraded' ? 'ph-warning' : state === 'failed' ? 'ph-x-circle' : 'ph-clock-counter-clockwise';
@@ -127,22 +123,40 @@
     return `<span class="status-label" data-state="${state}">${stateMarkup(state, label)}</span>`;
   }
 
+  const escapeHtml = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+
   function renderFiles(progress, completed) {
-    const detecting = completed || progress > .78;
-    const dune = parseMovieFilename('Dune.2021.2160p.UHD.BluRay.REMUX.HEVC.HDR.TrueHD.7.1.mkv');
-    const oppenheimer = parseMovieFilename('Oppenheimer.2023.2160p.BluRay.REMUX.HDR.mkv');
-    const bladeRunner = parseMovieFilename('Blade.Runner.2049.2017.2160p.WEB-DL.mkv');
-    $('fileList').innerHTML = `
-      <div class="file-row"><span class="file-icon">${icon('ph-file-video')}</span><div class="file-main"><span class="file-name">Dune.2021.2160p.UHD.BluRay.REMUX.HEVC.HDR.TrueHD.7.1.mkv</span><span class="file-result"><strong>沙丘 / ${dune.title}</strong><span>· ${dune.year}</span></span></div><div class="file-side">${fileStatus('completed', '已识别')}<span class="confidence">唯一高置信度候选</span></div></div>
-      <div class="file-row"><span class="file-icon">${icon('ph-file-video')}</span><div class="file-main"><span class="file-name">Oppenheimer.2023.2160p.BluRay.REMUX.HDR.mkv</span><span class="file-result"><strong>${oppenheimer.title}</strong><span>· ${oppenheimer.year}</span></span></div><div class="file-side">${detecting ? fileStatus('degraded', '探测降级') : fileStatus('active', '媒体探测中')}<span class="confidence">${detecting ? 'TMDB 识别与入库不受影响' : '正在读取视频轨道'}</span></div></div>
-      <div class="file-row"><span class="file-icon">${icon('ph-file-video')}</span><div class="file-main"><span class="file-name">Blade.Runner.2049.2017.2160p.WEB-DL.mkv</span><span class="file-result"><strong>系统候选：银翼杀手2049</strong><span>· ${bladeRunner.title} · ${bladeRunner.year} · 置信度 63%</span></span></div><div class="file-side">${fileStatus('pending', '需要确认')}<span class="confidence">多个相近候选</span></div></div>
-      <div class="file-row"><span class="file-icon">${icon('ph-file-video')}</span><div class="file-main"><span class="file-name">random_test_clip.mp4</span><span class="file-result"><strong>未识别为电影</strong><span>· 保持未关联</span></span></div><div class="file-side">${fileStatus('pending', '已跳过')}<span class="confidence">无 TMDB 候选</span></div></div>`;
+    const recognized = completed ? completedMovies : Math.floor(progress * completedMovies);
+    $('fileList').innerHTML = addedMovies.slice(0, recognized).map(movie => {
+      const result = scanTask.results[movie.id];
+      const degraded = movie.id === scanTask.degradedMovieId && (completed || progress >= .76);
+      return `<div class="file-row"><span class="file-icon">${icon('ph-file-video')}</span><div class="file-main"><span class="file-name">${escapeHtml(result?.filename || movie.id)}</span><span class="file-result"><strong>${escapeHtml(movie.title)}</strong><span>· ${movie.year}</span></span></div><div class="file-side">${fileStatus(degraded ? 'degraded' : 'completed', degraded ? '探测降级' : '已入库')}<span class="confidence">${degraded ? 'TMDB 识别与入库不受影响' : '唯一高置信度候选'}</span></div></div>`;
+    }).join('') + (completed || progress >= .58 ? scanTask.skippedFiles.map(filename => `<div class="file-row"><span class="file-icon">${icon('ph-file-video')}</span><div class="file-main"><span class="file-name">${escapeHtml(filename)}</span><span class="file-result"><strong>未识别为电影</strong><span>· 保持未关联</span></span></div><div class="file-side">${fileStatus('pending', '已跳过')}<span class="confidence">无 TMDB 候选</span></div></div>`).join('') : '');
   }
 
-  function renderRecognizedMovies(progress, completed, recognized) {
+  $('recognizedMovies').replaceChildren(...addedMovies.map(movie => {
+    const card = document.createElement('a');
+    card.className = 'movie-card mini-movie';
+    card.dataset.movieId = movie.id;
+    card.href = movie.detailHref || 'personal-cinema-movie-library.html';
+    card.innerHTML = '<span class="poster-art"><img alt="" /></span><span class="poster-copy"><strong class="poster-title"></strong><span class="poster-meta"></span></span>';
+    card.querySelector('.poster-art').dataset.fallback = movie.title;
+    const image = card.querySelector('img');
+    image.src = movie.poster;
+    image.alt = `${movie.title}电影海报`;
+    image.addEventListener('error', () => { image.hidden = true; });
+    card.querySelector('.poster-title').textContent = movie.title;
+    const quality = scanTask.results[movie.id]?.quality;
+    card.querySelector('.poster-meta').textContent = `${movie.year}${quality ? ` · ${quality}` : ''}`;
+    return card;
+  }));
+  $('degradedMovieTitle').textContent = window.PersonalCinemaLibraryMock.getMovieById(scanTask.degradedMovieId)?.title || '';
+  $('skippedIssue').querySelector('strong').textContent = scanTask.skippedFiles[0] || '';
+
+  function renderRecognizedMovies(completed, recognized) {
     const cards = [...$('recognizedMovies').querySelectorAll('.mini-movie')];
     cards.forEach((card, index) => {
-      card.hidden = index >= recognized || (!completed && (card.hasAttribute('data-completion-preview') || progress < Number(card.dataset.revealAt)));
+      card.hidden = index >= recognized;
     });
     $('recognitionEmpty').hidden = cards.some(card => !card.hidden);
     $('recognitionEmpty').textContent = completed ? '本次没有新增影片，你可以查看现有片库或返回媒体来源。' : '识别到的电影会显示在这里。';
@@ -166,15 +180,16 @@
     }));
     $('reviewRemaining').hidden = count <= titles.length;
     $('reviewRemaining').textContent = count > titles.length ? `还有 ${count - titles.length} 部待确认` : '';
-    $('reviewAction').href = `personal-cinema-movie-matching.html?task=${encodeURIComponent(requestedTaskId)}`;
+    $('reviewAction').href = `personal-cinema-movie-matching.html?task=${encodeURIComponent(requestedTaskId)}&source=${encodeURIComponent(scanTask.sourceId)}`;
   }
 
   function renderCounts(progress, completed) {
-    const pending = pendingTotal();
+    const discoveredCandidates = completed ? scanTask.pendingIds : scanTask.pendingIds.slice(0, Math.floor(progress * scanTask.pendingIds.length));
+    const pending = discoveredCandidates.filter(id => pendingIds().includes(id)).length;
     const scanned = completed ? totalFiles : Math.min(totalFiles, Math.floor(progress * totalFiles));
     const recognized = completed ? completedMovies : Math.min(completedMovies, Math.floor(progress * completedMovies));
-    const skipped = completed || progress >= .58 ? 1 : 0;
-    const degraded = completed || progress >= .76 ? 1 : 0;
+    const skipped = completed || progress >= .58 ? scanTask.skippedFiles.length : 0;
+    const degraded = (completed || progress >= .76) && scanTask.degradedMovieId ? 1 : 0;
     const issues = skipped + degraded;
 
     $('scanProgressCount').textContent = `${scanned} / ${totalFiles} 个文件`;
@@ -186,6 +201,7 @@
     $('recognizedCount').textContent = String(recognized);
     $('importedCount').textContent = String(recognized);
     $('technicalPendingCount').textContent = String(pending);
+    $('resolvedCount').textContent = String(discoveredCandidates.length - pending);
     $('skippedCount').textContent = String(skipped);
     $('degradedCount').textContent = String(degraded);
     $('progressValue').style.width = `${Math.round(progress * 100)}%`;
@@ -214,7 +230,7 @@
     if (count > 0) {
       $('matchingCta').hidden = false;
       $('matchingCta').textContent = `处理 ${count} 部待确认影片`;
-      $('matchingCta').href = `personal-cinema-movie-matching.html?task=${encodeURIComponent(requestedTaskId)}`;
+      $('matchingCta').href = `personal-cinema-movie-matching.html?task=${encodeURIComponent(requestedTaskId)}&source=${encodeURIComponent(scanTask.sourceId)}`;
     } else {
       $('matchingCta').hidden = true;
     }
@@ -236,7 +252,7 @@
     $('completionSecondary').hidden = !completed || (counts.pending === 0 && counts.issues === 0);
     renderPipeline(progress, completed, failed);
     renderFiles(progress, completed);
-    renderRecognizedMovies(progress, completed, counts.recognized);
+    renderRecognizedMovies(completed, counts.recognized);
     const seconds = Math.floor((Date.now() - task.createdAt) / 1000);
     $('elapsedLabel').textContent = completed ? '已完成' : `已运行 00:${String(Math.max(0, seconds)).padStart(2, '0')}`;
 
@@ -316,7 +332,7 @@
     if (timer) clearInterval(timer);
     forceComplete = false;
     forceFailed = false;
-    task = { id: requestedTaskId, createdAt: Date.now(), status: 'running' };
+    task = { id: requestedTaskId, sourceId: scanTask.sourceId, createdAt: Date.now(), status: 'running' };
     writeJSON(storageKey, task);
     try { localStorage.removeItem(matchingKey); } catch { /* no-op */ }
     params.delete('state');

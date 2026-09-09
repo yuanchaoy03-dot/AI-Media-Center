@@ -260,7 +260,6 @@
                 <a class="section-action" href="personal-cinema-movie-library.html" data-od-id="recent-media-view-all">查看全部<svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></a>
               </div>
               <div class="recent-media-grid" id="recentMediaGrid"></div>
-              <img id="recentPosterParasiteSeed" src="assets/tmdb-poster-parasite.jpg" alt="" hidden />
             </section>
           </div>
           <p class="sr-only" id="announcement" aria-live="polite"></p>
@@ -310,35 +309,21 @@
   <section class="search-dialog" id="searchDialog" data-open="false" role="dialog" aria-modal="true" aria-label="搜索影片" data-od-id="global-search-dialog">
     <div class="search-field"><label class="sr-only" for="globalSearch">搜索片名、导演或演员</label><svg class="icon" aria-hidden="true"><use href="#ph-magnifying-glass"></use></svg><input class="search-input" id="globalSearch" type="search" autocomplete="off" placeholder="搜索片名、导演或演员" /><button class="search-clear" id="clearSearch" type="button" aria-label="清空搜索关键词" hidden><svg aria-hidden="true"><use href="#ph-x"></use></svg></button><span class="search-key">ESC</span></div>
     <div class="search-results"><p class="search-caption" id="searchCaption">最近内容</p><div class="search-result-list" id="searchResultList" aria-live="polite">
-      <button class="search-result" type="button" data-search="星际穿越 2014 科幻" data-href="personal-cinema-movie-detail-interstellar.html"><img class="search-thumb" src="assets/tmdb-poster-interstellar.jpg" alt="星际穿越电影海报" /><span><strong>星际穿越</strong><small>2014 · 科幻 / 剧情 / 冒险 · 8.5</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
-      <button class="search-result" type="button" data-search="沙丘 2021 科幻" data-href="personal-cinema-movie-detail.html"><img class="search-thumb" src="assets/tmdb-poster-dune.jpg" alt="沙丘电影海报" /><span><strong>沙丘</strong><small>2021 · 科幻 / 冒险 · 7.8</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
-      <button class="search-result" type="button" data-search="奥本海默 2023 剧情 历史" data-href="personal-cinema-movie-detail-oppenheimer.html"><img class="search-thumb" src="assets/tmdb-poster-oppenheimer.jpg" alt="奥本海默电影海报" /><span><strong>奥本海默</strong><small>2023 · 剧情 / 历史 · 8.0</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
-      <button class="search-result" type="button" data-search="沙丘2 2024 科幻" data-href="personal-cinema-movie-detail-dune-part-two.html"><img class="search-thumb" src="assets/tmdb-poster-dune-part-two.jpg" alt="沙丘2电影海报" /><span><strong>沙丘2</strong><small>2024 · 科幻 / 冒险 · 8.1</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
-      <button class="search-result" type="button" data-search="降临 2016 科幻 悬疑"><img class="search-thumb" src="assets/tmdb-poster-arrival.jpg" alt="降临电影海报" /><span><strong>降临</strong><small>2016 · 剧情 / 科幻 / 悬疑 · 7.6</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
+      <button class="search-result" type="button" data-href="personal-cinema-movie-detail-interstellar.html" data-movie-id="movie-interstellar"></button>
+      <button class="search-result" type="button" data-href="personal-cinema-movie-detail.html" data-movie-id="movie-dune"></button>
+      <button class="search-result" type="button" data-href="personal-cinema-movie-detail-oppenheimer.html" data-movie-id="movie-oppenheimer"></button>
+      <button class="search-result" type="button" data-href="personal-cinema-movie-detail-dune-part-two.html" data-movie-id="movie-dune-part-two"></button>
+      <button class="search-result" type="button" data-movie-id="movie-arrival"></button>
     </div><div class="search-empty" id="searchEmpty" hidden><strong>没有找到匹配的影片</strong><span>尝试搜索片名、导演或演员</span></div></div>
   </section>
 
+  <script src="assets/js/personal-cinema-media-source-mock.js"></script>
+  <script src="assets/js/personal-cinema-library-mock.js"></script>
+  <script src="assets/js/personal-cinema-scan-mock.js"></script>
   <script>
-    const sources = [
-      {id:'source-home-nas',name:'家庭 NAS',type:'WebDAV',address:'https://nas.example.com/dav',location:'nas.example.com/dav · /Movies',rootPath:'/Movies',movieCount:126,status:'available',lastScan:'8 分钟前',icon:'ph-cloud'},
-      {id:'source-alist',name:'AList · 迅雷云盘',type:'WebDAV',address:'https://alist.example.com/dav',location:'alist.example.com/dav · /Movies',rootPath:'/Movies',movieCount:58,status:'available',lastScan:'23 分钟前',icon:'ph-cloud'},
-      {id:'source-nextcloud',name:'我的 Nextcloud',type:'WebDAV',address:'https://cloud.example.com/remote.php/dav/files/lin',location:'cloud.example.com · /Cinema',rootPath:'/Cinema',movieCount:84,status:'available',lastScan:'昨天',icon:'ph-cloud'}
-    ];
-
-    const scans = [
-      {id:'scan_20260903_1032',sourceId:'source-home-nas',name:'家庭 NAS',summary:'扫描完成 · 新增 119 部 · 待确认 3 个 · 跳过 2 个',time:'8 分钟前'},
-      {id:'scan-alist',sourceId:'source-alist',name:'AList · 迅雷云盘',summary:'扫描完成 · 没有发现变化',time:'23 分钟前'},
-      {id:'scan-nextcloud',sourceId:'source-nextcloud',name:'我的 Nextcloud',summary:'扫描完成 · 新增 1 部',time:'昨天'}
-    ];
-
-    const recentMedia = [
-      {id:'dune-part-two',title:'沙丘2',sourceName:'家庭 NAS',posterSourceTitle:'沙丘2',href:'personal-cinema-movie-detail-dune-part-two.html'},
-      {id:'oppenheimer',title:'奥本海默',sourceName:'我的 Nextcloud',posterSourceTitle:'奥本海默',href:'personal-cinema-movie-detail-oppenheimer.html'},
-      {id:'interstellar',title:'星际穿越',sourceName:'家庭 NAS',posterSourceTitle:'星际穿越',href:'personal-cinema-movie-detail-interstellar.html'},
-      {id:'dune',title:'沙丘',sourceName:'AList · 迅雷云盘',posterSourceTitle:'沙丘',href:'personal-cinema-movie-detail.html'},
-      {id:'arrival',title:'降临',sourceName:'AList · 迅雷云盘',posterSourceTitle:'降临',href:'personal-cinema-movie-library.html'},
-      {id:'parasite',title:'寄生虫',sourceName:'我的 Nextcloud',posterSourceTitle:'寄生虫',href:'personal-cinema-movie-library.html'}
-    ];
+    const { sources, getSourceById } = window.PersonalCinemaMediaSourceMock;
+    const { getMoviesBySourceId } = window.PersonalCinemaLibraryMock;
+    const { tasks: scans, getAddedMovies, getPendingIds } = window.PersonalCinemaScanMock;
 
     const sourceList = document.getElementById('sourceList');
     const sourceEmpty = document.getElementById('sourceEmpty');
@@ -367,7 +352,7 @@
             <span class="source-location">${source.location}</span>
           </span>
           <span class="source-status" aria-live="polite">${statusMarkup(source)}</span>
-          <span class="source-footer"><span class="source-count">${source.movieCount} 部电影</span><span class="meta-divider" aria-hidden="true">·</span><span class="source-last-scan">上次扫描 · ${source.lastScan}</span></span>
+          <span class="source-footer"><span class="source-count">${getMoviesBySourceId(source.id).length} 部电影</span><span class="meta-divider" aria-hidden="true">·</span><span class="source-last-scan">上次扫描 · ${source.lastScan}</span></span>
           <button class="source-more" type="button" data-source-more="${source.id}" aria-label="${source.name}更多操作" aria-haspopup="menu" aria-expanded="false"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button>
         </article>
       `).join('');
@@ -380,9 +365,9 @@
       const visibleScans = scans.filter(scan => currentIds.has(scan.sourceId));
       scanList.innerHTML = visibleScans.map(scan => `
         <article class="scan-item" data-od-id="scan-item-${scan.sourceId}">
-          <button class="scan-hit" type="button" data-scan-detail="${scan.id}" data-scan-source="${scan.sourceId}" aria-label="查看${scan.name}扫描详情"></button>
+          <button class="scan-hit" type="button" data-scan-detail="${scan.id}" data-scan-source="${scan.sourceId}" aria-label="查看${getSourceById(scan.sourceId).name}扫描详情"></button>
           <span class="scan-icon"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span>
-          <span class="scan-copy"><strong>${scan.name}</strong><span>${scan.summary}</span></span>
+          <span class="scan-copy"><strong>${getSourceById(scan.sourceId).name}</strong><span>${scan.status === 'pending' ? '等待首次扫描' : `扫描完成 · 新增 ${getAddedMovies(scan).length} 部 · 待确认 ${getPendingIds(scan).length} 个 · 需要注意 ${scan.attentionCount} 个`}</span></span>
           <time class="scan-time">${scan.time}</time>
           <svg class="scan-chevron" aria-hidden="true"><use href="#ph-caret-right"></use></svg>
         </article>
@@ -390,34 +375,23 @@
       document.getElementById('recentScansTitle').parentElement.hidden = visibleScans.length === 0;
     }
 
-    function hydrateRecentPosters(){
-      try{
-        const searchPosterUrls = new Map([...document.querySelectorAll('.search-result')].map(result => {
-          const title = result.querySelector('strong')?.textContent.trim();
-          const image = result.querySelector('.search-thumb');
-          return [title,image?.src];
-        }).filter(([title,url]) => title && url));
-        const parasiteSeed = document.getElementById('recentPosterParasiteSeed');
-        if(parasiteSeed?.src) searchPosterUrls.set('寄生虫',parasiteSeed.src);
-        const mediaById = new Map(recentMedia.map(movie => [movie.id,movie]));
-        recentMediaGrid.querySelectorAll('[data-poster-key]').forEach(image => {
-          const movie = mediaById.get(image.dataset.posterKey);
-          const posterUrl = movie && searchPosterUrls.get(movie.posterSourceTitle);
-          if(posterUrl) image.src = posterUrl;
-        });
-      }catch(error){
-        console.warn('Failed to hydrate recent posters:',error);
-      }
-    }
-
     function renderRecentMedia(){
-      recentMediaGrid.innerHTML = recentMedia.map(movie => `
-        <a class="movie-card" href="${movie.href}" data-od-id="recent-media-${movie.id}" aria-label="查看${movie.title}">
-          <span class="poster-art"><img data-poster-key="${movie.id}" alt="${movie.title}电影海报" /></span>
-          <span class="poster-copy"><strong class="poster-title">${movie.title}</strong><span class="poster-meta">${movie.sourceName}</span></span>
-        </a>
-      `).join('');
-      hydrateRecentPosters();
+      const recentMedia = sources.flatMap(source => getMoviesBySourceId(source.id))
+        .sort((a,b) => b.added - a.added).slice(0,6);
+      recentMediaGrid.replaceChildren(...recentMedia.map(movie => {
+        const card = document.createElement('a');
+        card.className = 'movie-card';
+        card.href = movie.detailHref || 'personal-cinema-movie-library.html';
+        card.dataset.movieId = movie.id;
+        card.dataset.odId = `recent-media-${movie.id}`;
+        card.setAttribute('aria-label', `查看${movie.title}`);
+        card.innerHTML = '<span class="poster-art"><img alt="" /></span><span class="poster-copy"><strong class="poster-title"></strong><span class="poster-meta"></span></span>';
+        card.querySelector('img').src = movie.poster;
+        card.querySelector('img').alt = `${movie.title}电影海报`;
+        card.querySelector('.poster-title').textContent = movie.title;
+        card.querySelector('.poster-meta').textContent = getSourceById(movie.sourceId).name;
+        return card;
+      }));
     }
 
     function announce(message){
@@ -499,7 +473,7 @@
       if(action.dataset.sourceAction === 'remove'){
         const index = sources.findIndex(item => item.id === id);
         if(index > -1) sources.splice(index,1);
-        renderSources();renderScans();announce(`已移除${source.name}`);
+        renderSources();renderScans();renderRecentMedia();announce(`已移除${source.name}`);
       }
     });
 
@@ -583,10 +557,10 @@
       if(existing){Object.assign(existing,{name,address,username,rootPath,location,type:typeLabel,icon});}
       else{
         const id = `source-${Date.now()}`;
-        sources.push({id,name,address,username,rootPath,type:typeLabel,location,movieCount:0,status:'available',lastScan:'尚未扫描',icon});
-        scans.unshift({id:`scan-${id}`,sourceId:id,name,summary:'等待首次扫描',time:'刚刚'});
+        sources.push({id,name,address,username,rootPath,type:typeLabel,location,status:'available',lastScan:'尚未扫描',icon});
+        scans.unshift({id:`scan-${id}`,sourceId:id,status:'pending',recognizedMovieIds:[],pendingIds:[],attentionCount:0,time:'刚刚'});
       }
-      renderSources();renderScans();closeSourceDialog();announce(`${name}已添加`);
+      renderSources();renderScans();renderRecentMedia();closeSourceDialog();announce(`${name}已添加`);
     });
 
     sourceDialog.addEventListener('keydown',event => {
@@ -662,6 +636,10 @@
 
     renderSources();
     renderScans();
+    window.addEventListener('pageshow', event => { if(event.persisted) renderScans(); });
+    window.addEventListener('storage', event => {
+      if(event.key === null || event.key.startsWith('personalCinema.matching.')) renderScans();
+    });
     try{
       renderRecentMedia();
     }catch(error){

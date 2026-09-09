@@ -93,9 +93,9 @@
             </div></section>
             <!-- Prototype labels are CurrentUser MediaSource instances. All three use WebDAV in P0. -->
             <section class="filter-section" data-od-id="filter-source"><h2 class="filter-section-title">来源</h2><div class="filter-list">
-              <label class="option-row"><span>AList · 迅雷云盘</span><input type="checkbox" name="mediaSourceId" value="source-alist" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
-              <label class="option-row"><span>家庭 NAS</span><input type="checkbox" name="mediaSourceId" value="source-home-nas" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
-              <label class="option-row"><span>我的 Nextcloud</span><input type="checkbox" name="mediaSourceId" value="source-nextcloud" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
+              <label class="option-row"><span></span><input type="checkbox" name="mediaSourceId" value="source-alist" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
+              <label class="option-row"><span></span><input type="checkbox" name="mediaSourceId" value="source-home-nas" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
+              <label class="option-row"><span></span><input type="checkbox" name="mediaSourceId" value="source-nextcloud" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
             </div></section>
             <div class="filter-footer"><button class="quiet-action" id="clearFilters" type="button">清除筛选</button></div>
           </div>
@@ -136,20 +136,21 @@
   <section class="search-dialog" id="searchDialog" data-open="false" role="dialog" aria-modal="true" aria-label="搜索影片" data-od-id="global-search-dialog">
     <div class="search-field"><label class="sr-only" for="globalSearch">搜索片名、导演或演员</label><svg class="icon" aria-hidden="true"><use href="#ph-magnifying-glass"></use></svg><input class="search-input" id="globalSearch" type="search" autocomplete="off" aria-controls="searchResultList" placeholder="搜索片名、导演或演员" /><button class="search-clear" id="clearSearch" type="button" aria-label="清空搜索关键词" data-od-id="search-clear-button" hidden><svg aria-hidden="true"><use href="#ph-x"></use></svg></button><span class="search-key">ESC</span></div>
     <div class="search-results"><p class="search-caption" id="searchCaption">最近内容</p><div class="search-result-list" id="searchResultList" aria-live="polite">
-      <button class="search-result" type="button" data-search="星际穿越 2014 冒险 剧情 科幻 8.5"><img class="search-thumb" src="assets/tmdb-poster-interstellar.jpg" alt="星际穿越电影海报" /><span><strong>星际穿越</strong><small>2014 · 冒险 / 剧情 / 科幻 · 8.5</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
-      <button class="search-result" type="button" data-search="沙丘 2021 科幻 冒险 7.8"><img class="search-thumb" src="assets/tmdb-poster-dune.jpg" alt="沙丘电影海报" /><span><strong>沙丘</strong><small>2021 · 科幻 / 冒险 · 7.8</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
-      <button class="search-result" type="button" data-search="银翼杀手2049 2017 科幻 剧情 7.6"><img class="search-thumb" src="assets/tmdb-poster-blade-runner-2049.jpg" alt="银翼杀手2049电影海报" /><span><strong>银翼杀手2049</strong><small>2017 · 科幻 / 剧情 · 7.6</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
-      <button class="search-result" type="button" data-search="降临 2016 剧情 科幻 悬疑 7.6"><img class="search-thumb" src="assets/tmdb-poster-arrival.jpg" alt="降临电影海报" /><span><strong>降临</strong><small>2016 · 剧情 / 科幻 / 悬疑 · 7.6</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
-      <button class="search-result" type="button" data-search="奥本海默 2023 剧情 历史 8.0"><img class="search-thumb" src="assets/tmdb-poster-oppenheimer.jpg" alt="奥本海默电影海报" /><span><strong>奥本海默</strong><small>2023 · 剧情 / 历史 · 8.0</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
-      <button class="search-result" type="button" data-search="新蝙蝠侠 2022 犯罪 悬疑 惊悚 7.7"><img class="search-thumb" src="assets/tmdb-poster-the-batman.jpg" alt="新蝙蝠侠电影海报" /><span><strong>新蝙蝠侠</strong><small>2022 · 犯罪 / 悬疑 / 惊悚 · 7.7</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
-      <button class="search-result" type="button" data-search="盗梦空间 2010 动作 科幻 冒险 8.4"><img class="search-thumb" src="assets/tmdb-poster-inception.jpg" alt="盗梦空间电影海报" /><span><strong>盗梦空间</strong><small>2010 · 动作 / 科幻 / 冒险 · 8.4</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
-      <button class="search-result" type="button" data-search="沙丘2 2024 科幻 冒险 8.1"><img class="search-thumb" src="assets/tmdb-poster-dune-part-two.jpg" alt="沙丘2电影海报" /><span><strong>沙丘2</strong><small>2024 · 科幻 / 冒险 · 8.1</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
-      <button class="search-result" type="button" data-search="囚徒 2013 剧情 惊悚 犯罪 8.1"><img class="search-thumb" src="assets/tmdb-poster-prisoners.jpg" alt="囚徒电影海报" /><span><strong>囚徒</strong><small>2013 · 剧情 / 惊悚 / 犯罪 · 8.1</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
-      <button class="search-result" type="button" data-search="1917 2019 战争 剧情 历史 8.0"><img class="search-thumb" src="assets/tmdb-poster-1917.jpg" alt="1917电影海报" /><span><strong>1917</strong><small>2019 · 战争 / 剧情 / 历史 · 8.0</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
-      <button class="search-result" type="button" data-search="疯狂的麦克斯4 狂暴之路 2015 动作 冒险 科幻 7.6"><img class="search-thumb" src="assets/tmdb-poster-mad-max-fury-road.jpg" alt="疯狂的麦克斯4：狂暴之路电影海报" /><span><strong>疯狂的麦克斯4：狂暴之路</strong><small>2015 · 动作 / 冒险 / 科幻 · 7.6</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
+      <button class="search-result" type="button" data-movie-id="movie-interstellar"></button>
+      <button class="search-result" type="button" data-movie-id="movie-dune"></button>
+      <button class="search-result" type="button" data-movie-id="movie-blade-runner-2049"></button>
+      <button class="search-result" type="button" data-movie-id="movie-arrival"></button>
+      <button class="search-result" type="button" data-movie-id="movie-oppenheimer"></button>
+      <button class="search-result" type="button" data-movie-id="movie-the-batman"></button>
+      <button class="search-result" type="button" data-movie-id="movie-inception"></button>
+      <button class="search-result" type="button" data-movie-id="movie-dune-part-two"></button>
+      <button class="search-result" type="button" data-movie-id="movie-prisoners"></button>
+      <button class="search-result" type="button" data-movie-id="movie-1917"></button>
+      <button class="search-result" type="button" data-movie-id="movie-mad-max-fury-road"></button>
     </div><div class="search-empty" id="searchEmpty" hidden><strong>没有找到匹配的影片</strong><span>尝试搜索片名、导演或演员</span></div></div>
   </section>
 
+  <script src="assets/js/personal-cinema-media-source-mock.js"></script>
   <script src="assets/js/personal-cinema-library-mock.js"></script>
   <script src="assets/js/personal-cinema-library-view.js"></script>
 </body>

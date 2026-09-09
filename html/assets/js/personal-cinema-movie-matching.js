@@ -1,9 +1,13 @@
 (() => {
   const $ = id => document.getElementById(id);
   const params = new URLSearchParams(window.location.search);
-  const taskId = params.get('task') || 'scan_20260903_1032';
+  const scanTask = window.PersonalCinemaScanMock.getTask(params.get('task'), params.get('source'));
+  const taskId = scanTask.id;
+  const source = window.PersonalCinemaMediaSourceMock.getSourceById(scanTask.sourceId);
+  $('detailSource').textContent = source ? `${source.name} · ${source.type}` : '未找到媒体来源';
   const storageKey = `personalCinema.matching.${taskId}`;
-  const allIds = ['blade-runner-2049', 'alien-1979', 'prisoners-2013'];
+  const allIds = scanTask.pendingIds;
+  // These are unconfirmed TMDB candidates for source files, not Library Movie entities.
   const items = {
     'blade-runner-2049': {
       id: 'blade-runner-2049', file: 'Blade.Runner.2049.2017.2160p.WEB-DL.mkv', path: '/Movies/Sci-Fi/Blade.Runner.2049.2017.2160p.WEB-DL.mkv',
@@ -48,7 +52,7 @@
     try {
       const stored = JSON.parse(localStorage.getItem(storageKey) || 'null');
       if (stored && Array.isArray(stored.pendingIds)) {
-        return { pendingIds: stored.pendingIds, resolved: Array.isArray(stored.resolved) ? stored.resolved : [] };
+        return { pendingIds: allIds.filter(id => stored.pendingIds.includes(id)), resolved: Array.isArray(stored.resolved) ? stored.resolved : [] };
       }
     } catch { /* fall through */ }
     return { pendingIds: [...allIds], resolved: [] };
@@ -235,7 +239,7 @@
 
   renderList();
   document.querySelectorAll('[data-scan-task-link]').forEach(link => {
-    link.href = `personal-cinema-scan-task.html?state=complete&task=${encodeURIComponent(taskId)}`;
+    link.href = `personal-cinema-scan-task.html?state=complete&task=${encodeURIComponent(taskId)}&source=${encodeURIComponent(scanTask.sourceId)}`;
   });
   const requestedItem = params.get('item');
   if (requestedItem && state.pendingIds.includes(requestedItem)) requestAnimationFrame(() => openDialog(requestedItem));

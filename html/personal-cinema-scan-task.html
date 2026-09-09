@@ -71,13 +71,13 @@
           <div class="workflow-stack" id="scanContent">
             <section class="scan-hero surface-card" id="scanHero" data-mode="running" aria-labelledby="scanHeroTitle">
               <div class="scan-hero-head">
-                <div class="scan-source"><span>媒体来源</span><strong id="sourceName">家庭 NAS</strong></div>
+                <div class="scan-source"><span>媒体来源</span><strong id="sourceName"></strong></div>
                 <span class="status-label" id="headerStatus" data-state="active"><span class="status-dot" aria-hidden="true"></span><span>扫描中</span></span>
               </div>
               <div class="scan-hero-body">
                 <div class="scan-message"><h2 id="scanHeroTitle">正在整理你的电影</h2><span id="currentActivity" aria-live="polite">正在连接媒体来源……</span></div>
                 <div class="scan-running-progress">
-                  <div class="scan-progress-copy"><strong id="scanProgressCount">0 / 126 个文件</strong><span id="scanProgressPercent">0%</span></div>
+                  <div class="scan-progress-copy"><strong id="scanProgressCount">0 / 0 个文件</strong><span id="scanProgressPercent">0%</span></div>
                   <div class="progress-track" id="scanProgress" role="progressbar" aria-label="扫描进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span class="progress-value" id="progressValue"></span></div>
                 </div>
               </div>
@@ -104,22 +104,6 @@
                 <a class="section-link" id="addedMoviesLink" href="personal-cinema-movie-library.html"><span id="addedMoviesLinkLabel">查看全部</span><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></a>
               </div>
               <div class="poster-strip" id="recognizedMovies">
-                <a class="movie-card mini-movie" data-reveal-at="0.12" href="personal-cinema-movie-detail.html"><span class="poster-art" data-fallback="DUNE"><img src="assets/tmdb-poster-dune.jpg" alt="沙丘电影海报" onerror="this.hidden=true" /></span><span class="poster-copy"><strong class="poster-title">沙丘</strong><span class="poster-meta">2021 · 4K</span></span></a>
-                <a class="movie-card mini-movie" data-reveal-at="0.3" href="personal-cinema-movie-detail-oppenheimer.html"><span class="poster-art" data-fallback="OPPENHEIMER"><img src="assets/tmdb-poster-oppenheimer.jpg" alt="奥本海默电影海报" onerror="this.hidden=true" /></span><span class="poster-copy"><strong class="poster-title">奥本海默</strong><span class="poster-meta">2023 · 4K HDR</span></span></a>
-                <a class="movie-card mini-movie" data-reveal-at="0.5" href="personal-cinema-movie-detail-interstellar.html"><span class="poster-art" data-fallback="INTERSTELLAR"><img src="assets/tmdb-poster-interstellar.jpg" alt="星际穿越电影海报" onerror="this.hidden=true" /></span><span class="poster-copy"><strong class="poster-title">星际穿越</strong><span class="poster-meta">2014 · 1080p</span></span></a>
-                <a class="movie-card mini-movie" data-reveal-at="0.7" href="personal-cinema-movie-library.html"><span class="poster-art" data-fallback="ARRIVAL"><img src="assets/tmdb-poster-arrival.jpg" alt="降临电影海报" onerror="this.hidden=true" /></span><span class="poster-copy"><strong class="poster-title">降临</strong><span class="poster-meta">2016 · 4K</span></span></a>
-                <a class="movie-card mini-movie" data-completion-preview hidden href="personal-cinema-movie-detail-dune-part-two.html"><span class="poster-art" data-fallback="沙丘2"><img src="assets/tmdb-poster-dune-part-two.jpg" alt="沙丘2电影海报" onerror="this.hidden=true" /></span><span class="poster-copy"><strong class="poster-title">沙丘2</strong><span class="poster-meta">2024 · 4K HDR</span></span></a>
-                <a class="movie-card mini-movie" data-completion-preview hidden href="personal-cinema-movie-library.html"><span class="poster-art" data-fallback="新蝙蝠侠"><img src="assets/tmdb-poster-the-batman.jpg" alt="新蝙蝠侠电影海报" onerror="this.hidden=true" /></span><span class="poster-copy"><strong class="poster-title">新蝙蝠侠</strong><span class="poster-meta">2022 · 4K HDR</span></span></a>
-                <a class="movie-card mini-movie" data-completion-preview hidden href="personal-cinema-movie-library.html"><span class="poster-art" data-fallback="盗梦空间"><img src="assets/tmdb-poster-inception.jpg" alt="盗梦空间电影海报" onerror="this.hidden=true" /></span><span class="poster-copy"><strong class="poster-title">盗梦空间</strong><span class="poster-meta">2010 · 4K</span></span></a>
-                <a class="movie-card mini-movie" data-completion-preview hidden href="personal-cinema-movie-library.html"><span class="poster-art" data-fallback="1917"><img src="assets/tmdb-poster-1917.jpg" alt="1917电影海报" onerror="this.hidden=true" /></span><span class="poster-copy"><strong class="poster-title">1917</strong><span class="poster-meta">2019 · 4K HDR</span></span></a>
-                <a class="movie-card mini-movie" data-completion-preview hidden href="personal-cinema-movie-library.html"><span class="poster-art" data-fallback="疯狂的麦克斯：狂暴之路"><img src="assets/tmdb-poster-mad-max-fury-road.jpg" alt="疯狂的麦克斯：狂暴之路电影海报" onerror="this.hidden=true" /></span><span class="poster-copy"><strong class="poster-title">疯狂的麦克斯：狂暴之路</strong><span class="poster-meta">2015 · 4K HDR</span></span></a>
-                <a class="movie-card mini-movie" data-completion-preview hidden href="personal-cinema-movie-library.html"><span class="poster-art" data-fallback="寄生虫"><img src="assets/tmdb-poster-parasite.jpg" alt="寄生虫电影海报" onerror="this.hidden=true" /></span><span class="poster-copy"><strong class="poster-title">寄生虫</strong><span class="poster-meta">2019 · 1080p</span></span></a>
-                <a class="movie-card mini-movie" data-completion-preview hidden href="personal-cinema-movie-library.html"><span class="poster-art" data-fallback="爆裂鼓手"><img src="assets/tmdb-poster-whiplash.jpg" alt="爆裂鼓手电影海报" onerror="this.hidden=true" /></span><span class="poster-copy"><strong class="poster-title">爆裂鼓手</strong><span class="poster-meta">2014 · 1080p</span></span></a>
-                <a class="movie-card mini-movie" data-completion-preview hidden href="personal-cinema-movie-library.html"><span class="poster-art" data-fallback="消失的爱人"><img src="assets/tmdb-poster-gone-girl.jpg" alt="消失的爱人电影海报" onerror="this.hidden=true" /></span><span class="poster-copy"><strong class="poster-title">消失的爱人</strong><span class="poster-meta">2014 · 1080p</span></span></a>
-                <a class="movie-card mini-movie" data-completion-preview hidden href="personal-cinema-movie-library.html"><span class="poster-art" data-fallback="机械姬"><img src="assets/tmdb-poster-ex-machina.jpg" alt="机械姬电影海报" onerror="this.hidden=true" /></span><span class="poster-copy"><strong class="poster-title">机械姬</strong><span class="poster-meta">2015 · 4K</span></span></a>
-                <a class="movie-card mini-movie" data-completion-preview hidden href="personal-cinema-movie-library.html"><span class="poster-art" data-fallback="银翼杀手"><img src="assets/tmdb-poster-blade-runner.jpg" alt="银翼杀手电影海报" onerror="this.hidden=true" /></span><span class="poster-copy"><strong class="poster-title">银翼杀手</strong><span class="poster-meta">1982 · 4K</span></span></a>
-                <a class="movie-card mini-movie" data-completion-preview hidden href="personal-cinema-movie-library.html"><span class="poster-art" data-fallback="异形2"><img src="assets/tmdb-poster-aliens.jpg" alt="异形2电影海报" onerror="this.hidden=true" /></span><span class="poster-copy"><strong class="poster-title">异形2</strong><span class="poster-meta">1986 · 1080p</span></span></a>
-                <a class="movie-card mini-movie" data-completion-preview hidden href="personal-cinema-movie-library.html"><span class="poster-art" data-fallback="异形：契约"><img src="assets/tmdb-poster-alien-covenant.jpg" alt="异形：契约电影海报" onerror="this.hidden=true" /></span><span class="poster-copy"><strong class="poster-title">异形：契约</strong><span class="poster-meta">2017 · 4K HDR</span></span></a>
               </div>
               <p class="recognition-empty" id="recognitionEmpty">识别到的电影会显示在这里。</p>
             </section>
@@ -143,7 +127,7 @@
               <section class="workflow-section" id="exceptionsSection" aria-labelledby="exceptionsTitle" hidden>
                 <div class="workflow-section-heading"><div class="section-heading-copy"><div class="section-title-line"><h2 class="section-title" id="exceptionsTitle">需要注意</h2><span class="section-count" id="exceptionsCount">0</span></div></div></div>
                 <div class="compact-list surface-card">
-                  <div class="compact-row" id="degradedIssue"><div class="compact-row-copy"><strong>The Fall</strong><span>已加入片库，但部分媒体信息没有读取完整。</span></div><span class="status-label" data-state="pending">信息不完整</span></div>
+                  <div class="compact-row" id="degradedIssue"><div class="compact-row-copy"><strong id="degradedMovieTitle"></strong><span>已加入片库，但部分媒体信息没有读取完整。</span></div><span class="status-label" data-state="pending">信息不完整</span></div>
                   <div class="compact-row" id="skippedIssue"><div class="compact-row-copy"><strong>random_test_clip.mp4</strong><span>没有识别为电影，因此没有加入片库。</span></div><span class="status-label" data-state="pending">未加入</span></div>
                 </div>
               </section>
@@ -154,15 +138,16 @@
               <div class="details-content" id="processingDetails" hidden>
                 <section class="technical-task surface-card" aria-labelledby="taskOverviewTitle">
                   <div class="task-overview-head">
-                    <div class="task-overview-title"><strong id="taskOverviewTitle">家庭 NAS · WebDAV</strong><span id="taskRootLabel">扫描根路径 /Movies</span></div>
+                    <div class="task-overview-title"><strong id="taskOverviewTitle"></strong><span id="taskRootLabel">扫描根路径 /Movies</span></div>
                     <span class="status-label" id="taskState" data-state="active"><span class="status-dot" aria-hidden="true"></span><span>扫描中</span></span>
                   </div>
-                  <div class="task-meta"><span id="taskSourceMeta"><svg aria-hidden="true"><use href="#ph-hard-drives"></use></svg>家庭 NAS</span><span id="taskPathMeta"><svg aria-hidden="true"><use href="#ph-folder"></use></svg>/Movies</span><span class="task-id" id="taskIdMeta">task_id · scan_20260903_1032</span><span id="elapsedLabel">已运行 00:00</span></div>
+                  <div class="task-meta"><span id="taskSourceMeta"><svg aria-hidden="true"><use href="#ph-hard-drives"></use></svg><span></span></span><span id="taskPathMeta"><svg aria-hidden="true"><use href="#ph-folder"></use></svg>/Movies</span><span class="task-id" id="taskIdMeta">task_id · scan_20260903_1032</span><span id="elapsedLabel">已运行 00:00</span></div>
                   <div class="task-summary" aria-label="技术处理统计">
                     <div class="summary-item"><strong class="summary-value" id="foundCount">0</strong><span class="summary-label">已发现文件</span></div>
                     <div class="summary-item"><strong class="summary-value" id="recognizedCount">0</strong><span class="summary-label" id="recognizedLabel">已识别影片</span></div>
                     <div class="summary-item"><strong class="summary-value" id="importedCount">0</strong><span class="summary-label" id="importedLabel">已入库</span></div>
                     <div class="summary-item"><strong class="summary-value" id="technicalPendingCount">0</strong><span class="summary-label">待确认</span></div>
+                    <div class="summary-item"><strong class="summary-value" id="resolvedCount">0</strong><span class="summary-label">已处理候选</span></div>
                     <div class="summary-item"><strong class="summary-value" id="skippedCount">0</strong><span class="summary-label">跳过</span></div>
                     <div class="summary-item"><strong class="summary-value" id="degradedCount">0</strong><span class="summary-label">探测降级</span></div>
                   </div>
@@ -190,14 +175,17 @@
   <section class="search-dialog" id="searchDialog" data-open="false" role="dialog" aria-modal="true" aria-label="搜索影片" inert>
     <div class="search-field"><label class="sr-only" for="globalSearch">搜索片名、导演或演员</label><svg class="icon" aria-hidden="true"><use href="#ph-magnifying-glass"></use></svg><input class="search-input" id="globalSearch" type="search" autocomplete="off" placeholder="搜索片名、导演或演员" /><button class="search-clear" id="clearSearch" type="button" aria-label="清空搜索关键词" hidden><svg aria-hidden="true"><use href="#ph-x"></use></svg></button><span class="search-key">ESC</span></div>
     <div class="search-results"><p class="search-caption" id="searchCaption">最近内容</p><div class="search-result-list" id="searchResultList" aria-live="polite">
-      <button class="search-result" type="button" data-search="星际穿越 2014 科幻" data-href="personal-cinema-movie-detail-interstellar.html"><img class="search-thumb" src="assets/tmdb-poster-interstellar.jpg" alt="" onerror="this.style.visibility='hidden'" /><span><strong>星际穿越</strong><small>2014 · 科幻 / 剧情 / 冒险 · 8.5</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
-      <button class="search-result" type="button" data-search="沙丘 2021 科幻" data-href="personal-cinema-movie-detail.html"><img class="search-thumb" src="assets/tmdb-poster-dune.jpg" alt="" onerror="this.style.visibility='hidden'" /><span><strong>沙丘</strong><small>2021 · 科幻 / 冒险 · 7.8</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
-      <button class="search-result" type="button" data-search="银翼杀手2049 2017 科幻 剧情"><img class="search-thumb" src="assets/tmdb-poster-blade-runner-2049.jpg" alt="" onerror="this.style.visibility='hidden'" /><span><strong>银翼杀手2049</strong><small>2017 · 科幻 / 剧情 · 7.6</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
-      <button class="search-result" type="button" data-search="奥本海默 2023 剧情 历史" data-href="personal-cinema-movie-detail-oppenheimer.html"><img class="search-thumb" src="assets/tmdb-poster-oppenheimer.jpg" alt="" onerror="this.style.visibility='hidden'" /><span><strong>奥本海默</strong><small>2023 · 剧情 / 历史 · 8.0</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
-      <button class="search-result" type="button" data-search="囚徒 2013 剧情 犯罪"><img class="search-thumb" src="assets/tmdb-poster-prisoners.jpg" alt="" onerror="this.style.visibility='hidden'" /><span><strong>囚徒</strong><small>2013 · 剧情 / 犯罪 · 8.1</small></span><span class="search-result-caret"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></span></button>
+      <button class="search-result" type="button" data-href="personal-cinema-movie-detail-interstellar.html" data-movie-id="movie-interstellar"></button>
+      <button class="search-result" type="button" data-href="personal-cinema-movie-detail.html" data-movie-id="movie-dune"></button>
+      <button class="search-result" type="button" data-movie-id="movie-blade-runner-2049"></button>
+      <button class="search-result" type="button" data-href="personal-cinema-movie-detail-oppenheimer.html" data-movie-id="movie-oppenheimer"></button>
+      <button class="search-result" type="button" data-movie-id="movie-prisoners"></button>
     </div><div class="search-empty" id="searchEmpty" hidden><strong>没有找到匹配的影片</strong><span>尝试搜索片名、导演或演员</span></div></div>
   </section>
 
+  <script src="assets/js/personal-cinema-media-source-mock.js"></script>
+  <script src="assets/js/personal-cinema-library-mock.js"></script>
+  <script src="assets/js/personal-cinema-scan-mock.js"></script>
   <script src="assets/js/personal-cinema-shell.js"></script>
   <script src="assets/js/personal-cinema-scan-task.js"></script>
 </body>
