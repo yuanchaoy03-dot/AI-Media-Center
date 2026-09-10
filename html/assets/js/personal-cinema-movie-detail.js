@@ -8,6 +8,72 @@
   const movie = getMovieById(movieId);
   const setText = (selector, text) => { document.querySelector(selector).textContent = text; };
   const backdrop = document.querySelector('.detail-backdrop-stage img');
+
+  const isPositiveNumber = value => typeof value === 'number' && Number.isFinite(value) && value > 0;
+  function formatFileSize(bytes) {
+    if (!isPositiveNumber(bytes)) return '';
+    // Decimal units: GB / MB, matching the displayed labels.
+    return bytes >= 1e9 ? `${(bytes / 1e9).toFixed(1)} GB` : `${(bytes / 1e6).toFixed(1)} MB`;
+  }
+  function formatBitrate(bps) {
+    if (!isPositiveNumber(bps)) return '';
+    return bps < 1e5 ? '<0.1 Mbps' : `${(bps / 1e6).toFixed(1)} Mbps`;
+  }
+  function formatFrameRate(fps) {
+    return isPositiveNumber(fps) ? `${fps} fps` : '';
+  }
+  function formatVideoCodec(codec) {
+    if (typeof codec !== 'string') return '';
+    return { hevc: 'HEVC', h265: 'HEVC', 'h.265': 'HEVC', avc: 'H.264', h264: 'H.264', 'h.264': 'H.264', av1: 'AV1' }[codec.toLowerCase()] || codec;
+  }
+  function getResolutionLabel(video) {
+    const { width, height } = video;
+    if (!isPositiveNumber(width) || !isPositiveNumber(height)) return '';
+    if (width >= 3800 && height >= 2100) return '4K';
+    if (width >= 1900 && height >= 1000) return '1080p';
+    if (width >= 1200 && height >= 700) return '720p';
+    return `${width}×${height}`;
+  }
+  function getHdrLabel(video) {
+    return Array.isArray(video.hdrFormats) ? [...new Set(video.hdrFormats
+      .filter(format => typeof format === 'string' && format.trim())
+      .map(format => format === 'Dolby Vision' ? 'DV' : format))].join(' / ') : '';
+  }
+  function getPrimaryAudioTrack(tracks) {
+    if (!Array.isArray(tracks)) return null;
+    const valid = tracks.filter(track => track && typeof track.codec === 'string' && track.codec.trim());
+    const preferred = valid.find(track => track.isDefault === true);
+    if (preferred) return preferred;
+    const order = ['TrueHD Atmos', 'TrueHD', 'DTS-HD MA', 'DTS-HD', 'E-AC-3 Atmos', 'E-AC-3', 'DTS', 'AC-3', 'AAC'];
+    const rank = track => {
+      const key = track.atmos && ['TrueHD', 'E-AC-3'].includes(track.codec) ? `${track.codec} Atmos` : track.codec;
+      const index = order.indexOf(key);
+      return index < 0 ? order.length : index;
+    };
+    // Equal codec ranks retain probe order; never mutate the resource tracks.
+    return valid.reduce((best, track) => !best || rank(track) < rank(best) ? track : best, null);
+  }
+  function formatAudioTrack(track) {
+    return track ? [track.codec, typeof track.channels === 'string' ? track.channels : '', track.atmos ? 'Atmos' : ''].filter(Boolean).join(' ') : '';
+  }
+  function renderMediaSummary(resource) {
+    const video = resource?.video || {};
+    const specification = [getResolutionLabel(video), getHdrLabel(video)].filter(Boolean).join(' ');
+    const rows = [
+      ['primary', [formatFileSize(resource?.sizeBytes), formatVideoCodec(video.codec), specification || resource?.quality, formatAudioTrack(getPrimaryAudioTrack(resource?.audioTracks))]],
+      ['secondary', [formatBitrate(video.bitrate), formatFrameRate(video.frameRate), isPositiveNumber(video.bitDepth) ? `${video.bitDepth}-bit` : '']]
+    ];
+    document.querySelector('.media-specs').replaceChildren(...rows.filter(([, values]) => values.some(Boolean)).map(([level, values]) => {
+      const row = document.createElement('div');
+      row.className = `media-spec-row media-spec-${level}`;
+      row.replaceChildren(...values.filter(Boolean).map(value => {
+        const item = document.createElement('span');
+        item.textContent = value;
+        return item;
+      }));
+      return row;
+    }));
+  }
   if (!movie) {
     document.title = '未找到这部电影 · Personal Cinema';
     $('movieMissing').hidden = false;
@@ -65,17 +131,23 @@
     }));
 
     const source = window.PersonalCinemaMediaSourceMock.getSourceById(movie.sourceId);
-    setText('.media-source', source ? `${source.name} · ${source.type}` : '未知来源');
+    setText('.media-source', source ? source.name : '未知来源');
+    if (source?.type) {
+      const type = document.createElement('span');
+      type.className = 'media-source-type';
+      type.textContent = source.type;
+      document.querySelector('.media-source').append(type);
+    }
     // Resource fields stay in Scan Mock, scoped to this movie's current source.
     const resource = window.PersonalCinemaScanMock.tasks
       .find(task => task.sourceId === movie.sourceId && task.results?.[movie.id])?.results[movie.id];
     setText('.media-file', resource?.filename || '暂无媒体版本信息');
+    renderMediaSummary(resource);
     if (resource?.quality) {
       const quality = document.createElement('span');
       quality.className = 'quality-label';
       quality.textContent = resource.quality;
       document.querySelector('.secondary-meta').append(quality);
-      setText('.media-specs', resource.quality);
     }
   }
 
