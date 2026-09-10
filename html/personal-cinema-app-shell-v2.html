@@ -79,7 +79,7 @@ body[data-locked="true"] .app-main{overflow:hidden}
 .section-heading{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:14px}
 .section-link{display:inline-flex;align-items:center;gap:3px;border:0;background:transparent;padding:0;color:var(--fg);font-size:19px;font-weight:600;letter-spacing:-.018em}
 .section-link svg{width:15px;height:15px;color:var(--weak)}
-.poster-shelf{display:flex;width:100%;max-width:100%;gap:20px;overflow-x:auto;overflow-y:hidden;padding:3px 2px 10px;scrollbar-width:none;scroll-snap-type:x proximity}
+.poster-shelf{display:flex;width:100%;max-width:100%;gap:20px;overflow-x:auto;overflow-y:hidden;padding:3px 2px 10px;scrollbar-width:none;scroll-snap-type:none}
 .poster-shelf::-webkit-scrollbar{display:none}
 .poster-card{flex:0 0 clamp(142px,9.4vw,174px);min-width:0;border:0;background:transparent;padding:0;text-align:left;scroll-snap-align:start}
 .poster-card:has(.poster-art button:focus-visible) .poster-art::after{opacity:1}
@@ -653,32 +653,19 @@ body[data-locked="true"] .app-main{overflow:hidden}
       });
 
       function enableWheelHorizontalScroll(shelf) {
-        let wheelOwnsScroll = false;
-        const originalSnap = shelf.style.scrollSnapType;
-        function restoreNativeSnap() {
-          if (!wheelOwnsScroll) return;
-          shelf.style.scrollSnapType = originalSnap;
-          wheelOwnsScroll = false;
-        }
-        shelf.addEventListener('pointerleave', restoreNativeSnap);
-        shelf.addEventListener('touchstart', restoreNativeSnap, { passive: true });
-        shelf.addEventListener('keydown', restoreNativeSnap);
         shelf.addEventListener('wheel', event => {
           // Leave zoom and native horizontal/Shift gestures to the browser.
           if (event.defaultPrevented || !event.cancelable) return;
           if (event.ctrlKey || event.shiftKey) {
-            restoreNativeSnap();
             return;
           }
           if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) {
-            restoreNativeSnap();
             return;
           }
 
           const maxScrollLeft = Math.max(0, shelf.scrollWidth - shelf.clientWidth);
           const position = shelf.scrollLeft;
           if (maxScrollLeft <= 2) {
-            restoreNativeSnap();
             return;
           }
 
@@ -687,12 +674,6 @@ body[data-locked="true"] .app-main{overflow:hidden}
             : event.deltaMode === WheelEvent.DOM_DELTA_PAGE ? shelf.clientWidth : 1;
           // Overflowing shelves own vertical wheel input even at either edge.
           event.preventDefault();
-          // Programmatic steps otherwise snap back or jump a whole card in Chromium.
-          // Suspend only while the pointer uses mapped wheel input; native gestures retain proximity snap.
-          if (!wheelOwnsScroll) {
-            shelf.style.scrollSnapType = 'none';
-            wheelOwnsScroll = true;
-          }
           shelf.scrollLeft = Math.max(0, Math.min(maxScrollLeft, position + event.deltaY * unit));
         }, { passive: false });
       }
