@@ -119,11 +119,18 @@
       return card;
     }));
 
-    // Use existing collection membership; unrelated movies retain the library shelf.
-    const collection = movie.id === 'movie-dune' || movie.id === 'movie-dune-part-two';
-    const shelfMovies = collection ? movies.filter(item => ['movie-dune', 'movie-dune-part-two'].includes(item.id)) : movies;
-    setText('#seriesTitle', collection ? '沙丘（系列）' : '电影');
-    $('seriesShelf').setAttribute('aria-label', collection ? '当前片库中的沙丘系列电影' : '我的电影片库');
+    const { getCollectionForMovie, getOwnedCollectionMembers, getCollectionDetailHref } = window.PersonalCinemaCollectionMock;
+    const collection = getCollectionForMovie(movie.id);
+    const shelfMovies = collection ? getOwnedCollectionMembers(collection) : movies;
+    if (collection) {
+      const link = document.createElement('a');
+      link.href = getCollectionDetailHref(collection);
+      link.textContent = `${collection.name} ›`;
+      link.style.color = 'inherit';
+      link.style.textDecoration = 'none';
+      $('seriesTitle').replaceChildren(link);
+    } else setText('#seriesTitle', '电影');
+    $('seriesShelf').setAttribute('aria-label', collection ? `当前片库中的${collection.name}电影` : '我的电影片库');
     $('seriesShelf').replaceChildren(...shelfMovies.map(item => {
       const card = renderMovieCard(item);
       card.className = `series-card${item.id === movie.id ? ' current' : ''}`;

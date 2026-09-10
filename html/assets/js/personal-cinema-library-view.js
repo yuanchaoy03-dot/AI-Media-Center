@@ -3,6 +3,11 @@
   const movieGrid = $('movieGrid');
   const libraryView = document.body.dataset.libraryView || 'movies';
   const { matchesLibraryView } = window.PersonalCinemaLibraryMock;
+  const collectionMock = window.PersonalCinemaCollectionMock;
+  if (libraryView === 'movies') {
+    collectionMock.aggregateLibraryMovies().filter(item => item.type === 'collection')
+      .forEach(item => movieGrid.append(collectionMock.renderCollectionCard(item.collection)));
+  }
   const movieCards = [...movieGrid.querySelectorAll('.movie-card')];
   const filterButton = $('filterButton');
   const filterButtonLabel = $('filterButtonLabel');
@@ -83,50 +88,11 @@
     };
   }
 
-  function movieFromCard(card) {
-    return {
-      title: card.dataset.title,
-      year: Number(card.dataset.year),
-      genres: card.dataset.genre.split(','),
-      status: card.dataset.status,
-      sourceId: card.dataset.mediaSourceId,
-      favorite: card.dataset.favorite === 'true'
-    };
-  }
-
-  function collectionMembers(card) {
-    try {
-      return JSON.parse(card.dataset.members || '[]');
-    } catch {
-      return [];
-    }
-  }
-
   function matchesMovieFilters(movie, filters) {
     const matchesGenre = !filters.genres.length || filters.genres.some(genre => movie.genres.includes(genre));
     const matchesSource = !filters.sourceIds.length || filters.sourceIds.includes(movie.sourceId);
     const matchesStatus = filters.status === 'all' || movie.status === filters.status;
     return matchesGenre && matchesSource && matchesStatus && matchesYear(movie.year, filters.year);
-  }
-
-  function matchingMovieForCard(card, filters) {
-    const movies = card.dataset.itemType === 'collection'
-      ? collectionMembers(card)
-      : [movieFromCard(card)];
-    return movies.find(movie => {
-      return matchesLibraryView(movie, libraryView) && matchesMovieFilters(movie, filters);
-    }) || null;
-  }
-
-  function rememberMatchedMember(card, movie) {
-    if (card.dataset.itemType !== 'collection') return;
-    if (movie) {
-      card.dataset.matchedMemberTitle = movie.title;
-      card.dataset.matchedMemberYear = String(movie.year);
-    } else {
-      delete card.dataset.matchedMemberTitle;
-      delete card.dataset.matchedMemberYear;
-    }
   }
 
   // Prototype-only DOM filtering mirrors one backend query state. Production sends
@@ -138,11 +104,19 @@
     let hasVisibleItems = false;
 
     setMovieBatchLoading(false);
+    const aggregate = libraryView === 'movies' && activeCount === 0;
+    const grouped = aggregate ? collectionMock.aggregateLibraryMovies() : [];
+    const groupedIds = new Set(grouped.filter(item => item.type === 'collection').map(item => item.collection.id));
     movieCards.forEach(card => {
-      const matchedMovie = matchingMovieForCard(card, filters);
-      const matches = Boolean(matchedMovie);
+      let matches;
+      if (card.dataset.itemType === 'collection') {
+        matches = groupedIds.has(card.dataset.collectionId);
+      } else {
+        const movie = window.PersonalCinemaLibraryMock.getMovieById(card.dataset.movieId);
+        const collection = collectionMock.getCollectionForMovie(card.dataset.movieId);
+        matches = !groupedIds.has(collection?.id) && matchesLibraryView(movie, libraryView) && matchesMovieFilters(movie, filters);
+      }
       card.hidden = !matches;
-      rememberMatchedMember(card, matchedMovie);
       if (matches) hasVisibleItems = true;
     });
 
@@ -175,13 +149,15 @@
     // Production resets pagination and reloads batch one with the current filters and new sort.
     setMovieBatchLoading(false);
     const cards = [...movieCards];
-    cards.sort((a, b) => {
-      if (type === 'title') return a.dataset.title.localeCompare(b.dataset.title, 'zh-CN');
-      if (type === 'year') return Number(b.dataset.year) - Number(a.dataset.year);
-      if (type === 'watched') return Number(b.dataset.watched) - Number(a.dataset.watched);
-      if (type === 'duration') return Number(b.dataset.duration) - Number(a.dataset.duration);
-      return Number(b.dataset.added) - Number(a.dataset.added);
-    });
+    // Sorting a group uses its first member in this Movie ordering, not Collection state.
+    const sortValue = card => {
+      if (type === 'title') return card.dataset.title;
+      if (card.dataset.itemType !== 'collection') return Number(card.dataset[type]);
+      return Math.max(0, ...collectionMock.getOwnedCollectionMembers(card.dataset.collectionId).map(movie => Number(movie[type]) || 0));
+    };
+    cards.sort((a, b) => type === 'title'
+      ? sortValue(a).localeCompare(sortValue(b), 'zh-CN')
+      : sortValue(b) - sortValue(a));
     cards.forEach(card => movieGrid.append(card));
     sortButtonLabel.textContent = sortLabels[type];
     sortPopover.querySelectorAll('.sort-option').forEach(option => {
@@ -212,9 +188,9 @@
     activeMoreButton = button;
     activeMoreButton.setAttribute('aria-expanded', 'true');
     const isCollection = card.dataset.itemType === 'collection';
-    contextMenu.setAttribute('aria-label', isCollection ? '系列操作' : '电影操作');
+    contextMenu.setAttribute('aria-label', isCollection ? '合集操作' : '电影操作');
     contextPlayAction.hidden = isCollection;
-    contextDetailAction.querySelector('span').textContent = isCollection ? '查看系列' : '查看详情';
+    contextDetailAction.querySelector('span').textContent = isCollection ? '查看合集' : '查看详情';
     contextDetailAction.querySelector('use').setAttribute('href', isCollection ? '#ph-caret-right' : '#ph-film-slate');
     favoriteAction.hidden = isCollection;
     watchedAction.hidden = isCollection;
@@ -243,28 +219,10 @@
     contextMenu.style.top = `${Math.max(10, top)}px`;
   }
 
-  movieCards
-    .filter(card => card.dataset.itemType === 'collection')
-    .forEach(card => {
-      const artwork = card.querySelector('.poster-art > img');
-      artwork.addEventListener('error', () => {
-        if (artwork.getAttribute('src') !== card.dataset.defaultMoviePoster) {
-          artwork.src = card.dataset.defaultMoviePoster;
-        }
-      }, { once: true });
-    });
-
   function openItemDetail(card) {
-    const { getMovieDetailHref } = window.PersonalCinemaLibraryMock;
-    if (card.dataset.itemType !== 'collection') {
-      window.location.href = getMovieDetailHref(card.dataset.movieId || card.dataset.odId);
-      return;
-    }
-    const filtered = filterButton.dataset.active === 'true' || libraryView !== 'movies';
-    const members = collectionMembers(card);
-    const movie = filtered ? matchingMovieForCard(card, readFilterQuery())
-      : members.find(member => member.title === card.dataset.defaultMovie) || members[0];
-    window.location.href = getMovieDetailHref(movie);
+    window.location.href = card.dataset.itemType === 'collection'
+      ? collectionMock.getCollectionDetailHref(card.dataset.collectionId)
+      : window.PersonalCinemaLibraryMock.getMovieDetailHref(card.dataset.movieId);
   }
 
   movieCards.forEach(card => {
@@ -287,12 +245,16 @@
     const action = event.target.closest('[data-menu-action]');
     if (!action || !activeMovie) return;
     const title = activeMovie.dataset.title;
+    if (activeMovie.dataset.itemType === 'collection' && action.dataset.menuAction !== 'detail') return;
+    const movie = window.PersonalCinemaLibraryMock.getMovieById(activeMovie.dataset.movieId);
     if (action.dataset.menuAction === 'favorite') {
-      activeMovie.dataset.favorite = String(activeMovie.dataset.favorite !== 'true');
+      movie.favorite = !movie.favorite;
+      activeMovie.dataset.favorite = String(movie.favorite);
       if (libraryView === 'favorites') applyFilters();
       announcement.textContent = `${title}${activeMovie.dataset.favorite === 'true' ? '已加入收藏' : '已取消收藏'}`;
     } else if (action.dataset.menuAction === 'watched') {
-      activeMovie.dataset.status = activeMovie.dataset.status === 'watched' ? 'unwatched' : 'watched';
+      movie.status = movie.status === 'watched' ? 'unwatched' : 'watched';
+      activeMovie.dataset.status = movie.status;
       announcement.textContent = `${title}${activeMovie.dataset.status === 'watched' ? '已标记为已看' : '已标记为未看'}`;
       applyFilters();
     } else if (action.dataset.menuAction === 'play') {
@@ -334,7 +296,7 @@
     const genre = new URLSearchParams(window.location.search).get('genre');
     // Some Mock genres exist on movies but are absent from the static checkbox list.
     const genreInputs = [...filterPopover.querySelectorAll('input[name="genre"]')];
-    const knownGenre = movieCards.some(card => card.dataset.genre.split(',').includes(genre));
+    const knownGenre = movieCards.some(card => (card.dataset.genre || '').split(',').includes(genre));
     if (knownGenre && !genreInputs.some(input => input.value === genre)) {
       const option = genreInputs[0].closest('label').cloneNode(true);
       option.querySelector('input').value = genre;
@@ -486,8 +448,6 @@
       accountButton.setAttribute('aria-expanded', 'false');
     }
   });
-  if (libraryView !== 'movies') {
-    sortMovies('added');
-    applyFilters();
-  }
+  sortMovies('added');
+  applyFilters();
 })();

@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Personal Cinema · 收藏</title>
-  <link rel="prefetch" href="personal-cinema-app-shell-v2.html" as="document" />
+  <title>电影合集 · Personal Cinema</title>
   <!-- Movie metadata and imagery sourced from TMDB. This product uses TMDB data but is not endorsed or certified by TMDB. -->
   <link rel="stylesheet" href="assets/css/personal-cinema-library-view.css" />
   <link rel="stylesheet" href="assets/css/personal-cinema-movie-card.css" />
+  <link rel="stylesheet" href="assets/css/personal-cinema-collection-detail.css" />
 </head>
-<body data-library-view="favorites">
+<body>
   <svg class="icon-sprite" fill="currentColor" aria-hidden="true">
     <symbol id="ph-film-reel-fill" viewBox="0 0 256 256"><path d="M232,216H183.36A103.95,103.95,0,1,0,128,232H232a8,8,0,0,0,0-16ZM80,148a20,20,0,1,1,20-20A20,20,0,0,1,80,148Zm48,48a20,20,0,1,1,20-20A20,20,0,0,1,128,196Zm0-96a20,20,0,1,1,20-20A20,20,0,0,1,128,100Zm28,28a20,20,0,1,1,20,20A20,20,0,0,1,156,128Z"/></symbol>
     <symbol id="ph-magnifying-glass" viewBox="0 0 256 256"><path d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"/></symbol>
@@ -36,14 +36,14 @@
     <nav class="sidebar-nav" aria-label="主导航">
       <div class="nav-group top-group">
         <button class="sidebar-link" data-route="home" data-od-id="nav-home"><svg class="icon icon-regular" aria-hidden="true"><use href="#ph-house"></use></svg><svg class="icon icon-selected" aria-hidden="true"><use href="#ph-house-fill"></use></svg>主页</button>
-        <button class="sidebar-link" data-route="movies" data-od-id="nav-movies"><svg class="icon" aria-hidden="true"><use href="#ph-film-slate"></use></svg>电影</button>
+        <button class="sidebar-link" data-route="movies" data-od-id="nav-movies" aria-current="page"><svg class="icon" aria-hidden="true"><use href="#ph-film-slate"></use></svg>电影</button>
         <button class="sidebar-link" data-route="ai" data-od-id="nav-ai-discovery"><svg class="icon" aria-hidden="true"><use href="#ph-sparkle"></use></svg>AI 发现</button>
         <button class="sidebar-link" data-route="sources" data-od-id="nav-media-sources"><svg class="icon" aria-hidden="true"><use href="#ph-hard-drives"></use></svg>媒体来源</button>
       </div>
       <div class="nav-group library-group">
         <p class="nav-label">资料库</p>
         <button class="sidebar-link" data-route="recent" data-od-id="nav-recently-added"><svg class="icon" aria-hidden="true"><use href="#ph-clock-counter-clockwise"></use></svg>最近添加</button>
-        <button class="sidebar-link" data-route="favorites" aria-current="page" data-od-id="nav-favorites"><svg class="icon" aria-hidden="true"><use href="#ph-heart"></use></svg>收藏</button>
+        <button class="sidebar-link" data-route="favorites" data-od-id="nav-favorites"><svg class="icon" aria-hidden="true"><use href="#ph-heart"></use></svg>收藏</button>
         <button class="sidebar-link" data-route="unwatched" data-od-id="nav-unwatched"><svg class="icon" aria-hidden="true"><use href="#ph-eye-slash"></use></svg>未看</button>
         <button class="sidebar-link" data-route="watched" data-od-id="nav-watched"><svg class="icon" aria-hidden="true"><use href="#ph-check-circle"></use></svg>已看</button>
       </div>
@@ -57,69 +57,27 @@
     </div>
   </aside>
 
-  <main class="app-main" data-od-id="favorites-page">
-    <div class="content">
-      <header class="movie-page-heading" data-od-id="movie-page-header">
-        <div><h1 class="page-title">收藏</h1><p class="page-subtitle">你收藏的影片</p></div>
-      </header>
-
-      <div class="movie-toolbar" data-od-id="movie-toolbar">
-        <div class="toolbar-group">
-          <button class="toolbar-button" id="filterButton" type="button" aria-expanded="false" aria-controls="filterPopover" data-od-id="movie-filter-button"><svg aria-hidden="true"><use href="#ph-funnel"></use></svg><span id="filterButtonLabel">筛选</span></button>
-          <div class="popover filter-popover" id="filterPopover" data-open="false" role="dialog" aria-label="筛选电影">
-            <section class="filter-section" data-od-id="filter-genre"><h2 class="filter-section-title">类型</h2><div class="filter-list">
-              <label class="option-row"><span>科幻</span><input type="checkbox" name="genre" value="科幻" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
-              <label class="option-row"><span>剧情</span><input type="checkbox" name="genre" value="剧情" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
-              <label class="option-row"><span>动作</span><input type="checkbox" name="genre" value="动作" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
-              <label class="option-row"><span>悬疑</span><input type="checkbox" name="genre" value="悬疑" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
-              <label class="option-row"><span>动画</span><input type="checkbox" name="genre" value="动画" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
-              <label class="option-row"><span>喜剧</span><input type="checkbox" name="genre" value="喜剧" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
-              <label class="option-row"><span>恐怖</span><input type="checkbox" name="genre" value="恐怖" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
-              <label class="option-row"><span>纪录片</span><input type="checkbox" name="genre" value="纪录片" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
-            </div></section>
-            <section class="filter-section" data-od-id="filter-year"><h2 class="filter-section-title">年份</h2><div class="filter-list">
-              <label class="option-row"><span>全部</span><input type="radio" name="year" value="all" checked /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
-              <label class="option-row"><span>2020–</span><input type="radio" name="year" value="2020" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
-              <label class="option-row"><span>2010–2019</span><input type="radio" name="year" value="2010" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
-              <label class="option-row"><span>2000–2009</span><input type="radio" name="year" value="2000" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
-              <label class="option-row"><span>1990–1999</span><input type="radio" name="year" value="1990" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
-              <label class="option-row"><span>更早</span><input type="radio" name="year" value="older" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
-            </div></section>
-            <section class="filter-section" data-od-id="filter-status"><h2 class="filter-section-title">状态</h2><div class="filter-list">
-              <label class="option-row"><span>全部</span><input type="radio" name="status" value="all" checked /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
-              <label class="option-row"><span>未看</span><input type="radio" name="status" value="unwatched" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
-              <label class="option-row"><span>观看中</span><input type="radio" name="status" value="watching" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
-              <label class="option-row"><span>已看</span><input type="radio" name="status" value="watched" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
-            </div></section>
-            <!-- Prototype labels are CurrentUser MediaSource instances. All three use WebDAV in P0. -->
-            <section class="filter-section" data-od-id="filter-source"><h2 class="filter-section-title">来源</h2><div class="filter-list">
-              <label class="option-row"><span></span><input type="checkbox" name="mediaSourceId" value="source-alist" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
-              <label class="option-row"><span></span><input type="checkbox" name="mediaSourceId" value="source-home-nas" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
-              <label class="option-row"><span></span><input type="checkbox" name="mediaSourceId" value="source-nextcloud" /><span class="option-check"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span></label>
-            </div></section>
-            <div class="filter-footer"><button class="quiet-action" id="clearFilters" type="button">清除筛选</button></div>
-          </div>
+  <main class="app-main collection-page">
+    <a class="collection-back" href="personal-cinema-movie-library.html">‹ 返回电影</a>
+    <section class="collection-empty" id="collectionNotFound" hidden>
+      <h1>未找到这个电影合集</h1>
+      <p>请返回电影资料库，选择已有的合集。</p>
+    </section>
+    <div id="collectionContent" hidden>
+      <section class="collection-hero" aria-labelledby="collectionTitle">
+        <img class="collection-backdrop" id="collectionBackdrop" alt="" />
+        <div class="collection-heading">
+          <img class="collection-poster" id="collectionPoster" alt="" />
+          <div><h1 id="collectionTitle"></h1><p class="collection-meta" id="collectionMeta"></p></div>
         </div>
-        <div class="toolbar-group">
-          <button class="toolbar-button" id="sortButton" type="button" aria-expanded="false" aria-controls="sortPopover" data-od-id="movie-sort-button"><span id="sortButtonLabel">最近添加</span><svg class="control-caret" aria-hidden="true"><use href="#ph-caret-right"></use></svg></button>
-          <div class="popover sort-popover" id="sortPopover" data-open="false" role="menu" aria-label="电影排序">
-            <button class="sort-option" role="menuitemradio" aria-checked="true" data-sort="added">最近添加<svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></button>
-            <button class="sort-option" role="menuitemradio" aria-checked="false" data-sort="title">片名 A–Z<svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></button>
-            <button class="sort-option" role="menuitemradio" aria-checked="false" data-sort="year">上映年份<svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></button>
-            <button class="sort-option" role="menuitemradio" aria-checked="false" data-sort="watched">最近观看<svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></button>
-            <button class="sort-option" role="menuitemradio" aria-checked="false" data-sort="duration">时长<svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></button>
-          </div>
-        </div>
-      </div>
-
-      <section class="movie-grid" id="movieGrid" data-od-id="movie-poster-grid" aria-label="收藏影片"></section>
-
-      <section class="movie-loading" id="movieLoading" aria-label="正在载入电影" hidden></section>
-      <section class="movie-loading movie-loading-next" id="movieBatchLoading" data-od-id="movie-batch-loading" aria-label="正在载入更多电影" hidden></section>
-      <section class="library-state" id="filteredEmpty" data-od-id="filtered-empty-state" hidden><span class="state-icon"><svg aria-hidden="true"><use href="#ph-funnel"></use></svg></span><strong>没有符合条件的电影</strong><p>尝试调整筛选条件</p><button class="state-action" id="emptyClearFilters" type="button">清除筛选</button></section>
-      <section class="library-state" id="libraryEmpty" data-od-id="library-empty-state" hidden><span class="state-icon"><svg aria-hidden="true"><use href="#ph-film-slate"></use></svg></span><strong>还没有电影</strong><p>新账号默认没有公共片库。添加 WebDAV 媒体来源后，影片会出现在这里。</p><button class="state-action" type="button" data-route="sources">添加 WebDAV 来源</button></section>
-      <p class="sr-only" id="libraryAnnouncement" aria-live="polite"></p>
+      </section>
+      <section class="collection-members" aria-labelledby="membersTitle">
+        <h2 id="membersTitle">我的电影</h2>
+        <div class="collection-movie-grid recent-media-grid" id="collectionMovies"></div>
+        <p class="collection-meta" id="collectionMoviesEmpty" hidden>你的片库中还没有这个合集的电影。</p>
+      </section>
     </div>
+    <p class="sr-only" id="collectionAnnouncement" data-shell-announcement aria-live="polite"></p>
   </main>
 
   <div class="context-scrim" id="movieContextScrim" data-open="false" aria-hidden="true"></div>
@@ -153,6 +111,7 @@
   <script src="assets/js/personal-cinema-media-source-mock.js"></script>
   <script src="assets/js/personal-cinema-library-mock.js"></script>
   <script src="assets/js/personal-cinema-collection-mock.js"></script>
-  <script src="assets/js/personal-cinema-library-view.js"></script>
+  <script src="assets/js/personal-cinema-shell.js"></script>
+  <script src="assets/js/personal-cinema-collection-detail.js"></script>
 </body>
 </html>

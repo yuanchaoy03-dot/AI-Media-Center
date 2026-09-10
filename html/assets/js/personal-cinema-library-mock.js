@@ -4,7 +4,8 @@
   const template = document.createElement('template');
   template.innerHTML = `
 <article class="movie-card" data-title="星际穿越" data-year="2014" data-genre="科幻,剧情,冒险" data-status="watching" data-media-source-id="source-home-nas" data-added="15" data-watched="15" data-duration="169" data-favorite="true" data-od-id="movie-interstellar" data-rating="8.5" data-backdrop="assets/tmdb-backdrop-interstellar.jpg"><div class="poster-art"><img src="assets/tmdb-poster-interstellar.jpg" alt="星际穿越 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看星际穿越详情"></button><button class="play-mark" type="button" aria-label="播放星际穿越"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="星际穿越更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">星际穿越</strong><span class="poster-meta">2014 · 科幻</span></div></article>
-        <article class="movie-card" data-item-type="collection" data-collection-id="dune" data-movie-count="2" data-members='[{"title":"沙丘","added":14,"watched":13,"duration":155,"year":2021,"genres":["科幻","冒险"],"status":"watched","sourceId":"source-home-nas","poster":"assets/tmdb-poster-dune.jpg","backdrop":"assets/tmdb-backdrop-dune.jpg","id":"movie-dune","rating":"7.8"},{"title":"沙丘2","added":8,"watched":0,"duration":166,"year":2024,"genres":["科幻","冒险"],"status":"unwatched","sourceId":"source-home-nas","poster":"assets/tmdb-poster-dune-part-two.jpg","backdrop":"assets/tmdb-backdrop-dune-part-two.jpg","id":"movie-dune-part-two","rating":"8.1"}]' data-collection-poster="assets/tmdb-collection-poster-dune.jpg" data-default-movie="沙丘" data-default-year="2021" data-default-movie-poster="assets/tmdb-poster-dune.jpg" data-default-movie-backdrop="assets/tmdb-backdrop-dune.jpg" data-title="沙丘" data-year="2021" data-genre="科幻,冒险" data-status="mixed" data-media-source-id="source-home-nas" data-added="14" data-watched="13" data-duration="155" data-od-id="collection-dune"><div class="poster-art"><img src="assets/tmdb-collection-poster-dune.jpg" alt="沙丘系列 TMDB 合集海报" /><button class="poster-detail-hit" type="button" aria-label="查看沙丘系列"></button><button class="series-mark" type="button" aria-label="查看沙丘系列"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></button><button class="poster-more-mark" type="button" aria-label="沙丘系列更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">沙丘</strong><span class="poster-meta">2 部电影</span></div></article>
+<article class="movie-card" data-title="沙丘" data-year="2021" data-genre="科幻,冒险" data-status="watched" data-media-source-id="source-home-nas" data-added="14" data-watched="13" data-duration="155" data-favorite="false" data-od-id="movie-dune" data-rating="7.8" data-backdrop="assets/tmdb-backdrop-dune.jpg"><div class="poster-art"><img src="assets/tmdb-poster-dune.jpg" alt="沙丘 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看沙丘详情"></button><button class="play-mark" type="button" aria-label="播放沙丘"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="沙丘更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">沙丘</strong><span class="poster-meta">2021 · 科幻</span></div></article>
+<article class="movie-card" data-title="沙丘2" data-year="2024" data-genre="科幻,冒险" data-status="unwatched" data-media-source-id="source-home-nas" data-added="8" data-watched="0" data-duration="166" data-favorite="false" data-od-id="movie-dune-part-two" data-rating="8.1" data-backdrop="assets/tmdb-backdrop-dune-part-two.jpg"><div class="poster-art"><img src="assets/tmdb-poster-dune-part-two.jpg" alt="沙丘2 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看沙丘2详情"></button><button class="play-mark" type="button" aria-label="播放沙丘2"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="沙丘2更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">沙丘2</strong><span class="poster-meta">2024 · 科幻</span></div></article>
         <article class="movie-card" data-title="银翼杀手2049" data-year="2017" data-genre="科幻,剧情" data-status="watching" data-media-source-id="source-home-nas" data-added="13" data-watched="12" data-duration="164" data-favorite="true" data-od-id="movie-blade-runner-2049" data-rating="7.6" data-backdrop="assets/tmdb-backdrop-blade-runner-2049.jpg"><div class="poster-art"><img src="assets/tmdb-poster-blade-runner-2049.jpg" alt="银翼杀手2049 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看银翼杀手2049详情"></button><button class="play-mark" type="button" aria-label="播放银翼杀手2049"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="银翼杀手2049更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">银翼杀手2049</strong><span class="poster-meta">2017 · 科幻</span></div></article>
         <article class="movie-card" data-title="降临" data-year="2016" data-genre="剧情,科幻,悬疑" data-status="watching" data-media-source-id="source-alist" data-added="12" data-watched="11" data-duration="116" data-favorite="true" data-od-id="movie-arrival" data-rating="7.6" data-backdrop="assets/tmdb-backdrop-arrival.jpg"><div class="poster-art"><img src="assets/tmdb-poster-arrival.jpg" alt="降临 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看降临详情"></button><button class="play-mark" type="button" aria-label="播放降临"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="降临更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">降临</strong><span class="poster-meta">2016 · 科幻</span></div></article>
         <article class="movie-card" data-title="奥本海默" data-year="2023" data-genre="剧情,历史" data-status="watching" data-media-source-id="source-nextcloud" data-added="11" data-watched="14" data-duration="181" data-favorite="false" data-od-id="movie-oppenheimer" data-rating="8.0" data-backdrop="assets/tmdb-backdrop-oppenheimer.jpg"><div class="poster-art"><img src="assets/tmdb-poster-oppenheimer.jpg" alt="奥本海默 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看奥本海默详情"></button><button class="play-mark" type="button" aria-label="播放奥本海默"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="奥本海默更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">奥本海默</strong><span class="poster-meta">2023 · 剧情</span></div></article>
@@ -19,15 +20,11 @@
         <article class="movie-card" data-title="机械姬" data-year="2015" data-genre="科幻,悬疑,剧情" data-status="unwatched" data-media-source-id="source-alist" data-added="1" data-watched="0" data-duration="108" data-favorite="true" data-od-id="movie-ex-machina"><div class="poster-art"><img src="assets/tmdb-poster-ex-machina.jpg" alt="机械姬 TMDB 官方电影海报" /><button class="poster-detail-hit" type="button" aria-label="查看机械姬详情"></button><button class="play-mark" type="button" aria-label="播放机械姬"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><button class="poster-more-mark" type="button" aria-label="机械姬更多操作"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button></div><div class="poster-copy"><strong class="poster-title">机械姬</strong><span class="poster-meta">2015 · 科幻</span></div></article>
   `;
   const cards = [...template.content.querySelectorAll('.movie-card')];
-  const movieTemplate = cards.find(card => card.dataset.itemType !== 'collection');
-  // The existing card attributes remain the single Mock source. Flatten collection
-  // members for movie previews without changing the library's collection layout.
+  const movieTemplate = cards[0];
+  // These fixtures represent the current demo user's owned movies. Keep ownership
+  // separate from the public catalog: adding metadata alone does not grant ownership.
+  const ownedMovieIds = cards.map(card => card.dataset.odId);
   const movies = cards.flatMap(card => {
-    if (card.dataset.itemType === 'collection') {
-      return JSON.parse(card.dataset.members).map(member => ({
-        ...member, favorite: member.favorite === true
-      }));
-    }
     card.dataset.movieId = card.dataset.odId;
     return [{
       id: card.dataset.odId, title: card.dataset.title, year: Number(card.dataset.year),
@@ -589,7 +586,7 @@
       : 'personal-cinema-movie-library.html';
   }
 
-  // Home previews and full library views share the same collection membership rules.
+  // Home previews and full library views share the same Movie state rules.
   function matchesLibraryView(movie, view) {
     if (view === 'favorites') return movie.favorite === true;
     if (view === 'unwatched') return movie.status === 'unwatched';
@@ -598,14 +595,14 @@
   }
 
   function renderMovieCard(movie) {
-    const original = cards.find(card => card.dataset.itemType !== 'collection' && card.dataset.odId === movie.id);
+    const original = cards.find(card => card.dataset.odId === movie.id);
     const card = (original || movieTemplate).cloneNode(true);
     Object.assign(card.dataset, {
       movieId: movie.id, odId: movie.id, title: movie.title, year: movie.year, genre: movie.genres.join(','),
       status: movie.status, mediaSourceId: movie.sourceId, added: movie.added,
       watched: movie.watched, duration: movie.duration, favorite: String(movie.favorite)
     });
-    // Collection previews clone the single-card shape, not its extra metadata.
+    // Refresh optional metadata when using the shared card template.
     ['rating', 'backdrop'].forEach(key => {
       if (movie[key]) card.dataset[key] = movie[key];
       else delete card.dataset[key];
@@ -623,6 +620,10 @@
 
   function getMovieById(id) {
     return movies.find(movie => movie.id === id) || null;
+  }
+
+  function getOwnedMovies() {
+    return ownedMovieIds.map(getMovieById).filter(Boolean);
   }
 
   function getMoviesBySourceId(sourceId) {
@@ -659,7 +660,7 @@
     });
   }
 
-  window.PersonalCinemaLibraryMock = { movies, renderMovieCard, matchesLibraryView, getMovieById, getMoviesBySourceId, getMovieDetailHref };
+  window.PersonalCinemaLibraryMock = { movies, ownedMovieIds, getOwnedMovies, renderMovieCard, matchesLibraryView, getMovieById, getMoviesBySourceId, getMovieDetailHref };
   const grid = document.getElementById('movieGrid');
-  if (grid) grid.append(template.content.cloneNode(true));
+  if (grid) grid.append(...getOwnedMovies().map(renderMovieCard));
 })();
