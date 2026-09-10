@@ -29,7 +29,7 @@ h1,h2,h3,p{margin:0}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .icon-sprite{position:absolute;width:0;height:0;overflow:hidden}
 .icon{width:20px;height:20px;flex:0 0 auto}
-.shelf-arrow,.more-button{display:grid;place-items:center}
+.more-button{display:grid;place-items:center}
 button:focus-visible,a:focus-visible,.search-input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
 /* App shell and sidebar */
@@ -79,12 +79,6 @@ body[data-locked="true"] .app-main{overflow:hidden}
 .section-heading{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:14px}
 .section-link{display:inline-flex;align-items:center;gap:3px;border:0;background:transparent;padding:0;color:var(--fg);font-size:19px;font-weight:600;letter-spacing:-.018em}
 .section-link svg{width:15px;height:15px;color:var(--weak)}
-.section-actions{display:flex;gap:6px;opacity:0;pointer-events:none;transition:opacity .2s ease-out}
-.section-actions[data-visible="true"]{opacity:1;pointer-events:auto}
-.shelf-arrow{width:34px;height:34px;border:1px solid rgba(255,255,255,.13);border-radius:var(--radius-circle);background:rgba(28,28,30,.68);color:var(--icon-hover);box-shadow:inset 0 1px 0 rgba(255,255,255,.045),0 6px 18px rgba(0,0,0,.2);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);transition:background .2s ease-out,color .2s ease-out,border-color .2s ease-out}
-.shelf-arrow:hover{background:rgba(34,34,37,.82)}
-.shelf-arrow:hover,.shelf-arrow:focus-visible{border-color:rgba(255,255,255,.18);color:var(--icon-active)}
-.shelf-arrow svg{width:16px;height:16px;fill:currentColor;opacity:1}
 .poster-shelf{display:flex;width:100%;max-width:100%;gap:20px;overflow-x:auto;overflow-y:hidden;padding:3px 2px 10px;scrollbar-width:none;scroll-snap-type:x proximity}
 .poster-shelf::-webkit-scrollbar{display:none}
 .poster-card{flex:0 0 clamp(142px,9.4vw,174px);min-width:0;border:0;background:transparent;padding:0;text-align:left;scroll-snap-align:start}
@@ -229,8 +223,6 @@ body[data-locked="true"] .app-main{overflow:hidden}
 }
   /* Home shelf layout; poster surfaces remain in the shared Movie Card stylesheet. */
 #continueSection{margin-top:0}
-.shelf-navigation{display:flex;align-items:center;gap:6px;flex-shrink:0}
-.shelf-navigation .view-all{margin-right:8px}
 .view-all{flex-shrink:0;color:var(--muted);font-size:13px;text-decoration:none;white-space:nowrap}
 .view-all:hover{color:var(--fg)}
 .movie-shelf>.movie-card{flex:0 0 clamp(180px,12vw,260px);scroll-snap-align:start}
@@ -305,7 +297,7 @@ body[data-locked="true"] .app-main{overflow:hidden}
       <header class="page-heading" data-od-id="home-page-header"><h1 class="page-title" data-od-id="home-page-title">主页</h1></header>
 
 <section class="section" id="continueSection" data-od-id="continue-watching-section">
-        <div class="section-heading"><h2 class="section-link">最近观看</h2><div class="section-actions" id="recentActions" data-visible="false"><button class="shelf-arrow" id="recentPrev" aria-label="向前浏览"><svg aria-hidden="true"><use href="#ph-caret-left"></use></svg></button><button class="shelf-arrow" id="recentNext" aria-label="向后浏览"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></button></div></div>
+        <div class="section-heading"><h2 class="section-link">最近观看</h2></div>
         <div class="continue-shell" id="continueContent" aria-live="polite">
           <div class="continue-adaptive poster-shelf" id="recentTrack" data-layout="backdrop" data-count="6" tabindex="0" aria-label="最近观看横向剧照">
             <article class="continue-item poster-card" data-movie-id="movie-interstellar" data-last-played="15" data-od-id="continue-interstellar"><span class="poster-art continue-poster-art"><img alt="" /><button class="play-mark" type="button"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button></span><span class="poster-copy"><strong class="poster-title"></strong><span class="poster-meta">继续播放 · 已看 42%</span></span><span class="continue-backdrop-art"><img alt="" /><span class="continue-backdrop-copy"><strong class="continue-backdrop-title"></strong><span class="continue-backdrop-meta">继续播放 · 已看 42%</span></span><button class="play-mark" type="button"><svg aria-hidden="true"><use href="#ph-play-fill"></use></svg></button><progress class="watch-progress" value="42" max="100" aria-label="观看进度 42%"></progress></span></article>
@@ -320,9 +312,9 @@ body[data-locked="true"] .app-main{overflow:hidden}
         </div>
       </section>
 
-<section class="section" id="genreSection"><div class="section-heading"><h2 class="section-link">电影类型</h2><div class="shelf-navigation"><button class="shelf-arrow" data-shelf-step="-1" aria-label="向前浏览"><svg aria-hidden="true"><use href="#ph-caret-left"></use></svg></button><button class="shelf-arrow" data-shelf-step="1" aria-label="向后浏览"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></button></div></div><div class="poster-shelf genre-shelf" tabindex="0" aria-label="电影类型"><a class="genre-card" href="personal-cinema-movie-library.html?genre=科幻"><img src="assets/tmdb-backdrop-blade-runner-2049.jpg" alt="" /><strong>科幻</strong></a><a class="genre-card" href="personal-cinema-movie-library.html?genre=悬疑"><img src="assets/tmdb-backdrop-prisoners.jpg" alt="" /><strong>悬疑</strong></a><a class="genre-card" href="personal-cinema-movie-library.html?genre=动作"><img src="assets/tmdb-backdrop-inception.jpg" alt="" /><strong>动作</strong></a><a class="genre-card" href="personal-cinema-movie-library.html?genre=犯罪"><img src="assets/tmdb-backdrop-the-batman.jpg" alt="" /><strong>犯罪</strong></a><a class="genre-card" href="personal-cinema-movie-library.html?genre=冒险"><img src="assets/tmdb-backdrop-dune-part-two.jpg" alt="" /><strong>冒险</strong></a><a class="genre-card" href="personal-cinema-movie-library.html?genre=剧情"><img src="assets/tmdb-backdrop-oppenheimer.jpg" alt="" /><strong>剧情</strong></a></div></section>
-<section class="section" id="addedSection"><div class="section-heading"><h2 class="section-link">最近添加</h2><div class="shelf-navigation"><a class="view-all" href="personal-cinema-recently-added.html">查看全部 ›</a><button class="shelf-arrow" data-shelf-step="-1" aria-label="向前浏览"><svg aria-hidden="true"><use href="#ph-caret-left"></use></svg></button><button class="shelf-arrow" data-shelf-step="1" aria-label="向后浏览"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></button></div></div><div class="poster-shelf movie-shelf" tabindex="0" aria-label="最近添加"></div></section>
-<section class="section" id="unwatchedSection"><div class="section-heading"><h2 class="section-link">未看</h2><div class="shelf-navigation"><a class="view-all" href="personal-cinema-unwatched.html">查看全部 ›</a><button class="shelf-arrow" data-shelf-step="-1" aria-label="向前浏览"><svg aria-hidden="true"><use href="#ph-caret-left"></use></svg></button><button class="shelf-arrow" data-shelf-step="1" aria-label="向后浏览"><svg aria-hidden="true"><use href="#ph-caret-right"></use></svg></button></div></div><div class="poster-shelf movie-shelf" tabindex="0" aria-label="未看">
+<section class="section" id="genreSection"><div class="section-heading"><h2 class="section-link">电影类型</h2></div><div class="poster-shelf genre-shelf" tabindex="0" aria-label="电影类型"><a class="genre-card" href="personal-cinema-movie-library.html?genre=科幻"><img src="assets/tmdb-backdrop-blade-runner-2049.jpg" alt="" /><strong>科幻</strong></a><a class="genre-card" href="personal-cinema-movie-library.html?genre=悬疑"><img src="assets/tmdb-backdrop-prisoners.jpg" alt="" /><strong>悬疑</strong></a><a class="genre-card" href="personal-cinema-movie-library.html?genre=动作"><img src="assets/tmdb-backdrop-inception.jpg" alt="" /><strong>动作</strong></a><a class="genre-card" href="personal-cinema-movie-library.html?genre=犯罪"><img src="assets/tmdb-backdrop-the-batman.jpg" alt="" /><strong>犯罪</strong></a><a class="genre-card" href="personal-cinema-movie-library.html?genre=冒险"><img src="assets/tmdb-backdrop-dune-part-two.jpg" alt="" /><strong>冒险</strong></a><a class="genre-card" href="personal-cinema-movie-library.html?genre=剧情"><img src="assets/tmdb-backdrop-oppenheimer.jpg" alt="" /><strong>剧情</strong></a></div></section>
+<section class="section" id="addedSection"><div class="section-heading"><h2 class="section-link">最近添加</h2><a class="view-all" href="personal-cinema-recently-added.html">查看全部 ›</a></div><div class="poster-shelf movie-shelf" tabindex="0" aria-label="最近添加"></div></section>
+<section class="section" id="unwatchedSection"><div class="section-heading"><h2 class="section-link">未看</h2><a class="view-all" href="personal-cinema-unwatched.html">查看全部 ›</a></div><div class="poster-shelf movie-shelf" tabindex="0" aria-label="未看">
 </div></section>
     </main>
   </div>
@@ -394,9 +386,7 @@ body[data-locked="true"] .app-main{overflow:hidden}
       );
 
       const continueSection = $('continueSection');
-      const continueContent = $('continueContent');
       const recentTrack = $('recentTrack');
-      const recentActions = $('recentActions');
       const continueCards = [...recentTrack.querySelectorAll('.continue-item')];
       continueCards.forEach(card => {
         const movie = getMovieById(card.dataset.movieId);
@@ -509,21 +499,7 @@ body[data-locked="true"] .app-main{overflow:hidden}
           announcement.textContent = `查看《${title}》的媒体版本`;
         }
         closeContextMenu();
-        requestAnimationFrame(updateShelfControls);
       });
-
-      function updateShelfControls() {
-        const track = $('recentTrack');
-        recentActions.dataset.visible = String(Boolean(
-          track &&
-          track.scrollWidth > track.clientWidth + 2
-        ));
-        document.querySelectorAll('#addedSection, #unwatchedSection').forEach(section => {
-          const shelf = section.querySelector('.movie-shelf');
-          const overflowing = shelf.scrollWidth > shelf.clientWidth;
-          section.querySelectorAll('.shelf-arrow').forEach(button => button.hidden = !overflowing);
-        });
-      }
 
       function renderContinueCount(value) {
         const count = Math.max(0, Math.min(continueCards.length, Number(value) || 0));
@@ -535,8 +511,6 @@ body[data-locked="true"] .app-main{overflow:hidden}
         recentTrack.dataset.count = String(count);
         recentTrack.tabIndex = 0;
         recentTrack.setAttribute('aria-label', '最近观看横向剧照');
-        recentActions.dataset.visible = 'false';
-        requestAnimationFrame(updateShelfControls);
       }
 
       renderContinueCount(continueCards.length);
@@ -678,26 +652,50 @@ body[data-locked="true"] .app-main{overflow:hidden}
         });
       });
 
-      document.querySelectorAll('[data-shelf-step]').forEach(button => {
-        button.addEventListener('click', () => {
-          const track = button.closest('.section').querySelector('.poster-shelf');
-          track.scrollBy({left: Number(button.dataset.shelfStep) * track.clientWidth * .85, behavior: 'smooth'});
-        });
-      });
-      $('recentPrev').addEventListener('click', () => {
-        const track = $('recentTrack');
-        if (track) track.scrollBy({ left: -600, behavior: 'smooth' });
-      });
-      $('recentNext').addEventListener('click', () => {
-        const track = $('recentTrack');
-        if (track) track.scrollBy({ left: 600, behavior: 'smooth' });
-      });
-      window.addEventListener('resize', () => { updateShelfControls(); closeContextMenu(); });
-      if ('ResizeObserver' in window) {
-        const shelfObserver = new ResizeObserver(updateShelfControls);
-        [continueContent, ...document.querySelectorAll('.movie-shelf')].forEach(shelf => shelfObserver.observe(shelf));
+      function enableWheelHorizontalScroll(shelf) {
+        let wheelOwnsScroll = false;
+        const originalSnap = shelf.style.scrollSnapType;
+        function restoreNativeSnap() {
+          if (!wheelOwnsScroll) return;
+          shelf.style.scrollSnapType = originalSnap;
+          wheelOwnsScroll = false;
+        }
+        shelf.addEventListener('pointerleave', restoreNativeSnap);
+        shelf.addEventListener('touchstart', restoreNativeSnap, { passive: true });
+        shelf.addEventListener('keydown', restoreNativeSnap);
+        shelf.addEventListener('wheel', event => {
+          // Leave zoom and native horizontal/Shift gestures to the browser.
+          if (event.defaultPrevented || !event.cancelable) return;
+          if (event.ctrlKey || event.shiftKey) {
+            restoreNativeSnap();
+            return;
+          }
+          if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) {
+            restoreNativeSnap();
+            return;
+          }
+
+          const maxScrollLeft = Math.max(0, shelf.scrollWidth - shelf.clientWidth);
+          const position = shelf.scrollLeft;
+          if (maxScrollLeft <= 2) return;
+          if (event.deltaY < 0 ? position <= 2 : position >= maxScrollLeft - 2) return;
+
+          // Wheel units are pixels by default; normalize line/page input locally.
+          const unit = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? 16
+            : event.deltaMode === WheelEvent.DOM_DELTA_PAGE ? shelf.clientWidth : 1;
+          event.preventDefault();
+          // Programmatic steps otherwise snap back or jump a whole card in Chromium.
+          // Suspend only while the pointer uses mapped wheel input; native gestures retain proximity snap.
+          if (!wheelOwnsScroll) {
+            shelf.style.scrollSnapType = 'none';
+            wheelOwnsScroll = true;
+          }
+          shelf.scrollLeft = Math.max(0, Math.min(maxScrollLeft, position + event.deltaY * unit));
+        }, { passive: false });
       }
-      requestAnimationFrame(updateShelfControls);
+      document.querySelectorAll('#recentTrack, #genreSection .poster-shelf, #addedSection .poster-shelf, #unwatchedSection .poster-shelf')
+        .forEach(enableWheelHorizontalScroll);
+      window.addEventListener('resize', closeContextMenu);
 
       document.addEventListener('click', event => {
         if (!contextMenu.contains(event.target) && event.target !== activeMoreButton) closeContextMenu();
