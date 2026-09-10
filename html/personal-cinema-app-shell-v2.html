@@ -677,12 +677,15 @@ body[data-locked="true"] .app-main{overflow:hidden}
 
           const maxScrollLeft = Math.max(0, shelf.scrollWidth - shelf.clientWidth);
           const position = shelf.scrollLeft;
-          if (maxScrollLeft <= 2) return;
-          if (event.deltaY < 0 ? position <= 2 : position >= maxScrollLeft - 2) return;
+          if (maxScrollLeft <= 2) {
+            restoreNativeSnap();
+            return;
+          }
 
           // Wheel units are pixels by default; normalize line/page input locally.
           const unit = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? 16
             : event.deltaMode === WheelEvent.DOM_DELTA_PAGE ? shelf.clientWidth : 1;
+          // Overflowing shelves own vertical wheel input even at either edge.
           event.preventDefault();
           // Programmatic steps otherwise snap back or jump a whole card in Chromium.
           // Suspend only while the pointer uses mapped wheel input; native gestures retain proximity snap.
