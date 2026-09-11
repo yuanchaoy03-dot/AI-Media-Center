@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import sidebarIcons from '../../assets/sidebar-icons.svg?url'
 
-export type SidebarItemId =
+type SidebarItemId =
   | 'home'
   | 'library'
   | 'ai-discovery'
@@ -24,14 +26,8 @@ interface SidebarGroup {
   items: SidebarItem[]
 }
 
-// 当前选中项由父组件管理；这些标识表示界面选择，不是路由路径。
-defineProps<{ activeItem?: SidebarItemId }>()
-
-const emit = defineEmits<{
-  select: [id: SidebarItemId]
-  settings: []
-  user: []
-}>()
+// 用户入口暂时只显示提示，不参与页面路由或维护登录状态。
+const showUserNotice = ref(false)
 
 const groups: SidebarGroup[] = [
   {
@@ -73,39 +69,43 @@ const groups: SidebarGroup[] = [
         <h2 v-if="group.showLabel" class="sidebar-group-label">{{ group.label }}</h2>
         <ul class="sidebar-list">
           <li v-for="item in group.items" :key="item.id">
-            <!-- 当前仅通知父组件选择变化，后续由 AppShell 接入实际导航。 -->
-            <button
-              type="button"
+            <RouterLink
+              v-slot="{ isActive }"
+              :to="{ name: item.id }"
               class="sidebar-button"
-              :aria-current="activeItem === item.id ? 'page' : undefined"
-              @click="emit('select', item.id)"
             >
               <svg class="sidebar-icon" viewBox="0 0 256 256" aria-hidden="true" focusable="false">
                 <use
-                  :href="`${sidebarIcons}#${activeItem === item.id ? (item.activeIcon ?? item.icon) : item.icon}`"
+                  :href="`${sidebarIcons}#${isActive ? (item.activeIcon ?? item.icon) : item.icon}`"
                 />
               </svg>
               <span>{{ item.label }}</span>
-            </button>
+            </RouterLink>
           </li>
         </ul>
       </nav>
     </div>
 
     <div class="sidebar-bottom">
-      <button type="button" class="sidebar-button" @click="emit('settings')">
+      <RouterLink :to="{ name: 'settings' }" class="sidebar-button">
         <svg class="sidebar-icon" viewBox="0 0 256 256" aria-hidden="true" focusable="false">
           <use :href="`${sidebarIcons}#ph-gear-six`" />
         </svg>
         <span>设置</span>
-      </button>
-      <button type="button" class="sidebar-button sidebar-user" @click="emit('user')">
+      </RouterLink>
+      <button
+        type="button"
+        class="sidebar-button sidebar-user"
+        :aria-expanded="showUserNotice"
+        @click="showUserNotice = !showUserNotice"
+      >
         <span class="sidebar-avatar" aria-hidden="true">我</span>
         <span class="sidebar-user-label">用户入口</span>
         <svg class="sidebar-icon" viewBox="0 0 256 256" aria-hidden="true" focusable="false">
           <use :href="`${sidebarIcons}#ph-caret-right`" />
         </svg>
       </button>
+      <p v-if="showUserNotice" class="sidebar-user-notice" role="status">用户功能尚未实现。</p>
     </div>
   </aside>
 </template>
@@ -211,6 +211,7 @@ const groups: SidebarGroup[] = [
   line-height: 1.4;
   text-align: start;
   cursor: pointer;
+  text-decoration: none;
   transition: background-color var(--motion-fast, 120ms), color var(--motion-fast, 120ms);
 }
 
@@ -237,13 +238,13 @@ const groups: SidebarGroup[] = [
   }
 }
 
-.sidebar-button[aria-current='page'] {
+.sidebar-button.router-link-active {
   background: var(--color-selected, rgb(115 169 183 / 14%));
   color: var(--color-text-primary, #f5f5f7);
   font-weight: 600;
 }
 
-.sidebar-button[aria-current='page'] .sidebar-icon {
+.sidebar-button.router-link-active .sidebar-icon {
   color: inherit;
 }
 
@@ -271,6 +272,14 @@ const groups: SidebarGroup[] = [
 
 .sidebar-user-label {
   flex: 1;
+}
+
+.sidebar-user-notice {
+  margin: 0;
+  padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+  color: var(--color-text-secondary, #a1a1a6);
+  font-size: 0.75rem;
+  line-height: 1.5;
 }
 
 @media (pointer: coarse) {

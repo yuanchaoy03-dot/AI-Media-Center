@@ -58,3 +58,16 @@ body {
 #app {
   min-height: 100dvh;
 }
+
+/* 页面占位内容共用排版，业务页面可按需复用。 */
+.page-placeholder h1 {
+  margin: 0 0 var(--space-4);
+  font: var(--type-page);
+  letter-spacing: var(--tracking-title);
+}
+
+.page-placeholder p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font: var(--type-body);
+}
