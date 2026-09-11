@@ -15,7 +15,7 @@ import AppSidebar from './components/layout/AppSidebar.vue'
 </template>
 
 <style scoped>
-/* 最小桌面布局容器；引入页面布局时再抽取 AppShell。 */
+
 .app-sidebar-container {
   position: fixed;
   inset: var(--layout-shell-inset) auto var(--layout-shell-inset) var(--layout-shell-inset);
