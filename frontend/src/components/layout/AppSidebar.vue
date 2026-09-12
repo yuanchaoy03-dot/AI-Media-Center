@@ -135,7 +135,8 @@ const groups: SidebarGroup[] = [
 </script>
 
 <template>
-  <aside class="app-sidebar" aria-label="应用侧栏">
+  <!-- 与原型语言一致，避免继承宿主 lang=en 后改变中文字体回退。 -->
+  <aside class="app-sidebar" lang="zh-CN" aria-label="应用侧栏">
     <RouterLink class="sidebar-brand" :to="{ name: 'home' }" aria-label="Personal Cinema 主页">
       <span class="sidebar-brand-mark" aria-hidden="true">
         <svg class="sidebar-icon" viewBox="0 0 256 256" focusable="false">
@@ -216,8 +217,10 @@ const groups: SidebarGroup[] = [
 </template>
 
 <style scoped>
-/* 几何来自原型的完整级联；材质、状态与动效遵循 DESIGN.md。 */
+/* 原型决定几何与各状态的视觉终点；项目动效只负责状态间的过渡。 */
 .app-sidebar {
+  --sidebar-text-weak: #6e6e73;
+  --sidebar-selected-background: rgba(255, 255, 255, .075);
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -229,7 +232,11 @@ const groups: SidebarGroup[] = [
   border-radius: var(--radius-lg);
   color: var(--color-text-primary);
   background: var(--color-surface);
-  font-family: var(--font-ui);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', 'Segoe UI', sans-serif;
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+  font-synthesis: weight style small-caps;
+  text-rendering: auto;
   font-optical-sizing: auto;
   line-height: 1.45;
 }
@@ -240,11 +247,10 @@ const groups: SidebarGroup[] = [
   gap: 11px;
   min-height: 40px;
   padding: 0 9px;
-  border-radius: var(--radius-xs);
   color: inherit;
   text-decoration: none;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 650;
   letter-spacing: .075em;
 }
 .sidebar-brand-mark {
@@ -256,8 +262,9 @@ const groups: SidebarGroup[] = [
   border-radius: var(--radius-xs);
   background: var(--color-primary);
   color: var(--color-text-on-primary);
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--color-background) 14%, transparent);
 }
-.sidebar-brand-mark .sidebar-icon { width: 16px; height: 16px; }
+.sidebar-brand-mark .sidebar-icon { width: 16px; height: 16px; fill: #000; }
 .sidebar-brand-name { white-space: nowrap; }
 .sidebar-search {
   display: flex;
@@ -267,10 +274,13 @@ const groups: SidebarGroup[] = [
   width: 100%;
   min-height: 38px;
   padding: 0 11px;
-  border: 1px solid var(--color-hairline);
+  border: 1px solid rgba(255, 255, 255, .08);
   border-radius: var(--radius-card);
-  background: var(--color-surface-2);
+  background: rgba(28, 28, 30, .72);
   color: var(--color-text-secondary);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .035);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
 }
 .sidebar-navigation {
   display: flex;
@@ -288,8 +298,8 @@ const groups: SidebarGroup[] = [
 .sidebar-group-label {
   margin: 0 0 5px;
   padding: 0 12px 8px;
-  color: var(--color-text-secondary);
-  font-size: 12px;
+  color: var(--sidebar-text-weak);
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: .06em;
 }
@@ -306,19 +316,19 @@ const groups: SidebarGroup[] = [
   font-weight: 500;
   text-decoration: none;
 }
-.sidebar-icon { display: block; flex-shrink: 0; width: 20px; height: 20px; fill: currentColor; }
+.sidebar-icon { display: block; flex-shrink: 0; width: 17px; height: 17px; max-width: 100%; fill: currentColor; }
 :is(.sidebar-button, .sidebar-search, .sidebar-user) > .sidebar-icon { color: var(--color-icon); }
 .sidebar-bottom {
   display: grid;
   flex-shrink: 0;
   gap: 9px;
   padding-top: 14px;
-  border-top: 1px solid var(--color-hairline);
+  border-top: 1px solid color-mix(in oklch, var(--color-text-primary) 7%, transparent);
 }
 .sidebar-account { position: relative; }
 .sidebar-user {
   display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) 20px;
+  grid-template-columns: 32px minmax(0, 1fr) 16px;
   align-items: center;
   gap: 10px;
   width: 100%;
@@ -340,9 +350,9 @@ const groups: SidebarGroup[] = [
   font-size: 12px;
   font-weight: 700;
 }
-.sidebar-user-copy { display: grid; min-width: 0; line-height: 1.4; }
+.sidebar-user-copy { display: grid; min-width: 0; }
 .sidebar-user-copy strong { font-size: 13px; font-weight: 600; }
-.sidebar-user-copy small { color: var(--color-text-secondary); font-size: 12px; }
+.sidebar-user-copy small { color: var(--sidebar-text-weak); font-size: 11px; }
 .sidebar-user-copy :is(strong, small) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .account-menu {
   position: absolute;
@@ -353,20 +363,22 @@ const groups: SidebarGroup[] = [
   max-height: calc(100dvh - 32px);
   overflow-y: auto;
   padding: 7px;
-  border: 1px solid var(--material-floating-border);
+  border: 1px solid rgba(255, 255, 255, .1);
   border-radius: var(--radius-floating);
   background: var(--material-floating-fallback);
-  box-shadow: var(--material-floating-highlight), var(--shadow-floating);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .42), inset 0 1px 0 rgba(255, 255, 255, .045);
   opacity: 0;
   pointer-events: none;
   transform: translateY(var(--motion-popover-offset));
   transform-origin: bottom center;
   transition: opacity var(--motion-standard) var(--motion-ease), transform var(--motion-standard) var(--motion-ease);
 }
-.sidebar-account[data-open='true'] .account-menu { opacity: 1; pointer-events: auto; transform: translateY(0); }
+.sidebar-account[data-open='true'] .account-menu { opacity: 1; pointer-events: auto; transform: none; }
+.sidebar-account[data-open='true'] .sidebar-user > .sidebar-icon { color: var(--color-icon-hover); }
 .menu-action {
   display: flex;
   align-items: center;
+  gap: 9px;
   width: 100%;
   min-height: 38px;
   padding: 0 10px;
@@ -377,24 +389,36 @@ const groups: SidebarGroup[] = [
   text-decoration: none;
 }
 .compact-navigation { display: none; }
-:is(.sidebar-search, .sidebar-user, .menu-action) { font-family: inherit; line-height: inherit; cursor: pointer; }
+:is(.sidebar-search, .sidebar-user, .menu-action) { font: inherit; cursor: pointer; }
 :is(.sidebar-search, .sidebar-button, .menu-action) { font-size: 13px; }
 :is(.sidebar-brand, .sidebar-search, .sidebar-button, .sidebar-user, .menu-action) {
   text-align: start;
   touch-action: manipulation;
-  transition: background-color var(--motion-fast) var(--motion-ease), color var(--motion-fast) var(--motion-ease);
+  transition: background-color var(--motion-fast) var(--motion-ease), color var(--motion-fast) var(--motion-ease), border-color var(--motion-fast) var(--motion-ease);
 }
 @media (hover: hover) and (pointer: fine) {
-  :is(.sidebar-brand, .sidebar-button, .sidebar-search, .sidebar-user, .menu-action):hover {
-    background: var(--color-hover);
+  .sidebar-button:hover {
+    background: color-mix(in oklch, var(--color-surface-2) 72%, transparent);
     color: var(--color-text-primary);
   }
+  .sidebar-search:hover {
+    border-color: rgba(255, 255, 255, .12);
+    background: rgba(34, 34, 37, .82);
+    color: var(--color-text-primary);
+  }
+  .sidebar-user:hover { background: var(--color-surface-2); }
+  .menu-action:hover { background: var(--color-surface); }
   :is(.sidebar-button, .sidebar-search, .sidebar-user):hover > .sidebar-icon { color: var(--color-icon-hover); }
 }
 .sidebar-button.router-link-active, .menu-action.router-link-active {
-  background: var(--color-selected);
+  background: var(--sidebar-selected-background);
   color: var(--color-text-primary);
   font-weight: 600;
+}
+.sidebar-button.router-link-active {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .075), 0 4px 14px rgba(0, 0, 0, .14);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
 }
 .sidebar-button.router-link-active .sidebar-icon { color: inherit; }
 :is(.sidebar-brand, .sidebar-button, .sidebar-search, .sidebar-user, .menu-action):active {
@@ -403,12 +427,22 @@ const groups: SidebarGroup[] = [
 }
 :is(a, button):focus-visible {
   outline: var(--focus-width) solid var(--color-focus);
-  outline-offset: var(--focus-offset);
+  outline-offset: 2px;
 }
-@supports (backdrop-filter: blur(1px)) {
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .account-menu {
-    background: var(--material-floating-background);
-    backdrop-filter: blur(var(--material-floating-blur)) saturate(var(--material-floating-saturation));
+    background: rgba(28, 28, 30, .76);
+    -webkit-backdrop-filter: blur(18px) saturate(115%);
+    backdrop-filter: blur(18px) saturate(115%);
+  }
+}
+@media (min-width: 901px) {
+  .app-sidebar {
+    border-color: rgba(255, 255, 255, .06);
+    background: rgba(20, 20, 22, .78);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, .16);
+    -webkit-backdrop-filter: blur(16px) saturate(118%);
+    backdrop-filter: blur(16px) saturate(118%);
   }
 }
 @media (max-width: 900px) {
@@ -428,6 +462,7 @@ const groups: SidebarGroup[] = [
 }
 @media (max-width: 680px) {
   .sidebar-brand { width: 40px; }
+  .top-group .sidebar-button .sidebar-icon { width: 20px; }
   .top-group .sidebar-button span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 }
 @media (pointer: coarse) {
@@ -440,9 +475,19 @@ const groups: SidebarGroup[] = [
   .account-menu { transform: none; }
 }
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
-  .account-menu { background: var(--material-floating-fallback); backdrop-filter: none; }
+  .app-sidebar { background: var(--color-surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .sidebar-search { background: var(--color-surface-2); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .sidebar-button.router-link-active { -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .account-menu { background: var(--material-floating-fallback); -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
-:global(html[data-transparency='reduced'] #sidebar-account-menu) { background: var(--material-floating-fallback); backdrop-filter: none; }
+:global(html[data-transparency='reduced'] .app-sidebar) { background: var(--color-surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
+:global(html[data-transparency='reduced'] .app-sidebar .sidebar-search) { background: var(--color-surface-2); -webkit-backdrop-filter: none; backdrop-filter: none; }
+:global(html[data-transparency='reduced'] .app-sidebar .sidebar-button.router-link-active) { -webkit-backdrop-filter: none; backdrop-filter: none; }
+:global(html[data-transparency='reduced'] #sidebar-account-menu) { background: var(--material-floating-fallback); -webkit-backdrop-filter: none; backdrop-filter: none; }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .app-sidebar { background: var(--color-surface); }
+  .sidebar-search { background: var(--color-surface-2); }
+}
 @media (forced-colors: active) {
   :is(a, button):focus-visible { outline-color: Highlight; }
   .account-menu { background: Canvas; color: CanvasText; backdrop-filter: none; }
