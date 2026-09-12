@@ -28,6 +28,8 @@
   --radius-xs: 8px;
   --radius-nav: 10px;
   --radius-lg: 20px;
+  --radius-card: 12px;
+  --radius-floating: 16px;
   --layout-sidebar: 220px;
   --layout-shell-inset: 8px;
   --layout-main-offset: 236px;
@@ -37,6 +39,19 @@
   --focus-width: 2px;
   --focus-offset: 3px;
   --motion-fast: 120ms;
+  --motion-standard: 180ms;
+  --motion-ease: cubic-bezier(.2, .8, .2, 1);
+  --motion-popover-offset: 4px;
+  --material-floating-background: rgb(28 28 30 / 88%);
+  --material-floating-blur: 20px;
+  --material-floating-saturation: 115%;
+  --material-floating-border: rgb(255 255 255 / 12%);
+  --material-floating-highlight: inset 0 1px 0 rgb(255 255 255 / 6%);
+  --material-floating-fallback: #2c2c30;
+  --shadow-floating: 0 8px 24px rgb(0 0 0 / 32%);
+  --z-navigation: 20;
+  --z-floating: 40;
+  --z-toast: 90;
 
   font-family: var(--font-ui);
   color: var(--color-text-primary);
