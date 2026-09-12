@@ -159,6 +159,43 @@ Skill 不得因为 Apple 风格最佳实践或其他建议，主动改变已有�
 6. **Familiar Interaction**：链接负责导航，按钮负责动作；原生滚动、输入、选择、复制优先，不自造手势要求。
 7. **Bounded Variation**：优先复用匹配视觉事实的有限 Token；已有原型值按视觉优先级保留与抽象，个别 Artwork 裁切位置可以随图片调整，不形成新主题。
 
+### 3.1 跨页面组件与交互一致性（Cross-page Interaction Consistency）
+
+**Same component, same behavior, everywhere.**
+
+**同一语义组件，在整个应用中必须保持一致的视觉状态、交互反馈和动效行为。** 同一组件、同一 variant 在相同输入设备与状态下，不得因页面不同而改变 hover、pressed、active、selected、focus-visible、context menu、pointer feedback、keyboard 或 loading behavior。
+
+#### 三层一致性
+
+| 层次 | 规则 |
+|---|---|
+| Component-level consistency | 同一语义组件共享视觉状态、交互方式、Motion 和可访问性行为，优先通过公共组件实现与复用；适用于 MovieCard、MediaShelf、Search control、Menu、Button、Filter、Dialog、Navigation Item 等 |
+| Interaction-level consistency | 不同组件中的相同语义操作使用统一反馈语言：普通 clickable surface 的 hover 强度接近、pressed 响应方式和 focus-visible 语言统一；同类菜单共享 opening / closing motion、keyboard navigation、Escape 与 focus restore 规则 |
+| Motion-level consistency | 相同性质的动画优先共享第 15 节的 duration、easing、movement distance、opacity behavior、pressed feedback timing、interruption behavior 和 reduced-motion behavior，不按页面另设一套参数 |
+
+Apple Design Skill 用于帮助 AI-Media-Center 建立**统一的项目级交互语言**，不是让每个页面分别应用一套 Apple 风格效果。Immediate feedback、low latency、physical continuity、interruptibility、reversible interaction、natural easing、reduced motion、focus management 和 accessibility 应尽可能通过公共组件与统一 Motion 规则复用；Skill 只增强状态间的过渡和操作质量，不改变 HTML 已明确的视觉终点。
+
+#### 页面与公共组件的职责
+
+跨页面重复出现、语义和交互相同的 UI，应优先演进已有公共组件。页面负责数据、列表内容、排列与上下文；公共组件负责视觉状态、hover、pressed、active、focus、motion、menu、keyboard、loading 反馈和 accessibility。页面传入真实状态，不重新实现这些状态如何呈现或响应。
+
+页面级实现不得因为所在页面不同、AI 主观认为更好看、某个 Skill 示例、局部 CSS 编写方便或临时页面需求，重新定义已有公共组件的交互语言；不得通过复制实现、页面选择器覆盖或临时参数绕开此规则。
+
+例如，同一种 MovieCard 出现在 HomeView、LibraryView、FavoritesView、RecentlyAddedView、UnwatchedView、WatchedView 时，应复用 `MovieCard.vue` 的 hover、pressed、focus、context menu、duration、easing 和键盘行为。页面只决定影片数据、列表成员和排列位置；不能首页使用 120ms 无缩放，电影页改成 180ms 加 scale，收藏页又改成 150ms 加阴影。
+
+#### 合理差异与 HTML 冲突处理
+
+**Same component ≠ every component looks the same.** 一致性不要求所有组件外观和交互完全相同。允许以下有明确依据的差异：
+
+- **不同组件类型**：Hero Card、MovieCard、Continue Watching Card 可以具有符合各自语义的不同交互。
+- **明确声明的 variant**：如 `MovieCard variant="compact"` 与 `variant="standard"`，差异须经过设计确认、有明确语义与复用价值，不能只是某一页面的临时样式开关。
+- **输入设备适配**：mouse、touch、keyboard 可按设备能力提供不同操作入口与反馈，但核心交互语义、视觉语言和操作可达性保持一致。
+- **HTML Prototype 已明确的差异**：先忠实保留各自视觉终点，再判断组件身份与冲突，不以一致性为由强行改值。
+
+**HTML defines the visual endpoints. Design Skill defines the transition between those endpoints.** 本节不改变该优先级：已有 HTML 明确的状态必须忠实迁移；多个页面复用同一语义组件时，优先识别并复用同一个公共组件。若多个 HTML 对同一语义组件存在明显不一致，先判断是否属于不同组件 / variant，或原型历史遗留不一致；在当前任务说明或既有正式记录中列明来源、差异与影响，必要时请求用户确认。涉及改变既有视觉终点而尚无明确授权时，保留各自原型结果，不得由 Agent 任选一种覆盖所有页面，也不得静默“统一”。
+
+**Reuse real patterns, not imagined patterns.** 只有存在明确复用、同一语义和相同行为时才抽公共组件；不提前创建大量抽象、不构建巨型万能组件、不堆积只用一次的 variant，也不为 DRY 牺牲可读性。统一规则不要求本轮批量重构尚未迁移的页面。
+
 ## 4. Reference Strategy 与现有 UI 审计
 
 ### 4.1 本地事实来源与覆盖范围
@@ -910,6 +947,7 @@ Empty State / Error State 正文最多两三句，标题18，说明15，图标32
 | Motion / Skill | 连续开关Drawer无跳变/锁输入；菜单锚点正确；无全站Spring；减少动效有效 |
 | Tokens | 匹配 HTML 视觉事实才复用；不同事实使用准确语义/组件 Token 或原值，不强套全局值；无同名不同义混用 |
 | Components | Movie Card、Button、Input、Menu七态明确；静态容器不伪装交互 |
+| Cross-page Consistency | 按第 3.1 节对照同一组件 / variant 在不同页面的对应状态，检查视觉、hover / pressed / focus、菜单、键盘、loading 与 Motion 一致；页面不覆盖公共交互，例外有语义依据，HTML 冲突已说明且未擅自统一 |
 | Accessibility | 键盘全流程、焦点还原、屏幕阅读状态、触摸目标、对比、两种减少偏好均覆盖 |
 | Responsive | 五区间及边界、长片名/路径、200%缩放无裁切；图片层高度不限制文字 |
 | Business / Security | 无用户越权、凭据/临时定位泄露、伪播放进度；P0不新增服务或播放器 |
