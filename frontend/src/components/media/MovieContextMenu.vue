@@ -139,7 +139,12 @@ function onOutside(event: Event) {
   close('outside')
 }
 function onResize() { close('resize') }
-function onScroll() { if (!sheet.value) close('scroll') }
+function onScroll(event: Event) {
+  if (sheet.value) return
+  const target = event.target
+  if (target instanceof Node && menu.value?.contains(target)) return
+  close('scroll')
+}
 function onMediaChange() {
   close('resize')
   sheet.value = media?.matches ?? false
