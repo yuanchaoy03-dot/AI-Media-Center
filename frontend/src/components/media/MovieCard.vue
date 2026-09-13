@@ -66,7 +66,7 @@ function requestMore(event: MouseEvent) {
   place-items: center; padding: 12px; color: var(--poster-text-secondary);
   text-align: center; font-size: 13px; overflow-wrap: anywhere;
 }
-button { padding: 0; font: inherit; cursor: pointer; touch-action: manipulation; }
+button { padding: 0; font: inherit; cursor: pointer; }
 button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
 .poster-detail-hit { position: absolute; inset: 0; z-index: 1; width: 100%; border: 0; border-radius: inherit; background: transparent; }
 .poster-detail-hit:focus-visible { outline-offset: -3px; }
@@ -92,28 +92,13 @@ svg { display: block; max-width: 100%; fill: currentColor; }
   .movie-card:hover .play-mark { opacity: 1; background: rgba(245, 245, 247, .9); }
   .movie-card:hover .poster-more-mark { opacity: 1; background: rgba(245, 245, 247, .24); }
 }
-@media (max-width: 900px), (hover: none) {
-  .poster-more-mark { border-color: rgba(255, 255, 255, .12); background: rgba(15, 15, 17, .44); box-shadow: 0 4px 14px rgba(0, 0, 0, .2), inset 0 1px 0 rgba(255, 255, 255, .06); }
-  .poster-more-mark:active { transform: scale(.94); }
-}
-@media (hover: none) {
-  .poster-more-mark { width: 32px; height: 32px; opacity: 1; }
-}
-@media (pointer: coarse) {
-  .play-mark::before, .poster-more-mark::before { content: ''; position: absolute; inset: -7px; border-radius: 50%; }
-  .poster-more-mark::before { inset: -6px; }
-}
 /* 键盘聚焦任一入口时一起显示控制，避免不可见焦点。 */
 .movie-card:has(:focus-visible) .poster-art::after { opacity: 1; }
 .movie-card:has(:focus-visible) .play-mark { opacity: 1; background: rgba(245, 245, 247, .9); }
 .movie-card:has(:focus-visible) .poster-more-mark { opacity: 1; background: rgba(245, 245, 247, .24); }
 /* 原型已有的菜单打开态；不改变卡片其他视觉。 */
 .movie-card .poster-more-mark[aria-expanded="true"] { opacity: 1; background: rgba(245, 245, 247, .28); }
-@media (max-width: 900px), (hover: none) {
-  .movie-card .poster-more-mark[aria-expanded="true"] { background: rgba(36, 36, 39, .78); box-shadow: 0 0 0 1px rgba(255, 255, 255, .08), 0 4px 14px rgba(0, 0, 0, .22); }
-}
 @media (prefers-reduced-motion: reduce) {
   .poster-art::after, .play-mark, .poster-more-mark { transition: none; }
-  .poster-more-mark:active { transform: none; }
 }
 </style>
