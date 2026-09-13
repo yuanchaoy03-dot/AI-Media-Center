@@ -30,7 +30,7 @@ function requestMore(event: MouseEvent) {
         <svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><use :href="`${movieIcons}#ph-play-fill`" /></svg>
       </button>
       <button class="poster-more-mark" type="button" :aria-label="`${movie.title}更多操作`"
-        aria-haspopup="menu" :aria-expanded="moreExpanded" :aria-controls="menuId" @click="requestMore">
+        :aria-expanded="moreExpanded" :aria-controls="menuId" @click="requestMore">
         <svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><use :href="`${movieIcons}#ph-dots-three-bold`" /></svg>
       </button>
     </div>

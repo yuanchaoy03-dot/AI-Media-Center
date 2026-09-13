@@ -104,10 +104,10 @@ onBeforeUnmount(() => {
 <template>
   <Teleport to="body">
     <div :id="id" ref="menu" class="context-menu" :data-open="visible" :style="position"
-      lang="zh-CN" role="menu" aria-label="电影操作" :aria-description="title" :aria-hidden="!visible" :inert="!visible">
+      lang="zh-CN" role="group" :aria-label="`${title}电影操作`" :aria-hidden="!visible" :inert="!visible">
       <template v-for="action in actions" :key="action.key">
         <div v-if="action.key === 'versions'" class="context-divider" role="separator" />
-        <button class="context-action" type="button" role="menuitem"
+        <button class="context-action" type="button"
           :data-menu-action="action.key" @click="activate(action.key)">
           <svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><use :href="`${movieIcons}#${action.icon}`" /></svg>
           <span>{{ action.label }}</span>
