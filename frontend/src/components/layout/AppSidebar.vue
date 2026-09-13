@@ -137,14 +137,14 @@ const groups: SidebarGroup[] = [
 <template>
   <!-- 与原型语言一致，避免继承宿主 lang=en 后改变中文字体回退。 -->
   <aside class="app-sidebar" lang="zh-CN" aria-label="应用侧栏">
-    <RouterLink class="sidebar-brand" :to="{ name: 'home' }" aria-label="Personal Cinema 主页">
+    <div class="sidebar-brand">
       <span class="sidebar-brand-mark" aria-hidden="true">
         <svg class="sidebar-icon" viewBox="0 0 256 256" focusable="false">
           <use :href="`${sidebarIcons}#ph-film-reel-fill`" />
         </svg>
       </span>
       <span class="sidebar-brand-name">PERSONAL CINEMA</span>
-    </RouterLink>
+    </div>
 
     <button type="button" class="sidebar-search" aria-label="打开全局搜索"
       :aria-expanded="searchExpanded" @click="emit('search')">
@@ -248,7 +248,7 @@ const groups: SidebarGroup[] = [
   min-height: 40px;
   padding: 0 9px;
   color: inherit;
-  text-decoration: none;
+  text-align: start;
   font-size: 11px;
   font-weight: 650;
   letter-spacing: .075em;
@@ -391,7 +391,7 @@ const groups: SidebarGroup[] = [
 .compact-navigation { display: none; }
 :is(.sidebar-search, .sidebar-user, .menu-action) { font: inherit; cursor: pointer; }
 :is(.sidebar-search, .sidebar-button, .menu-action) { font-size: 13px; }
-:is(.sidebar-brand, .sidebar-search, .sidebar-button, .sidebar-user, .menu-action) {
+:is(.sidebar-search, .sidebar-button, .sidebar-user, .menu-action) {
   text-align: start;
   touch-action: manipulation;
   transition: background-color var(--motion-fast) var(--motion-ease), color var(--motion-fast) var(--motion-ease), border-color var(--motion-fast) var(--motion-ease);
@@ -421,7 +421,7 @@ const groups: SidebarGroup[] = [
   backdrop-filter: blur(12px);
 }
 .sidebar-button.router-link-active .sidebar-icon { color: inherit; }
-:is(.sidebar-brand, .sidebar-button, .sidebar-search, .sidebar-user, .menu-action):active {
+:is(.sidebar-button, .sidebar-search, .sidebar-user, .menu-action):active {
   background: var(--color-pressed);
   transition: none;
 }
@@ -466,12 +466,14 @@ const groups: SidebarGroup[] = [
   .top-group .sidebar-button span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 }
 @media (pointer: coarse) {
-  :is(.sidebar-brand, .sidebar-button, .sidebar-search, .sidebar-user, .menu-action) { min-height: var(--control-height-touch); }
+  /* 保留品牌区域原有高度，仅用于静态布局。 */
+  .sidebar-brand { min-height: 2.75rem; }
+  :is(.sidebar-button, .sidebar-search, .sidebar-user, .menu-action) { min-height: var(--control-height-touch); }
   .sidebar-search, .sidebar-user { min-width: var(--control-height-touch); }
   .top-group .sidebar-button { min-width: var(--control-height-touch); }
 }
 @media (prefers-reduced-motion: reduce) {
-  :is(.sidebar-brand, .sidebar-button, .sidebar-search, .sidebar-user, .menu-action, .account-menu) { transition: none; }
+  :is(.sidebar-button, .sidebar-search, .sidebar-user, .menu-action, .account-menu) { transition: none; }
   .account-menu { transform: none; }
 }
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
