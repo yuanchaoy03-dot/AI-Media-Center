@@ -3,7 +3,7 @@ import { ref, watch } from 'vue'
 import movieIcons from '../../assets/movie-icons.svg?url&no-inline'
 import type { LibraryMovie } from '../../types/movie'
 
-const props = defineProps<{ movie: LibraryMovie }>()
+const props = withDefaults(defineProps<{ movie: LibraryMovie; moreExpanded?: boolean; menuId?: string }>(), { moreExpanded: false })
 const emit = defineEmits<{
   detail: [movieId: string]
   play: [movieId: string]
@@ -29,7 +29,8 @@ function requestMore(event: MouseEvent) {
       <button class="play-mark" type="button" :aria-label="`播放${movie.title}`" @click="emit('play', movie.id)">
         <svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><use :href="`${movieIcons}#ph-play-fill`" /></svg>
       </button>
-      <button class="poster-more-mark" type="button" :aria-label="`${movie.title}更多操作`" @click="requestMore">
+      <button class="poster-more-mark" type="button" :aria-label="`${movie.title}更多操作`"
+        aria-haspopup="menu" :aria-expanded="moreExpanded" :aria-controls="menuId" @click="requestMore">
         <svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><use :href="`${movieIcons}#ph-dots-three-bold`" /></svg>
       </button>
     </div>
@@ -106,6 +107,11 @@ svg { display: block; max-width: 100%; fill: currentColor; }
 .movie-card:has(:focus-visible) .poster-art::after { opacity: 1; }
 .movie-card:has(:focus-visible) .play-mark { opacity: 1; background: rgba(245, 245, 247, .9); }
 .movie-card:has(:focus-visible) .poster-more-mark { opacity: 1; background: rgba(245, 245, 247, .24); }
+/* 原型已有的菜单打开态；不改变卡片其他视觉。 */
+.movie-card .poster-more-mark[aria-expanded="true"] { opacity: 1; background: rgba(245, 245, 247, .28); }
+@media (max-width: 900px), (hover: none) {
+  .movie-card .poster-more-mark[aria-expanded="true"] { background: rgba(36, 36, 39, .78); box-shadow: 0 0 0 1px rgba(255, 255, 255, .08), 0 4px 14px rgba(0, 0, 0, .22); }
+}
 @media (prefers-reduced-motion: reduce) {
   .poster-art::after, .play-mark, .poster-more-mark { transition: none; }
   .poster-more-mark:active { transform: none; }

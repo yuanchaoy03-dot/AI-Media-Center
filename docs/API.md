@@ -33,6 +33,10 @@
 | year | number | 上映年份 |
 | genreLabel | string | 卡片使用的简短类型展示标签，不是完整类型模型 |
 | posterUrl | string | 海报地址；正式服务返回 OSS 图片地址，无海报用空字符串，前端显示标题 fallback |
+| favorite | boolean | 当前用户是否收藏该电影 |
+| watchStatus | `unwatched` / `watching` / `watched` | 当前用户的观看状态：未开始 / 观看中 / 已看；watching 不属于未看 |
+
+favorite 与 watchStatus 是当前用户针对该电影的个人状态，不属于公共 Movie 元数据。此处只扩展列表响应，状态修改接口留待真实后端联调确认；当前页面仅切换 Mock 副本，刷新恢复初始值。
 
 仅返回关联到当前用户本人可访问 MediaResource 的电影；同一电影多个资源不重复成为多张卡。公共 Movie 元数据可复用，但不直接构成用户片库，新用户列表为空。字段缺失的进一步约定在真实数据接入前确认。
 
