@@ -15,6 +15,12 @@ const activeMovie = computed(() => movies.value.find(movie => movie.id === activ
 const announcement = ref('')
 
 function openMenu({ movieId, trigger }: { movieId: string; trigger: HTMLButtonElement }) {
+  // 同一个 … 再次点击：关闭菜单
+  if (menuOpen.value && activeMovieId.value === movieId && activeTrigger.value === trigger) {
+    menuOpen.value = false
+    return
+  }
+  // 不同电影或首次打开：直接设置（Vue watch 会处理定位更新）
   activeMovieId.value = movieId
   activeTrigger.value = trigger
   menuOpen.value = true

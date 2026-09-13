@@ -12,7 +12,7 @@ const props = defineProps<{
   favorite: boolean
   watchStatus: WatchStatus
 }>()
-type CloseReason = 'escape' | 'tab' | 'action' | 'outside' | 'scrim' | 'resize' | 'unmount'
+type CloseReason = 'escape' | 'tab' | 'action' | 'outside' | 'scrim' | 'resize' | 'scroll' | 'unmount'
 const emit = defineEmits<{
   close: [reason: CloseReason]
   play: [movieId: string]
@@ -61,7 +61,7 @@ function close(reason: CloseReason) {
   // 同步移出 Tab 顺序，原生 Tab 不会进入仍在退出动画中的菜单。
   if (menu.value) menu.value.inert = true
   syncScroll()
-  if (reason !== 'outside' && reason !== 'unmount' && props.trigger?.isConnected) {
+  if (reason !== 'outside' && reason !== 'scroll' && reason !== 'unmount' && props.trigger?.isConnected) {
     props.trigger.focus({ preventScroll: true })
   }
   emit('close', reason)
@@ -139,6 +139,7 @@ function onOutside(event: Event) {
   close('outside')
 }
 function onResize() { close('resize') }
+function onScroll() { if (!sheet.value) close('scroll') }
 function onMediaChange() {
   close('resize')
   sheet.value = media?.matches ?? false
@@ -152,6 +153,7 @@ onMounted(() => {
   document.addEventListener('focusin', onOutside)
   document.addEventListener('keydown', onKeydown)
   window.addEventListener('resize', onResize)
+  window.addEventListener('scroll', onScroll, { capture: true, passive: true })
   void syncOpen()
 })
 onBeforeUnmount(() => {
@@ -163,6 +165,7 @@ onBeforeUnmount(() => {
   document.removeEventListener('focusin', onOutside)
   document.removeEventListener('keydown', onKeydown)
   window.removeEventListener('resize', onResize)
+  window.removeEventListener('scroll', onScroll, { capture: true })
 })
 </script>
 
