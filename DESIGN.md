@@ -3,6 +3,25 @@
 > 项目级设计规范与迁移约束 · 已有页面以 HTML 原型为最高视觉基准 · 中文 Web 应用 · Desktop First · Dark First
 > 建立日期：2026-09-11。本文约束设计系统与实现质量，不替代已有 HTML 的页面设计，也不表示原型已全部迁移至 Vue。产品范围、权限、接口和后端事实仍由正式基线决定。
 
+## Current Implementation Phase / 当前实现阶段
+
+长期 Design System 保留 desktop、mobile、touch、keyboard 与 accessibility 能力；当前毕业设计 Vue 实际 implementation target 为 **Windows 11 Desktop Chromium（Edge / Chrome）+ Mouse**。当前首先验收 Desktop visual endpoint 与 Desktop pointer interaction。
+
+本节是全文实施与验收要求的阶段性适用范围：后文涉及跨端、键盘和焦点的长期原则、示例及清单仍保留，但不据此要求当前组件新增 Deferred 能力。完整规则见 `AGENTS.md` 的 Current Frontend Implementation Scope。
+
+| 能力 | 当前阶段 |
+|---|---|
+| Desktop layout、pointer click / hover / pressed / active、menu / popover、scroll、motion / transition | 执行；动效保持可中断，并遵守 reduced-motion 规则 |
+| Desktop resize / responsive sizing | 执行；覆盖常见桌面窗口宽高、非最大化、高 DPI / Windows scaling，不限固定分辨率 |
+| Semantic HTML、必要基础 aria、浏览器原生 Enter / Space / Tab 和焦点可见性 | 保留，不破坏原生可操作性 |
+| Keyboard enhancement、自定义键盘监听／状态、roving focus、Tab 管理、manual focus management / restore | Deferred，当前不新增自定义交互代码 |
+| Mobile / Touch endpoint、Action Sheet、scrim、safe-area、手机滚动锁、hover:none / pointer:coarse 专用逻辑、触摸命中区／动画 | Deferred |
+| Responsive cross-device enhancement、完整 Accessibility enhancement | Deferred |
+
+Deferred 能力统一在 **Windows 桌面核心业务闭环完成之后的跨端 / Accessibility enhancement 阶段**再启用为正式验收要求，并非永久取消。HTML Prototype 仍是完整 Visual Source of Truth；其 mobile/touch 状态原样保留为未来参考，当前 Vue 只要求忠实迁移 Windows Desktop 对应状态。
+
+桌面响应式继续允许 CSS Grid、auto-fill、minmax、clamp 和 media query。必须区分 Desktop layout adaptation 与 Mobile / Touch adaptation；不能因窗口变窄自动要求 Action Sheet，也不能将 `@media` 一律删除。
+
 ## 1. Design Vision
 
 AI-Media-Center 是个人智能影音平台。以现代 Apple 产品的克制为视觉基线，以深色电影内容为主体，以成熟桌面工具交互组织来源、检索和扫描，用少量 Floating Glass Surface 表达临时覆盖层。最终只有一套 AI-Media-Center 设计语言。
@@ -94,7 +113,9 @@ Design Token 用于抽象和复用 HTML 已存在的视觉事实，为多个页�
 | 全新页面或没有 HTML 原型的组件 | 现有项目视觉语言 + DESIGN.md + Design Skill |
 | 原型中的演示业务事实与正式需求冲突 | 遵守第 1.2 节；忠实视觉迁移不等于迁移假进度、假播放结果或越权数据 |
 
-后文所有视觉 Token、组件状态、材质与尺寸示例均受上表约束，是未定义细节与全新页面的通用基线，不是已有原型的替代设计。无障碍、键盘、焦点管理与减少动效要求仍须满足；原型已有焦点外观应保留，缺失时补齐。若已明确的外观与可读性等要求确有冲突，应说明证据与影响，按明确设计变更处理，不静默换色或改字号；系统高对比、文本放大、减少动效/透明度等适配仍按本文执行。
+上表为长期职责分工，当前执行 Desktop motion / pointer interaction；keyboard enhancement、manual focus management、mobile/touch interaction、responsive cross-device enhancement 均 Deferred，不能由冲突表重新引入当前实现范围。
+
+后文所有视觉 Token、组件状态、材质与尺寸示例均受上表约束，是未定义细节与全新页面的通用基线，不是已有原型的替代设计。相关质量要求按“当前实现阶段”执行：桌面动效、原生焦点可见性与减少动效保留；keyboard enhancement、manual focus management、mobile/touch 与跨端 accessibility 当前 Deferred。若已明确的外观与可读性等要求确有冲突，应说明证据与影响，按明确设计变更处理，不静默换色或改字号；系统高对比、文本放大、减少动效/透明度等适配仍按本文执行。
 
 例如：HTML 的 selected 背景为 `rgba(255,255,255,.075)`，Vue 就保留该终点；Skill 可按 Motion 规则优化 120ms / 180ms 过渡、easing、pointerdown 反馈、中断及 reduced-motion，不能改成蓝色背景。HTML 的 Sidebar icon 为 17px 时，即使通用 Token 为 20px，也保留对应状态的 17px，除非用户明确要求重新设计。
 
@@ -864,6 +885,8 @@ Empty State / Error State 正文最多两三句，标题18，说明15，图标32
 
 ## 35. Responsive
 
+本节保留长期跨端参考；当前仅执行桌面窗口适配。Mobile / Tablet 布局、触摸目标、安全区与输入设备专用分支 Deferred，以下跨端验收不作为当前 Vue 迁移要求。
+
 下表用于全新页面或原型尚未定义的响应式场景。已有页面先忠实承接原型在各宽度下的布局；例如原型窄屏的顶部导航，不得仅因为本表建议 Drawer 就自动替换成抽屉。断点、触摸目标和溢出修复可以增强，但不得丢失入口、改变内容顺序或重塑海报墙/内容架。若需改变已有导航形态，应作为明确的设计变更处理。
 
 | 区间 | Shell / Padding | 内容与浮层 |
@@ -881,6 +904,8 @@ Empty State / Error State 正文最多两三句，标题18，说明15，图标32
 在320/640/900/1200/1600边界附近和200%缩放检查布局；44px触摸目标、底部安全区、长中文片名、长来源名/路径必须可用。Hover相关CSS限 `(hover: hover) and (pointer: fine)`；触摸提供常驻更多入口。
 
 ## 36. Accessibility
+
+本节完整目标留待后续 Accessibility enhancement 阶段。当前保留 semantic HTML、必要基础 aria、原生行为与焦点可见性、可读性及减少动效；不新增自定义键盘导航、焦点圈定／归还或触摸增强。
 
 - **Focus Visible**：已有原型明确的焦点外观应保留；缺失时采用2px Accent外环、3pxoffset，图片和白按钮添加Canvas隔离。焦点必须清晰可见，不能仅 `outline:none`，不被overflow/sticky裁掉，必要时scroll-margin。
 - **Keyboard Navigation**：所有核心流程仅键盘可完成；按Tab自然顺序、菜单方向键、Escape关顶层、Dialog圈定并归还；输入法composition正确处理，无正tabindex。
@@ -948,13 +973,15 @@ Empty State / Error State 正文最多两三句，标题18，说明15，图标32
 | Tokens | 匹配 HTML 视觉事实才复用；不同事实使用准确语义/组件 Token 或原值，不强套全局值；无同名不同义混用 |
 | Components | Movie Card、Button、Input、Menu七态明确；静态容器不伪装交互 |
 | Cross-page Consistency | 按第 3.1 节对照同一组件 / variant 在不同页面的对应状态，检查视觉、hover / pressed / focus、菜单、键盘、loading 与 Motion 一致；页面不覆盖公共交互，例外有语义依据，HTML 冲突已说明且未擅自统一 |
-| Accessibility | 键盘全流程、焦点还原、屏幕阅读状态、触摸目标、对比、两种减少偏好均覆盖 |
-| Responsive | 五区间及边界、长片名/路径、200%缩放无裁切；图片层高度不限制文字 |
+| Accessibility | 当前检查语义、必要基础 aria、原生行为、可读性及减少偏好；键盘全流程、自定义焦点管理、完整屏幕阅读与触摸增强 Deferred |
+| Responsive | 当前检查桌面窗口宽高变化、高 DPI / scaling、长片名/路径与布局稳定；五区间中的跨端布局及触摸验收 Deferred |
 | Business / Security | 无用户越权、凭据/临时定位泄露、伪播放进度；P0不新增服务或播放器 |
 
 当前代码与原型有差异时按“确认对应 HTML 及完整状态→忠实拆分/补齐 Vue 组件→统一 Token→补状态与可访问性→对照验证视觉及 Material/Motion”逐组件迁移。首批建议覆盖 Movie Card、Search/Popover、Source Form，不以建立设计系统为由改写所有 HTML，也不以当前 Vue 尚未实现为由删减原型。需要改 API 或业务状态时走正式切片契约确认，本文不承担接口设计。
 
 ## Agent Implementation Rules
+
+以下规则均受“当前实现阶段”约束；提及 keyboard、focus management、touch 或跨端响应式时是长期能力要求，不能据此为当前组件新增 Deferred 实现。
 
 1. 新增或重构 UI 前按 AGENTS.md 阅读项目状态与相关事实；完整核对对应 HTML、其共享样式和状态，以及当前 Vue 实现，再按本文判定已有页面或全新页面。
 2. 已有页面以 HTML 为最高视觉基准，优先演进已有 Vue 组件以忠实承接原型；没有组件时从共享 HTML/CSS 抽取。组件化不是重设计理由，Vue 占位不能覆盖原型。

@@ -32,6 +32,18 @@
 - 当前占位 View 或尚未完整迁移的组件不构成新的视觉基准；原型已有但 Vue 尚缺的区域属于待迁移内容，不能据此删除原型入口或模块。没有 HTML 原型的全新页面按 `DESIGN.md` 和已有项目视觉语言设计。
 - 迁移完成前，在相同视口、内容和对应状态下对照 HTML 与 Vue，检查布局、区域完整性、层级及交互；构建通过不等于视觉迁移完成。HTML 的视觉基准地位不覆盖正式业务事实、用户隔离和 P0 约束。
 
+## Current Frontend Implementation Scope
+
+- **当前正式 Vue 实现与视觉验收目标：Windows 11 + Desktop Chromium（Edge / Chrome）+ Mouse interaction。** 采用 Desktop-first、Windows-browser-first、Mouse-first，面向普通桌面／笔记本屏幕；Mobile / Phone / Tablet touch 不是当前验收环境。
+- 桌面必须保证 layout、hover、pointer click、menu / popover、scroll、resize 与鼠标操作正常。覆盖常见窗口宽度（如 1920 / 1600 / 1440 / 1366px）、非最大化窗口、窗口高度变化及高 DPI / Windows scaling，不限于固定 1920×1080。
+- 当前阶段不主动实现 mobile-specific layout、touch-specific / touch-first interaction、Mobile Action Sheet、mobile scrim、safe-area、body scroll lock for mobile、`(hover: none)` / `(pointer: coarse)` 专用行为、touch-specific pressed state、touch-only hit-area enlargement、custom mobile navigation 和手机／触屏专属动画。
+- **当前阶段不新增自定义键盘交互代码**：包括 ArrowUp / ArrowDown、Home / End、custom roving focus、custom Tab / Shift+Tab handling、manual focus restoration、`keyboardInput` 等键盘专用状态及为键盘添加的 `document keydown` listener。
+- 保留浏览器原生语义：优先使用正确的 `<button>`、`<a>`、`<input>` 等元素，保留原生 Enter / Space、自然 Tab 顺序和基本可操作性；不得为了去掉键盘逻辑将 button 改成 div。Accessibility 当前以 semantic HTML、真正必要的基础 aria、不破坏原生行为为准，不要求每个组件主动增加复杂增强。
+- Mobile / Touch、responsive cross-device behavior、完整 Keyboard / focus management / Accessibility enhancement 统一 **Deferred 到 Windows 桌面核心业务闭环完成之后的跨端 / Accessibility enhancement 阶段**，届时再作为正式验收要求；不是永久取消这些能力。
+- **HTML Prototype 仍是完整 Visual Source of Truth**。其中 Mobile layout、Touch behavior、Action Sheet、窄屏菜单、touch hit area、mobile scrim 等状态保留为未来参考；当前 Vue 迁移只要求忠实迁移 Windows Desktop 对应状态，不要求同步实现所有 Mobile / Touch endpoint。
+- 桌面窗口适配仍允许 CSS Grid、auto-fill、minmax、clamp、media query 和 Desktop responsive sizing。后续清理必须先区分 Desktop layout adaptation 与 Mobile / Touch adaptation，不能看到 `@media` 就删除，也不能仅因窗口变窄就要求迁移移动端交互。
+- 已提前实现的跨端／自定义键盘代码不因本规则自动删除；按后续专项审计、确认范围、清理的顺序处理。
+
 ## Vue Architecture Rules
 
 以下路径均相对于 `frontend/src/`：
@@ -52,13 +64,14 @@
 
 项目鼓励在相关 UI 开发中积极使用 Apple Design Skill。目标不是简单模仿 Apple 外观，而是提升 Apple 风格的底层交互体验：不仅看起来像 Apple，而且使用感觉接近 Apple。
 
-允许在保留原型结构并遵守 `DESIGN.md` 的前提下优化：
+当前阶段在保留原型结构并遵守 `DESIGN.md` 的前提下，Apple Design Skill 主要用于：
 
-- 点击反馈、pointer interaction、hover、pressed state、active state。
-- focus-visible、keyboard interaction、accessibility。
-- transition、motion、animation easing。
-- perceived performance、loading feedback。
-- reduced motion、responsive interaction。
+- Desktop pointer interaction、hover、pressed state、active state 与点击反馈。
+- Desktop motion、transition、animation easing。
+- Desktop perceived performance、loading feedback 与 desktop scroll behavior。
+- 桌面窗口适配与 reduced motion；保留原生焦点可见性和基础语义。
+
+Mobile-specific responsive interaction、touch interaction、advanced keyboard navigation、manual focus management 及复杂 accessibility enhancement 当前 Deferred，按上节后续阶段再启用；不得因 Skill 建议自动为组件补入方向键、Home / End 或 Mobile Action Sheet。
 
 尤其关注快速反馈、连续交互、自然过渡、克制动画和物理感；需要动画时保持可中断、可反向操作，不以动画阻塞输入。按实际交互需求选用 Skill 能力，不为展示 Skill 强加效果或依赖；具体动效规范遵守 `DESIGN.md`。
 

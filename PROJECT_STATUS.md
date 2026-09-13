@@ -2,6 +2,8 @@
 
 - 最后更新时间：2026-09-13
 - 当前阶段：稳定文档基线已经完成并冻结，已开始首个正式前端业务切片，当前使用 Frontend Mock，尚未接入后端。
+- 最新阶段决策：当前 Vue 实现调整为 Windows 11 Desktop Chromium（Edge / Chrome）+ Mouse 优先；Mobile / Touch 和完整 Keyboard / Accessibility enhancement 延后到桌面核心业务闭环之后。HTML 原型跨端状态保留为后续参考，不在当前 Vue 迁移中同步实现；桌面窗口宽高适配仍须保证。
+- 范围调整说明：以下迁移条目保留历史实现与验收事实。当前 MovieContextMenu 代码仍包含此前提前实现的 Mobile/touch Action Sheet、完整键盘交互与 ARIA；下一步按新的桌面阶段规则审计并确认清理范围。本次仅调整文档，未进行代码审计或删除。
 - 当前切片：电影片库 / Library，MovieCard + MovieContextMenu 迁移与视觉验收已完成，使用 Frontend Mock。
 - 已完成：P0范围；服务与模块边界；Redis非P0；公共Movie复用与并发语义；TMDB图片OSS链路；Vue/Mock/配置规范；动态文档治理。
 - 最近原型优化：扫描完成态进一步统一首页/电影页的横向内容宽度，提高宽屏空间利用率；保留新增影片海报网格及桌面待处理/异常双列布局。当前仍为前端原型 / Mock阶段，尚未接入真实后端扫描功能。
@@ -12,7 +14,7 @@
 - 最近 Vue Router 接入：已安装 Vue Router 4，新增 router/index.ts 和九个独立占位 View；main.ts 注册 Router，App.vue 仅保留布局与 RouterView，删除 currentView 等临时切页状态。侧栏通过命名 RouterLink 跳转和高亮，用户按钮仅显示未实现提示。类型检查、构建、开发服务启动、九页跳转/刷新/直接访问、前进后退、查询参数、键盘焦点及临时子路由高亮检查通过，桌面侧栏与 Main 尺寸保持不变，无浏览器运行错误；未接用户系统或后端，未提交 Git。生产部署需配置 History 回退，说明已补充至 frontend/README.md。
 - 最近工作流 UI 优化：影片识别增加确认队列概览，媒体来源统一宽内容布局与卡片间距；扫描和最近入库复用从首页/电影页抽取的公共海报表面样式，保留既有遮罩与无缩放行为。未改变 Mock 数据结构或扫描/确认流程。
 - 最近资料库原型：补齐最近添加、收藏、未看、已看四个筛选视图，与电影页共用布局样式、交互和 Mock 卡片；已接通现有页面的资料库导航。四种宽度、分类筛选、菜单操作及原电影页像素对比检查通过；仍为 HTML / Mock 阶段，无后端接入。
-- 下一步：在 `/library` 验收环境继续迁移 LibraryToolbar；按后续页面交互逐步确认 API draft，再安排真实 Spring Boot 联调。
+- 下一步：① 审计 `frontend/src/` 已提前实现的 Mobile / Touch / custom Keyboard 代码；② 确认删除范围，保留桌面窗口适配和原生 HTML 行为；③ 清理为 Desktop + Mouse 当前实现；④ 再继续 LibraryToolbar 的 Desktop + Mouse 迁移。后续随页面交互确认 API draft，再安排真实 Spring Boot 联调。
 - 阻塞问题：无。
 - 最近图片规则决策：TMDB主Poster / 主Backdrop的P0选图规则已确定，直接使用Movie Details默认`poster_path` / `backdrop_path`，不再执行自定义图片语言优先级；中文片名和中文简介仍保持中文本地化优先。
 - 最近关键决策：前端优先、垂直切片、尽早联调；`UNIQUE(tmdb_id)`保证公共Movie唯一；TMDB负责图片来源、OSS负责长期存储与日常展示；管理员预建档为非P0。
