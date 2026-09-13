@@ -1,16 +1,17 @@
 # PROJECT STATUS
 
-- 最后更新时间：2026-09-12
-- 当前阶段：稳定文档基线已经完成并冻结，开始建立 Vue 前端基础布局组件，尚未开始正式业务功能。
-- 当前切片：尚未确定。
+- 最后更新时间：2026-09-13
+- 当前阶段：稳定文档基线已经完成并冻结，已开始首个正式前端业务切片，当前使用 Frontend Mock，尚未接入后端。
+- 当前切片：电影片库 / Library，第一阶段 MovieCard + LibraryView Mock 网格迁移已完成。
 - 已完成：P0范围；服务与模块边界；Redis非P0；公共Movie复用与并发语义；TMDB图片OSS链路；Vue/Mock/配置规范；动态文档治理。
 - 最近原型优化：扫描完成态进一步统一首页/电影页的横向内容宽度，提高宽屏空间利用率；保留新增影片海报网格及桌面待处理/异常双列布局。当前仍为前端原型 / Mock阶段，尚未接入真实后端扫描功能。
-- 正在进行：选择首个前端优先垂直切片。
+- 正在进行：以真实 `/library` 页面继续电影片库组件开发与视觉验收。
+- 最近电影片库迁移：新增最小 LibraryMovie 类型、独立 library Mock、8 张本地开发海报和普通 MovieCard；LibraryView 通过 props 渲染标题与响应式网格。保留原型海报、文字、遮罩与播放/更多视觉，补齐键盘焦点、图片失败 fallback 和 reduced-motion；detail/play/more 仅在开发控制台记录意图。Windows Chromium 的 1920/1366/901/900/899/681/680/679/390px 检查通过，同内容且移除 Toolbar 的原型对照中标题、网格和海报几何一致；完整原型仍有本阶段未迁移的 Toolbar 与合集聚合。海报、hover、独立事件、Tab、焦点、fallback、触摸更多及其余八路由直接访问/刷新通过，无 Vue 运行错误。vue-tsc 与 build 通过；docs/API.md 新增当前用户片库最小 draft。未实现 Toolbar、ContextMenu、真实 API、详情或播放器；未增加依赖，未修改 Shell、Sidebar、Router、HTML 或冻结基线，未提交 Git。
 - 最近 Vue 侧栏迁移：按 app-shell-v2 原型恢复 PERSONAL CINEMA 品牌、搜索、主导航及资料库顺序、设置、完整用户名/副标题和账号菜单；保留九个 named routes。桌面遵循原型最终级联（220px栏宽、8px inset、236px Main偏移），窄屏承接顶部导航，并在账号菜单补充被隐藏的资料库/设置入口。材质、选中色、20px导航图标遵循 DESIGN.md，主要尺寸与间距保留原型。apple-design 增强包含即时按下反馈、无缩放、180ms/4px可反向菜单过渡、方向键/Home/End/Tab/Escape、外部点击、焦点归还及减少动效/透明度。搜索仅事件接口和未开放提示；账号数据可由props替换，资料/退出不改变登录状态。Windows Chromium九路由点击/刷新/直接访问、查询/返回、320–1920px抽样宽度、400px低高度、根字号200%、焦点/菜单/无障碍偏好检查通过；1366×900关键组件边界与原型一致并已截图对照，无Vue运行错误。类型检查、构建和diff检查通过；无新增依赖，未修改HTML、HomeView、Router或后端文档，未提交Git。
 - 最近 Vue Router 接入：已安装 Vue Router 4，新增 router/index.ts 和九个独立占位 View；main.ts 注册 Router，App.vue 仅保留布局与 RouterView，删除 currentView 等临时切页状态。侧栏通过命名 RouterLink 跳转和高亮，用户按钮仅显示未实现提示。类型检查、构建、开发服务启动、九页跳转/刷新/直接访问、前进后退、查询参数、键盘焦点及临时子路由高亮检查通过，桌面侧栏与 Main 尺寸保持不变，无浏览器运行错误；未接用户系统或后端，未提交 Git。生产部署需配置 History 回退，说明已补充至 frontend/README.md。
 - 最近工作流 UI 优化：影片识别增加确认队列概览，媒体来源统一宽内容布局与卡片间距；扫描和最近入库复用从首页/电影页抽取的公共海报表面样式，保留既有遮罩与无缩放行为。未改变 Mock 数据结构或扫描/确认流程。
 - 最近资料库原型：补齐最近添加、收藏、未看、已看四个筛选视图，与电影页共用布局样式、交互和 Mock 卡片；已接通现有页面的资料库导航。四种宽度、分类筛选、菜单操作及原电影页像素对比检查通过；仍为 HTML / Mock 阶段，无后端接入。
-- 下一步：确定首个页面/业务用例，在`docs/API.md`新增最小draft契约，并开始对应Vue + Frontend Mock切片。
+- 下一步：在 `/library` 验收环境继续逐组件迁移 MovieContextMenu、LibraryToolbar；按后续页面交互逐步确认 API draft，再安排真实 Spring Boot 联调。
 - 阻塞问题：无。
 - 最近图片规则决策：TMDB主Poster / 主Backdrop的P0选图规则已确定，直接使用Movie Details默认`poster_path` / `backdrop_path`，不再执行自定义图片语言优先级；中文片名和中文简介仍保持中文本地化优先。
 - 最近关键决策：前端优先、垂直切片、尽早联调；`UNIQUE(tmdb_id)`保证公共Movie唯一；TMDB负责图片来源、OSS负责长期存储与日常展示；管理员预建档为非P0。
