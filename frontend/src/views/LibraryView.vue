@@ -36,12 +36,16 @@ function defaultFilters(): LibraryFilters {
 }
 const filters = ref<LibraryFilters>(defaultFilters())
 const sort = ref<LibrarySort>('added')
+let routeGenreSelection: string[] | undefined
 // 承接原型首页 genre 链接；忽略未知类型，不修改路由配置。
-watch([() => route.query.genre, () => loading.value], ([value]) => {
+watch([() => route.query.genre, () => loading.value], ([value], [previousValue]) => {
   const genre = typeof value === 'string' ? value : ''
   const known = baseGenres.includes(genre) || movies.value.some(movie => movie.genres.includes(genre))
   genreOptions.value = known && !baseGenres.includes(genre) ? [...baseGenres, genre] : [...baseGenres]
+  // 加载完成只补全尚未被用户修改的 URL 初始类型；URL 变化仍正常应用。
+  if (value === previousValue && routeGenreSelection && filters.value.genres !== routeGenreSelection) return
   filters.value = { ...filters.value, genres: known ? [genre] : [] }
+  routeGenreSelection = filters.value.genres
 }, { immediate: true })
 function matchesYear(year: number, bucket: LibraryYear) {
   if (bucket === 'all') return true
