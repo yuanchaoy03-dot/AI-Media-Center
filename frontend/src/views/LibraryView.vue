@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { computed, ref, shallowRef, useId } from 'vue'
+import { computed, ref, shallowRef, useId, watch } from 'vue'
+import { useRoute, RouterLink } from 'vue-router'
+import movieIcons from '../assets/movie-icons.svg?url&no-inline'
+import LibraryToolbar from '../components/media/LibraryToolbar.vue'
 import MovieCard from '../components/media/MovieCard.vue'
 import MovieContextMenu from '../components/media/MovieContextMenu.vue'
-import { mockLibraryMovies } from '../mocks/library'
-import type { WatchStatus } from '../types/movie'
+import { mockLibraryMovies, mockLibrarySources } from '../mocks/library'
+import type { LibraryFilters, LibrarySort, LibraryYear, WatchStatus } from '../types/movie'
 
 // 每次进入页面初始化副本；刷新恢复 Mock，不修改共享常量。
 const movies = ref(mockLibraryMovies.map(movie => ({ ...movie })))
@@ -13,6 +16,53 @@ const menuOpen = ref(false)
 const menuId = `movie-context-menu-${useId()}`
 const activeMovie = computed(() => movies.value.find(movie => movie.id === activeMovieId.value))
 const announcement = ref('')
+
+const route = useRoute()
+const baseGenres = ['科幻', '剧情', '动作', '悬疑', '动画', '喜剧', '恐怖', '纪录片']
+const genreOptions = ref([...baseGenres])
+function defaultFilters(): LibraryFilters {
+  return { genres: [], sourceIds: [], year: 'all', status: 'all' }
+}
+const filters = ref<LibraryFilters>(defaultFilters())
+const sort = ref<LibrarySort>('added')
+// 承接原型首页 genre 链接；忽略未知类型，不修改路由配置。
+watch(() => route.query.genre, value => {
+  const genre = typeof value === 'string' ? value : ''
+  const known = baseGenres.includes(genre) || movies.value.some(movie => movie.genres.includes(genre))
+  genreOptions.value = known && !baseGenres.includes(genre) ? [...baseGenres, genre] : [...baseGenres]
+  filters.value = { ...filters.value, genres: known ? [genre] : [] }
+}, { immediate: true })
+function matchesYear(year: number, bucket: LibraryYear) {
+  if (bucket === 'all') return true
+  if (bucket === '2020') return year >= 2020
+  if (bucket === 'older') return year < 1990
+  return year >= Number(bucket) && year < Number(bucket) + 10
+}
+const visibleMovies = computed(() => {
+  const selected = filters.value
+  const result = movies.value.filter(movie =>
+    (!selected.genres.length || selected.genres.some(genre => movie.genres.includes(genre)))
+    && (!selected.sourceIds.length || selected.sourceIds.some(id => movie.sourceIds.includes(id)))
+    && (selected.status === 'all' || movie.watchStatus === selected.status)
+    && matchesYear(movie.year, selected.year))
+  return result.sort((a, b) => {
+    switch (sort.value) {
+      case 'title': return a.title.localeCompare(b.title, 'zh-CN')
+      case 'year': return b.year - a.year
+      case 'watched': return (b.lastPlayedAt ?? 0) - (a.lastPlayedAt ?? 0)
+      case 'duration': return b.runtimeMinutes - a.runtimeMinutes
+      default: return b.addedAt - a.addedAt
+    }
+  })
+})
+function clearFilters() { filters.value = defaultFilters() }
+watch(visibleMovies, result => {
+  if (!result.some(movie => movie.id === activeMovieId.value)) {
+    menuOpen.value = false
+    activeMovieId.value = null
+    activeTrigger.value = null
+  }
+})
 
 function openMenu({ movieId, trigger }: { movieId: string; trigger: HTMLButtonElement }) {
   // 同一个 … 再次点击：关闭菜单
@@ -46,13 +96,21 @@ function recordIntent(action: 'detail' | 'play' | 'versions', movieId: string) {
 <template>
   <section class="library-content" lang="zh-CN" aria-labelledby="library-title">
     <header class="movie-page-heading"><h1 id="library-title" class="page-title">电影</h1></header>
-    <!-- Toolbar 下一阶段迁移；当前不制造占位操作。 -->
-    <div class="movie-grid" aria-label="电影片库">
-      <MovieCard v-for="movie in movies" :key="movie.id" :movie="movie"
+    <LibraryToolbar v-model:filters="filters" v-model:sort="sort"
+      :genre-options="genreOptions" :source-options="mockLibrarySources" @clear-filters="clearFilters" />
+    <div v-if="visibleMovies.length" class="movie-grid" aria-label="电影片库">
+      <MovieCard v-for="movie in visibleMovies" :key="movie.id" :movie="movie"
         :menu-id="menuId" :more-expanded="menuOpen && activeMovieId === movie.id"
         @detail="recordIntent('detail', $event)" @play="recordIntent('play', $event)"
         @more="openMenu" />
     </div>
+    <section v-else class="library-state">
+      <span class="state-icon"><svg viewBox="0 0 256 256" aria-hidden="true"><template v-if="movies.length"><path d="M230.6,49.53A15.81,15.81,0,0,0,216,40H40A16,16,0,0,0,28.19,66.78L96,141.32V216a8,8,0,0,0,12.29,6.75l32-20A8,8,0,0,0,144,196V141.32l67.81-74.54A15.81,15.81,0,0,0,230.6,49.53ZM130.08,132.58A8,8,0,0,0,128,138v53.57l-16,10V138a8,8,0,0,0-2.08-5.42L40,56H216Z"/></template><use v-else :href="`${movieIcons}#ph-film-slate`" /></svg></span>
+      <strong>{{ movies.length ? '没有符合条件的电影' : '还没有电影' }}</strong>
+      <p>{{ movies.length ? '尝试调整筛选条件' : '新账号默认没有公共片库。添加 WebDAV 媒体来源后，影片会出现在这里。' }}</p>
+      <button v-if="movies.length" class="state-action" type="button" @click="clearFilters">清除筛选</button>
+      <RouterLink v-else class="state-action" to="/media-sources">添加 WebDAV 来源</RouterLink>
+    </section>
     <MovieContextMenu :id="menuId" :open="menuOpen" :trigger="activeTrigger"
       :movie-id="activeMovie?.id ?? ''" :title="activeMovie?.title ?? ''"
       :favorite="activeMovie?.favorite ?? false" :watch-status="activeMovie?.watchStatus ?? 'unwatched'"
@@ -64,6 +122,15 @@ function recordIntent(action: 'detail' | 'play' | 'versions', movieId: string) {
 </template>
 
 <style scoped>
+.state-icon{display:grid;place-items:center;width:44px;height:44px;margin-bottom:13px;border-radius:var(--radius-circle);background:rgba(255,255,255,.055);color:var(--icon-default)}
+.state-icon svg{width:22px;height:22px;fill:currentColor}
+.library-state{display:grid;justify-items:center;width:100%;padding:72px 20px;color:#a1a1a6;text-align:center}
+.library-state strong{color:#f5f5f7;font-size:16px;font-weight:600}
+.library-state p{margin-top:4px;color:rgba(255,255,255,.46);font-size:13px}
+.state-action{min-height:34px;margin-top:16px;padding:0 12px;border:1px solid rgba(255,255,255,.1);border-radius:10px;background:rgba(255,255,255,.055);color:rgba(255,255,255,.92);font-size:13px}
+.state-action:hover{background:rgba(255,255,255,.08)}
+.state-action { font-family: inherit; cursor: pointer; text-decoration: none; }
+.library-state p { margin: 4px 0 0; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 .library-content {
   /* Shell 已提供 32px / 40px padding，仅补原型内容区差额。 */
