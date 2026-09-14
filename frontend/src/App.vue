@@ -5,14 +5,11 @@ import AppSidebar from './components/layout/AppSidebar.vue'
 
 // 全局搜索尚未迁移；未来在此接 Search Dialog，侧栏仅发出意图。
 const notice = ref('')
-let noticeTrigger: HTMLElement | null = null
 function showNotice(message: string) {
-  noticeTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null
   notice.value = message
 }
 function dismissNotice() {
   notice.value = ''
-  if (noticeTrigger?.isConnected) noticeTrigger.focus()
 }
 </script>
 
@@ -49,7 +46,7 @@ function dismissNotice() {
 .shell-notice {
   position: fixed;
   right: var(--space-4);
-  bottom: max(var(--space-4), env(safe-area-inset-bottom));
+  bottom: var(--space-4);
   z-index: var(--z-toast);
   width: min(360px, calc(100% - 32px));
   padding: var(--space-4);

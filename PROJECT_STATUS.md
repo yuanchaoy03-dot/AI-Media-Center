@@ -1,20 +1,21 @@
 # PROJECT STATUS
 
-- 最后更新时间：2026-09-13
+- 最后更新时间：2026-09-14
 - 当前阶段：稳定文档基线已经完成并冻结，已开始首个正式前端业务切片，当前使用 Frontend Mock，尚未接入后端。
 - 最新阶段决策：当前 Vue 实现调整为 Windows 11 Desktop Chromium（Edge / Chrome）+ Mouse 优先；Mobile / Touch 和完整 Keyboard / Accessibility enhancement 延后到桌面核心业务闭环之后。HTML 原型跨端状态保留为后续参考，不在当前 Vue 迁移中同步实现；桌面窗口宽高适配仍须保证。
-- 范围调整说明：以下迁移条目保留历史实现与验收事实。当前 MovieContextMenu 代码仍包含此前提前实现的 Mobile/touch Action Sheet、完整键盘交互与 ARIA；下一步按新的桌面阶段规则审计并确认清理范围。本次仅调整文档，未进行代码审计或删除。
+- 范围调整说明：本轮 Windows Desktop + Mouse 确定项收敛已完成，已清理 MovieContextMenu、MovieCard、AppSidebar 和 App 的 Touch / 自定义键盘 / 手动焦点实现；保留桌面窗口适配、原生 HTML 行为、基础 aria、简单 focus-visible 和 reduced-motion。历史审计与原型中的跨端状态仅作为后续参考。
 - 当前切片：电影片库 / Library，MovieCard + MovieContextMenu 迁移与视觉验收已完成，使用 Frontend Mock。
 - 已完成：P0范围；服务与模块边界；Redis非P0；公共Movie复用与并发语义；TMDB图片OSS链路；Vue/Mock/配置规范；动态文档治理。
 - 最近原型优化：扫描完成态进一步统一首页/电影页的横向内容宽度，提高宽屏空间利用率；保留新增影片海报网格及桌面待处理/异常双列布局。当前仍为前端原型 / Mock阶段，尚未接入真实后端扫描功能。
 - 正在进行：以真实 `/library` 页面继续电影片库组件开发与视觉验收。
-- 最近电影片库迁移：新增最小 LibraryMovie 类型、独立 library Mock、8 张本地开发海报和普通 MovieCard；LibraryView 通过 props 渲染标题与响应式网格。保留原型海报、文字、遮罩与播放/更多视觉，补齐键盘焦点、图片失败 fallback 和 reduced-motion；detail/play/more 仅在开发控制台记录意图。Windows Chromium 的 1920/1366/901/900/899/681/680/679/390px 检查通过，同内容且移除 Toolbar 的原型对照中标题、网格和海报几何一致；完整原型仍有本阶段未迁移的 Toolbar 与合集聚合。海报、hover、独立事件、Tab、焦点、fallback、触摸更多及其余八路由直接访问/刷新通过，无 Vue 运行错误。vue-tsc 与 build 通过；docs/API.md 新增当前用户片库最小 draft。未实现 Toolbar、真实 API、详情或播放器；未增加依赖，未修改 Shell、Sidebar、Router、HTML 或冻结基线，未提交 Git。
-- 最近 MovieContextMenu 迁移：MovieContextMenu.vue 实现桌面 168px anchor flyout 和 Mobile/touch Bottom Action Sheet，通过 Teleport 渲染至 body，支持 favorite/watchStatus Mock 切换、ArrowUp/ArrowDown/Home/End/Escape/Tab/Shift+Tab 键盘导航、焦点归还、outside click、scrim close、resize close、桌面 scroll close、同一 … 二次点击 toggle 关闭、不同电影 … 直接切换、reduced-motion 和完整 ARIA。LibraryView 通过页面级单实例管理菜单状态。播放/查看详情/查看媒体版本仅记录 intent，favorite/watchStatus 无后端持久化，仍使用 Frontend Mock。
-- 最近 Vue 侧栏迁移：按 app-shell-v2 原型恢复 PERSONAL CINEMA 品牌、搜索、主导航及资料库顺序、设置、完整用户名/副标题和账号菜单；保留九个 named routes。桌面遵循原型最终级联（220px栏宽、8px inset、236px Main偏移），窄屏承接顶部导航，并在账号菜单补充被隐藏的资料库/设置入口。材质、选中色、20px导航图标遵循 DESIGN.md，主要尺寸与间距保留原型。apple-design 增强包含即时按下反馈、无缩放、180ms/4px可反向菜单过渡、方向键/Home/End/Tab/Escape、外部点击、焦点归还及减少动效/透明度。搜索仅事件接口和未开放提示；账号数据可由props替换，资料/退出不改变登录状态。Windows Chromium九路由点击/刷新/直接访问、查询/返回、320–1920px抽样宽度、400px低高度、根字号200%、焦点/菜单/无障碍偏好检查通过；1366×900关键组件边界与原型一致并已截图对照，无Vue运行错误。类型检查、构建和diff检查通过；无新增依赖，未修改HTML、HomeView、Router或后端文档，未提交Git。
+- 最近电影片库迁移：保留最小 LibraryMovie 类型、独立 library Mock、8 张本地开发海报和普通 MovieCard；LibraryView 通过 props 渲染标题与响应式网格。MovieCard 已删除 hover:none、pointer:coarse、Touch hit-area、touch-action 和 Touch-only pressed state，保留 Desktop hover、expanded state、简单 focus-visible、图片失败 fallback 和 reduced-motion；海报、文字、遮罩与播放/更多视觉保持不变。仍使用 Frontend Mock，未实现 Toolbar、真实 API、详情或播放器；当前用户片库最小契约仍为 docs/API.md 中的 draft。
+- 最近 MovieContextMenu 迁移：已删除 Mobile Action Sheet、scrim、safe-area、body scroll lock、matchMedia / sheet、自定义 ArrowUp/ArrowDown/Home/End/Tab/Shift+Tab/Escape、manual focus / focus restore 与 focusin。保留通过 Teleport 渲染的 Desktop 168px anchor flyout、锚点定位与防溢出、pointer outside close、resize / scroll close、菜单自身内部滚动、同一 … toggle、不同电影 … 切换和 reduced-motion；语义收敛为普通 action group + native buttons。LibraryView 继续使用页面级单实例；favorite/watchStatus 为 Mock 切换，播放/查看详情/查看媒体版本仅记录 intent，无后端持久化。
+- 最近 Vue 侧栏迁移：已删除 pointer:coarse、touch-action、自定义方向键/Home/End/Tab/Shift+Tab/Escape、manual focus / focus restore 和 focusin；账号浮层收敛为普通 action group，保留 inert、aria-hidden、aria-expanded、aria-controls 和简单 focus-visible。保留品牌非交互展示、搜索、九个 named routes、路由高亮、账号 Mouse open/close / outside click、现有 notice、桌面滚动和 reduced-motion；≤900px 顶部导航、≤680px 图标导航及 compact navigation 均保留。220px 栏宽、8px inset、236px Main 偏移及账号菜单视觉/过渡不变；无使用方的 --control-height-touch 已删除。
+- 最近 App Shell 收尾：App.vue 已删除 shell notice 的 noticeTrigger、document.activeElement 和关闭后手动 focus restoration，并将 safe-area 定位改为普通桌面 bottom；showNotice / dismissNotice 仅设置/清空提示。保留 notice UI、role=status、鼠标关闭、简单 focus-visible 及 ≤900px Desktop responsive shell；AppSidebar 仅修正账号浮层关闭态注释。
 - 最近 Vue Router 接入：已安装 Vue Router 4，新增 router/index.ts 和九个独立占位 View；main.ts 注册 Router，App.vue 仅保留布局与 RouterView，删除 currentView 等临时切页状态。侧栏通过命名 RouterLink 跳转和高亮，用户按钮仅显示未实现提示。类型检查、构建、开发服务启动、九页跳转/刷新/直接访问、前进后退、查询参数、键盘焦点及临时子路由高亮检查通过，桌面侧栏与 Main 尺寸保持不变，无浏览器运行错误；未接用户系统或后端，未提交 Git。生产部署需配置 History 回退，说明已补充至 frontend/README.md。
 - 最近工作流 UI 优化：影片识别增加确认队列概览，媒体来源统一宽内容布局与卡片间距；扫描和最近入库复用从首页/电影页抽取的公共海报表面样式，保留既有遮罩与无缩放行为。未改变 Mock 数据结构或扫描/确认流程。
 - 最近资料库原型：补齐最近添加、收藏、未看、已看四个筛选视图，与电影页共用布局样式、交互和 Mock 卡片；已接通现有页面的资料库导航。四种宽度、分类筛选、菜单操作及原电影页像素对比检查通过；仍为 HTML / Mock 阶段，无后端接入。
-- 下一步：① 审计 `frontend/src/` 已提前实现的 Mobile / Touch / custom Keyboard 代码；② 确认删除范围，保留桌面窗口适配和原生 HTML 行为；③ 清理为 Desktop + Mouse 当前实现；④ 再继续 LibraryToolbar 的 Desktop + Mouse 迁移。后续随页面交互确认 API draft，再安排真实 Spring Boot 联调。
+- 下一步：Desktop + Mouse 收敛已完成，继续 LibraryToolbar 的 Desktop + Mouse 迁移，再推进片库筛选 / 搜索与页面业务流；随真实页面交互确认 API draft，随后安排真实 Spring Boot API 联调。
 - 阻塞问题：无。
 - 最近图片规则决策：TMDB主Poster / 主Backdrop的P0选图规则已确定，直接使用Movie Details默认`poster_path` / `backdrop_path`，不再执行自定义图片语言优先级；中文片名和中文简介仍保持中文本地化优先。
 - 最近关键决策：前端优先、垂直切片、尽早联调；`UNIQUE(tmdb_id)`保证公共Movie唯一；TMDB负责图片来源、OSS负责长期存储与日常展示；管理员预建档为非P0。

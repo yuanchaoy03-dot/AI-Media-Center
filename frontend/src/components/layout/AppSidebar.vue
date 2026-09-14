@@ -148,7 +148,7 @@ const groups: SidebarGroup[] = [
             <use :href="`${sidebarIcons}#ph-caret-right`" />
           </svg>
         </button>
-        <!-- 保留 DOM，CSS 从当前呈现值反向过渡；关闭时立即移出焦点与可访问树。 -->
+        <!-- 菜单关闭时保留 DOM 以完成退出动画，同时设为不可交互并从辅助技术中隐藏。 -->
         <div id="sidebar-account-menu" class="account-menu" role="group"
           aria-label="账号操作" :inert="!menuOpen" :aria-hidden="!menuOpen">
           <!-- 原型窄屏隐藏的导航保留在同一账号浮层内，避免入口失联。 -->
