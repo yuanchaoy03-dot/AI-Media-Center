@@ -16,7 +16,11 @@
   $('collectionPoster').alt = `${collection.name}合集海报`;
   // Local Mock fallback only: no official Collection backdrop is available.
   const backdrop = collection.backdrop || members.find(movie => movie.backdrop)?.backdrop;
-  if (backdrop) $('collectionBackdrop').src = backdrop;
+  if (backdrop) {
+    $('collectionBackdrop').src = backdrop;
+    $('collectionBackdropStage').hidden = false;
+    $('collectionBackdrop').addEventListener('error', () => { $('collectionBackdropStage').hidden = true; });
+  }
   else $('collectionBackdrop').hidden = true;
   $('collectionMovies').replaceChildren(...members.map(renderMovieCard));
   $('collectionMoviesEmpty').hidden = members.length > 0;

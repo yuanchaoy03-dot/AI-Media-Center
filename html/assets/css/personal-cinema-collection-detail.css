@@ -1,9 +1,10 @@
 /* Collection-only layout; poster surfaces and controls use the shared Movie Card. */
-.collection-page{position:relative}
+.collection-page{position:relative;z-index:1}
 .collection-back{position:absolute;top:30px;left:40px;z-index:2;color:var(--fg);text-decoration:none;font-size:14px;text-shadow:0 2px 12px #000}
-.collection-hero{position:relative;min-height:440px;isolation:isolate;overflow:hidden}
-.collection-backdrop{position:absolute;inset:0;z-index:-2;width:100%;height:100%;object-fit:cover;object-position:center 38%}
-.collection-hero::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(0deg,var(--bg),rgba(10,10,11,.22) 90%),linear-gradient(90deg,rgba(10,10,11,.7),transparent)}
+.collection-hero{position:relative;min-height:440px}
+.collection-backdrop-stage{position:absolute;inset:0 0 auto;z-index:0;height:100vh;overflow:hidden;background:#0a0a0b;pointer-events:none}
+.collection-backdrop-stage img{display:block;width:100%;height:100%;object-fit:cover;object-position:center 42%}
+.collection-backdrop-stage::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,10,11,.04) 0%,rgba(10,10,11,.08) 64%,rgba(10,10,11,.28) 74%,rgba(10,10,11,.68) 88%,#0a0a0b 100%),linear-gradient(90deg,rgba(10,10,11,.48) 0%,rgba(10,10,11,.2) 35%,rgba(10,10,11,.05) 70%,transparent 100%)}
 .collection-heading{display:flex;align-items:flex-end;gap:30px;min-height:440px;padding:110px 40px 40px}
 .collection-poster{width:160px;aspect-ratio:2/3;object-fit:cover;border-radius:var(--radius-poster);box-shadow:0 12px 40px #0006}
 .collection-heading h1{font-size:clamp(32px,3vw,56px);line-height:1.15;letter-spacing:-.035em;overflow-wrap:anywhere}
