@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import sidebarIcons from '../../assets/sidebar-icons.svg?url'
 
@@ -42,72 +42,30 @@ const emit = defineEmits<{ search: []; notice: [message: string] }>()
 const route = useRoute()
 const menuOpen = ref(false)
 const accountWrap = ref<HTMLElement | null>(null)
-const accountButton = ref<HTMLButtonElement | null>(null)
-const accountMenu = ref<HTMLElement | null>(null)
 
-function closeMenu(restoreFocus = false) {
+function closeMenu() {
   menuOpen.value = false
-  if (restoreFocus) accountButton.value?.focus()
 }
 
-function menuItems() {
-  return Array.from(accountMenu.value?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])
-    .filter(item => item.getClientRects().length > 0)
-}
-
-async function openMenu(last = false) {
+function openMenu() {
   menuOpen.value = true
-  await nextTick()
-  if (!menuOpen.value) return
-  const items = menuItems()
-  items[last ? items.length - 1 : 0]?.focus()
-}
-
-function onMenuKeydown(event: KeyboardEvent) {
-  const items = menuItems()
-  const index = items.indexOf(document.activeElement as HTMLElement)
-  let next: number
-  switch (event.key) {
-    case 'ArrowDown': next = (index + 1) % items.length; break
-    case 'ArrowUp': next = (index - 1 + items.length) % items.length; break
-    case 'Home': next = 0; break
-    case 'End': next = items.length - 1; break
-    case 'Tab':
-      // 先归还触发器，再让原生 Tab/Shift+Tab 继续，不困住焦点。
-      closeMenu(true)
-      return
-    default: return
-  }
-  event.preventDefault()
-  items[next]?.focus()
 }
 
 function onOutsideInteraction(event: Event) {
   if (event.target instanceof Node && !accountWrap.value?.contains(event.target)) closeMenu()
 }
 
-function onEscape(event: KeyboardEvent) {
-  if (event.key === 'Escape' && menuOpen.value) {
-    event.preventDefault()
-    closeMenu(true)
-  }
-}
-
 function showAccountNotice(action: 'profile' | 'logout') {
-  closeMenu(true)
+  closeMenu()
   emit('notice', action === 'profile' ? '个人资料功能尚未开放。' : '退出登录功能尚未接入，当前账号状态未改变。')
 }
 
 watch(() => route.fullPath, () => closeMenu())
 onMounted(() => {
   document.addEventListener('pointerdown', onOutsideInteraction)
-  document.addEventListener('focusin', onOutsideInteraction)
-  document.addEventListener('keydown', onEscape)
 })
 onUnmounted(() => {
   document.removeEventListener('pointerdown', onOutsideInteraction)
-  document.removeEventListener('focusin', onOutsideInteraction)
-  document.removeEventListener('keydown', onEscape)
 })
 
 const groups: SidebarGroup[] = [
@@ -180,11 +138,10 @@ const groups: SidebarGroup[] = [
         <span>设置</span>
       </RouterLink>
       <div ref="accountWrap" class="sidebar-account" :data-open="menuOpen">
-        <button id="sidebar-account-button" ref="accountButton" type="button" class="sidebar-user"
-          :aria-label="`${userName}，用户菜单`" aria-haspopup="menu"
+        <button id="sidebar-account-button" type="button" class="sidebar-user"
+          :aria-label="`${userName}，用户菜单`"
           aria-controls="sidebar-account-menu" :aria-expanded="menuOpen"
-          @click="menuOpen ? closeMenu() : openMenu()"
-          @keydown.down.prevent="openMenu()" @keydown.up.prevent="openMenu(true)">
+          @click="menuOpen ? closeMenu() : openMenu()">
           <span class="sidebar-avatar" aria-hidden="true">{{ userInitial }}</span>
           <span class="sidebar-user-copy"><strong>{{ userName }}</strong><small>{{ userSubtitle }}</small></span>
           <svg class="sidebar-icon" viewBox="0 0 256 256" aria-hidden="true" focusable="false">
@@ -192,23 +149,22 @@ const groups: SidebarGroup[] = [
           </svg>
         </button>
         <!-- 保留 DOM，CSS 从当前呈现值反向过渡；关闭时立即移出焦点与可访问树。 -->
-        <div id="sidebar-account-menu" ref="accountMenu" class="account-menu" role="menu"
-          aria-labelledby="sidebar-account-button" :inert="!menuOpen" :aria-hidden="!menuOpen"
-          @keydown="onMenuKeydown">
+        <div id="sidebar-account-menu" class="account-menu" role="group"
+          aria-label="账号操作" :inert="!menuOpen" :aria-hidden="!menuOpen">
           <!-- 原型窄屏隐藏的导航保留在同一账号浮层内，避免入口失联。 -->
           <div class="compact-navigation" role="group" aria-label="资料库与设置">
             <template v-for="group in groups" :key="group.label">
               <template v-if="group.showLabel">
                 <RouterLink v-for="item in group.items" :key="item.id" :to="{ name: item.id }"
-                  class="menu-action" role="menuitem" tabindex="-1" @click="closeMenu(true)">{{ item.label }}</RouterLink>
+                  class="menu-action" @click="closeMenu()">{{ item.label }}</RouterLink>
               </template>
             </template>
-            <RouterLink :to="{ name: 'settings' }" class="menu-action" role="menuitem"
-              tabindex="-1" @click="closeMenu(true)">设置</RouterLink>
+            <RouterLink :to="{ name: 'settings' }" class="menu-action"
+              @click="closeMenu()">设置</RouterLink>
           </div>
-          <button type="button" class="menu-action" role="menuitem" tabindex="-1"
+          <button type="button" class="menu-action"
             @click="showAccountNotice('profile')">个人资料</button>
-          <button type="button" class="menu-action" role="menuitem" tabindex="-1"
+          <button type="button" class="menu-action"
             @click="showAccountNotice('logout')">退出登录</button>
         </div>
       </div>
@@ -393,7 +349,6 @@ const groups: SidebarGroup[] = [
 :is(.sidebar-search, .sidebar-button, .menu-action) { font-size: 13px; }
 :is(.sidebar-search, .sidebar-button, .sidebar-user, .menu-action) {
   text-align: start;
-  touch-action: manipulation;
   transition: background-color var(--motion-fast) var(--motion-ease), color var(--motion-fast) var(--motion-ease), border-color var(--motion-fast) var(--motion-ease);
 }
 @media (hover: hover) and (pointer: fine) {
@@ -464,13 +419,6 @@ const groups: SidebarGroup[] = [
   .sidebar-brand { width: 40px; }
   .top-group .sidebar-button .sidebar-icon { width: 20px; }
   .top-group .sidebar-button span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-}
-@media (pointer: coarse) {
-  /* 保留品牌区域原有高度，仅用于静态布局。 */
-  .sidebar-brand { min-height: 2.75rem; }
-  :is(.sidebar-button, .sidebar-search, .sidebar-user, .menu-action) { min-height: var(--control-height-touch); }
-  .sidebar-search, .sidebar-user { min-width: var(--control-height-touch); }
-  .top-group .sidebar-button { min-width: var(--control-height-touch); }
 }
 @media (prefers-reduced-motion: reduce) {
   :is(.sidebar-button, .sidebar-search, .sidebar-user, .menu-action, .account-menu) { transition: none; }
