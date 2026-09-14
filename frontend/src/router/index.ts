@@ -14,6 +14,11 @@ const router = createRouter({
       component: () => import('../views/LibraryView.vue'),
     },
     {
+      path: '/library/collections/:collectionId',
+      name: 'collection-detail',
+      component: () => import('../views/CollectionDetailView.vue'),
+    },
+    {
       path: '/ai-discovery',
       name: 'ai-discovery',
       component: () => import('../views/AiDiscoveryView.vue'),

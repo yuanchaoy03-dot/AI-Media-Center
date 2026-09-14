@@ -104,7 +104,7 @@ const groups: SidebarGroup[] = [
       <span class="sidebar-brand-name">PERSONAL CINEMA</span>
     </div>
 
-    <button type="button" class="sidebar-search" aria-label="打开全局搜索"
+    <button type="button" class="sidebar-search" aria-label="打开全局搜索" aria-controls="global-search-dialog"
       :aria-expanded="searchExpanded" @click="emit('search')">
       <svg class="sidebar-icon" viewBox="0 0 256 256" aria-hidden="true" focusable="false">
         <use :href="`${sidebarIcons}#ph-magnifying-glass`" />
@@ -119,7 +119,7 @@ const groups: SidebarGroup[] = [
         <ul class="sidebar-list">
           <li v-for="item in group.items" :key="item.id">
             <RouterLink v-slot="{ isActive }" :to="{ name: item.id }"
-              class="sidebar-button" :aria-label="item.label" :title="item.label">
+              class="sidebar-button" :class="{ 'router-link-active': item.id === 'library' && route.name === 'collection-detail' }" :aria-label="item.label" :title="item.label">
               <svg class="sidebar-icon" viewBox="0 0 256 256" aria-hidden="true" focusable="false">
                 <use :href="`${sidebarIcons}#${isActive ? (item.activeIcon ?? item.icon) : item.icon}`" />
               </svg>

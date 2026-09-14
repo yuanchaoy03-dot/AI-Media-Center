@@ -11,6 +11,7 @@ const props = defineProps<{
   title: string
   favorite: boolean
   watchStatus: WatchStatus
+  collection?: boolean
 }>()
 type CloseReason = 'action' | 'outside' | 'resize' | 'scroll' | 'unmount'
 const emit = defineEmits<{
@@ -25,7 +26,9 @@ const menu = ref<HTMLDivElement | null>(null)
 const visible = ref(false)
 const position = ref({ left: '10px', top: '10px' })
 let revision = 0
-const actions = computed(() => [
+const actions = computed(() => props.collection ? [
+  { key: 'detail', icon: 'ph-caret-right', label: '查看合集' },
+] as const : [
   { key: 'play', icon: 'ph-play-fill', label: '播放' },
   { key: 'detail', icon: 'ph-film-slate', label: '查看详情' },
   { key: 'favorite', icon: 'ph-heart', label: props.favorite ? '取消收藏' : '收藏' },
@@ -85,7 +88,7 @@ function onScroll(event: Event) {
   if (target instanceof Node && menu.value?.contains(target)) return
   close('scroll')
 }
-watch(() => [props.open, props.trigger, props.movieId], syncOpen)
+watch(() => [props.open, props.trigger, props.movieId, props.collection], syncOpen)
 onMounted(() => {
   document.addEventListener('pointerdown', onOutside)
   window.addEventListener('resize', onResize)
@@ -104,7 +107,7 @@ onBeforeUnmount(() => {
 <template>
   <Teleport to="body">
     <div :id="id" ref="menu" class="context-menu" :data-open="visible" :style="position"
-      lang="zh-CN" role="group" :aria-label="`${title}电影操作`" :aria-hidden="!visible" :inert="!visible">
+      lang="zh-CN" role="group" :aria-label="`${title}${collection ? '合集' : '电影'}操作`" :aria-hidden="!visible" :inert="!visible">
       <template v-for="action in actions" :key="action.key">
         <div v-if="action.key === 'versions'" class="context-divider" role="separator" />
         <button class="context-action" type="button"

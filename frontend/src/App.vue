@@ -1,9 +1,17 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { RouterView } from 'vue-router'
+import { ref, watch } from 'vue'
+import { RouterView, useRoute } from 'vue-router'
 import AppSidebar from './components/layout/AppSidebar.vue'
+import GlobalSearch from './components/layout/GlobalSearch.vue'
+import type { LibraryMovie } from './types/movie'
 
-// 全局搜索尚未迁移；未来在此接 Search Dialog，侧栏仅发出意图。
+const searchOpen = ref(false)
+const route = useRoute()
+watch(() => route.fullPath, () => { searchOpen.value = false })
+function selectSearchMovie(movie: LibraryMovie) {
+  if (import.meta.env.DEV) console.info('[Library Mock intent]', 'detail', movie.id)
+  showNotice(`已选择《${movie.title}》，电影详情尚未开放。`)
+}
 const notice = ref('')
 function showNotice(message: string) {
   notice.value = message
@@ -16,11 +24,12 @@ function dismissNotice() {
 <template>
   <div class="app-layout">
     <div class="app-sidebar-container">
-      <AppSidebar @search="showNotice('全局搜索尚未开放。')" @notice="showNotice" />
+      <AppSidebar :search-expanded="searchOpen" @search="searchOpen = true" @notice="showNotice" />
     </div>
     <main class="app-main">
       <RouterView />
     </main>
+    <GlobalSearch :open="searchOpen" @close="searchOpen = false" @select="selectSearchMovie" />
     <div v-if="notice" class="shell-notice">
       <p role="status">{{ notice }}</p>
       <button type="button" @click="dismissNotice">关闭提示</button>

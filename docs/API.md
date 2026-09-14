@@ -47,6 +47,27 @@ Frontend Mock 位于 `frontend/src/mocks/library.ts`，海报使用 `/mock/poste
 - `401`：未认证或登录失效。
 - 服务错误不得伪装为成功的空片库；具体错误码与响应结构待确认。
 
+### 当前用户片库传统搜索
+
+| 项目 | 内容 |
+| --- | --- |
+| 所属模块 | movie |
+| 对应页面/用例 | Shell 全局搜索浮层 |
+| Method / Path | GET `/api/movies/search`（暂定） |
+| 状态 | draft；当前仅由 movieService 的本地 Mock 实现 |
+
+Request：`q: string`，去除首尾空白；身份来自可信 CurrentUser。按片名、原片名、导演与演员检索；当前 Mock 同时匹配年份和类型。空关键词在当前演示中返回最近添加的 5 部本人电影，不代表后端分页契约。
+
+Response：当前前端复用 `LibraryMovie` 展示字段，搜索行可附带可缺省的 `rating`；不返回无本人资源关联的公共电影，不把合集作为电影搜索结果。排名、分页、人员中文别名匹配留待真实联调确认。
+
+主要状态：加载、无结果、空片库与请求失败分开呈现；401 沿用认证语义。连续查询仅展示最新请求结果，关闭浮层后旧请求不再回填。电影详情尚未迁移，当前选择结果仅记录 detail intent 并提示，不承诺已导航。
+
+### 合集展示的本地 Mock 边界
+
+当前 `/library` 与 `/library/collections/:collectionId` 使用 `LibraryCollection`：`id`、`title`、`posterUrl`、`backdropUrl`、`memberMovieIds`。仅通过本人 Movie 列表派生成员与数量；无筛选的主片库在拥有至少两部成员时聚合，筛选时展开单片，排序后首个成员决定合集位置。
+
+合集不是 Movie，不承载收藏、观看状态或播放操作，不建立 user_collection。此条仅记录用户授权的原型 / Mock 迁移，不新增 Spring Boot Collection API，不改变冻结基线中 Collection 完整业务非 P0 的范围。
+
 ## 条目模板
 
 ### 接口名称

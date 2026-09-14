@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, shallowRef, useId, watch } from 'vue'
-import { useRoute, RouterLink } from 'vue-router'
+import { useRoute, useRouter, RouterLink } from 'vue-router'
 import movieIcons from '../assets/movie-icons.svg?url&no-inline'
 import LibraryToolbar from '../components/media/LibraryToolbar.vue'
+import CollectionCard from '../components/media/CollectionCard.vue'
+import { aggregateLibraryMovies, getLibraryCollections } from '../services/collectionService'
+import type { LibraryCollection, LibraryItem } from '../types/collection'
 import MovieCard from '../components/media/MovieCard.vue'
 import MovieContextMenu from '../components/media/MovieContextMenu.vue'
 import MovieCardSkeleton from '../components/media/MovieCardSkeleton.vue'
@@ -11,17 +14,22 @@ import type { LibraryFilters, LibraryMovie, LibrarySourceOption, LibrarySort, Li
 
 // 每次进入页面初始化副本；刷新恢复 Mock，不修改共享常量。
 const movies = ref<LibraryMovie[]>([])
+const collections = ref<LibraryCollection[]>([])
+const router = useRouter()
+function openCollection(id: string) { void router.push({ name: 'collection-detail', params: { collectionId: id } }) }
 const sources = ref<LibrarySourceOption[]>([])
 const loading = ref(true)
 // 预留追加请求状态；当前不触发分页或无限滚动。
 const loadingMore = ref(false)
 onMounted(async () => {
-  const [libraryMovies, librarySources] = await Promise.all([getLibraryMovies(), getLibrarySources()])
+  const [libraryMovies, librarySources, libraryCollections] = await Promise.all([getLibraryMovies(), getLibrarySources(), getLibraryCollections()])
+  collections.value = libraryCollections
   movies.value = libraryMovies
   sources.value = librarySources
   loading.value = false
 })
 const activeMovieId = ref<string | null>(null)
+const activeCollection = computed(() => collections.value.find(item => item.id === activeMovieId.value))
 const activeTrigger = shallowRef<HTMLButtonElement | null>(null)
 const menuOpen = ref(false)
 const menuId = `movie-context-menu-${useId()}`
@@ -70,9 +78,14 @@ const visibleMovies = computed(() => {
     }
   })
 })
+const libraryItems = computed<LibraryItem[]>(() => {
+  const selected = filters.value
+  const filtered = selected.genres.length || selected.sourceIds.length || selected.year !== 'all' || selected.status !== 'all'
+  return filtered ? visibleMovies.value.map(movie => ({ type: 'movie', movie })) : aggregateLibraryMovies(visibleMovies.value, collections.value)
+})
 function clearFilters() { filters.value = defaultFilters() }
-watch(visibleMovies, result => {
-  if (!result.some(movie => movie.id === activeMovieId.value)) {
+watch(libraryItems, result => {
+  if (!result.some(item => (item.type === 'movie' ? item.movie.id : item.collection.id) === activeMovieId.value)) {
     menuOpen.value = false
     activeMovieId.value = null
     activeTrigger.value = null
@@ -117,10 +130,13 @@ function recordIntent(action: 'detail' | 'play' | 'versions', movieId: string) {
       <MovieCardSkeleton v-for="index in 12" :key="index" />
     </div>
     <div v-else-if="visibleMovies.length || loadingMore" class="movie-grid" aria-label="电影片库" :aria-busy="loadingMore">
-      <MovieCard v-for="movie in visibleMovies" :key="movie.id" :movie="movie"
-        :menu-id="menuId" :more-expanded="menuOpen && activeMovieId === movie.id"
-        @detail="recordIntent('detail', $event)" @play="recordIntent('play', $event)"
-        @more="openMenu" />
+      <template v-for="item in libraryItems" :key="item.type === 'movie' ? item.movie.id : item.collection.id">
+        <CollectionCard v-if="item.type === 'collection'" :collection="item.collection" :movie-count="item.movieCount"
+          :menu-id="menuId" :more-expanded="menuOpen && activeMovieId === item.collection.id"
+          @detail="openCollection" @more="openMenu({ movieId: $event.collectionId, trigger: $event.trigger })" />
+        <MovieCard v-else :movie="item.movie" :menu-id="menuId" :more-expanded="menuOpen && activeMovieId === item.movie.id"
+          @detail="recordIntent('detail', $event)" @play="recordIntent('play', $event)" @more="openMenu" />
+      </template>
       <template v-if="loadingMore">
         <MovieCardSkeleton v-for="index in 6" :key="`loading-more-${index}`" />
       </template>
@@ -133,10 +149,10 @@ function recordIntent(action: 'detail' | 'play' | 'versions', movieId: string) {
       <RouterLink v-else class="state-action" to="/media-sources">添加 WebDAV 来源</RouterLink>
     </section>
     <MovieContextMenu :id="menuId" :open="menuOpen" :trigger="activeTrigger"
-      :movie-id="activeMovie?.id ?? ''" :title="activeMovie?.title ?? ''"
+      :movie-id="activeMovieId ?? ''" :title="activeMovie?.title ?? activeCollection?.title ?? ''" :collection="!!activeCollection"
       :favorite="activeMovie?.favorite ?? false" :watch-status="activeMovie?.watchStatus ?? 'unwatched'"
       @close="menuOpen = false" @favorite-change="changeFavorite" @watch-status-change="changeWatchStatus"
-      @play="recordIntent('play', $event)" @detail="recordIntent('detail', $event)"
+      @play="recordIntent('play', $event)" @detail="activeCollection ? openCollection($event) : recordIntent('detail', $event)"
       @versions="recordIntent('versions', $event)" />
     <p class="sr-only" role="status">{{ loading ? '正在加载片库' : loadingMore ? '正在加载更多电影' : announcement }}</p>
   </section>
