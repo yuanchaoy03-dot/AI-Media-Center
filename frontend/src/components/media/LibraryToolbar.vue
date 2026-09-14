@@ -174,8 +174,6 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .popover { max-height: min(560px, 72vh, var(--available-height)); overflow-y: auto; overscroll-behavior: contain; }
 button:active, .option-row:active { background: rgba(255,255,255,.09); }
-@supports not (backdrop-filter: blur(1px)) { .popover { background: #1c1c1e; } }
-@media (prefers-reduced-transparency: reduce) { .popover { background: #1c1c1e; backdrop-filter: none; } }
 @media (prefers-reduced-motion: reduce) {
   .popover, .toolbar-button, .option-row { transition: none; }
   .popover { transform: none; }

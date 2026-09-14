@@ -158,6 +158,142 @@ export const mockLibraryMovies: LibraryMovie[] = [
     "addedAt": 1757462400000,
     "lastPlayedAt": 1760054400000,
     "runtimeMinutes": 148
+  },
+  {
+    "id": "movie-prisoners",
+    "title": "囚徒",
+    "year": 2013,
+    "genreLabel": "悬疑",
+    "posterUrl": "/mock/posters/tmdb-poster-prisoners.jpg",
+    "favorite": false,
+    "watchStatus": "watching",
+    "genres": [
+      "剧情",
+      "悬疑",
+      "犯罪"
+    ],
+    "sourceIds": [
+      "source-alist"
+    ],
+    "addedAt": 1757289600000,
+    "lastPlayedAt": 1759968000000,
+    "runtimeMinutes": 153
+  },
+  {
+    "id": "movie-1917",
+    "title": "1917",
+    "year": 2019,
+    "genreLabel": "剧情",
+    "posterUrl": "/mock/posters/tmdb-poster-1917.jpg",
+    "favorite": false,
+    "watchStatus": "watched",
+    "genres": [
+      "战争",
+      "剧情"
+    ],
+    "sourceIds": [
+      "source-nextcloud"
+    ],
+    "addedAt": 1757203200000,
+    "lastPlayedAt": 1759881600000,
+    "runtimeMinutes": 119
+  },
+  {
+    "id": "movie-mad-max-fury-road",
+    "title": "疯狂的麦克斯4：狂暴之路",
+    "year": 2015,
+    "genreLabel": "动作",
+    "posterUrl": "/mock/posters/tmdb-poster-mad-max-fury-road.jpg",
+    "favorite": true,
+    "watchStatus": "unwatched",
+    "genres": [
+      "动作",
+      "冒险",
+      "科幻"
+    ],
+    "sourceIds": [
+      "source-home-nas"
+    ],
+    "addedAt": 1757116800000,
+    "lastPlayedAt": null,
+    "runtimeMinutes": 120
+  },
+  {
+    "id": "movie-parasite",
+    "title": "寄生虫",
+    "year": 2019,
+    "genreLabel": "剧情",
+    "posterUrl": "/mock/posters/tmdb-poster-parasite.jpg",
+    "favorite": true,
+    "watchStatus": "watched",
+    "genres": [
+      "剧情",
+      "悬疑"
+    ],
+    "sourceIds": [
+      "source-nextcloud"
+    ],
+    "addedAt": 1757030400000,
+    "lastPlayedAt": 1759795200000,
+    "runtimeMinutes": 133
+  },
+  {
+    "id": "movie-whiplash",
+    "title": "爆裂鼓手",
+    "year": 2014,
+    "genreLabel": "剧情",
+    "posterUrl": "/mock/posters/tmdb-poster-whiplash.jpg",
+    "favorite": false,
+    "watchStatus": "unwatched",
+    "genres": [
+      "剧情",
+      "音乐"
+    ],
+    "sourceIds": [
+      "source-alist"
+    ],
+    "addedAt": 1756944000000,
+    "lastPlayedAt": null,
+    "runtimeMinutes": 107
+  },
+  {
+    "id": "movie-gone-girl",
+    "title": "消失的爱人",
+    "year": 2014,
+    "genreLabel": "悬疑",
+    "posterUrl": "/mock/posters/tmdb-poster-gone-girl.jpg",
+    "favorite": false,
+    "watchStatus": "watched",
+    "genres": [
+      "剧情",
+      "悬疑"
+    ],
+    "sourceIds": [
+      "source-alist"
+    ],
+    "addedAt": 1756857600000,
+    "lastPlayedAt": 1759708800000,
+    "runtimeMinutes": 149
+  },
+  {
+    "id": "movie-ex-machina",
+    "title": "机械姬",
+    "year": 2015,
+    "genreLabel": "科幻",
+    "posterUrl": "/mock/posters/tmdb-poster-ex-machina.jpg",
+    "favorite": true,
+    "watchStatus": "unwatched",
+    "genres": [
+      "科幻",
+      "悬疑",
+      "剧情"
+    ],
+    "sourceIds": [
+      "source-alist"
+    ],
+    "addedAt": 1756771200000,
+    "lastPlayedAt": null,
+    "runtimeMinutes": 108
   }
 ]
 
