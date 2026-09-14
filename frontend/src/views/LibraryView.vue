@@ -1,15 +1,26 @@
 <script setup lang="ts">
-import { computed, ref, shallowRef, useId, watch } from 'vue'
+import { computed, onMounted, ref, shallowRef, useId, watch } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import movieIcons from '../assets/movie-icons.svg?url&no-inline'
 import LibraryToolbar from '../components/media/LibraryToolbar.vue'
 import MovieCard from '../components/media/MovieCard.vue'
 import MovieContextMenu from '../components/media/MovieContextMenu.vue'
-import { mockLibraryMovies, mockLibrarySources } from '../mocks/library'
-import type { LibraryFilters, LibrarySort, LibraryYear, WatchStatus } from '../types/movie'
+import MovieCardSkeleton from '../components/media/MovieCardSkeleton.vue'
+import { getLibraryMovies, getLibrarySources } from '../services/movieService'
+import type { LibraryFilters, LibraryMovie, LibrarySourceOption, LibrarySort, LibraryYear, WatchStatus } from '../types/movie'
 
 // 每次进入页面初始化副本；刷新恢复 Mock，不修改共享常量。
-const movies = ref(mockLibraryMovies.map(movie => ({ ...movie })))
+const movies = ref<LibraryMovie[]>([])
+const sources = ref<LibrarySourceOption[]>([])
+const loading = ref(true)
+// 预留追加请求状态；当前不触发分页或无限滚动。
+const loadingMore = ref(false)
+onMounted(async () => {
+  const [libraryMovies, librarySources] = await Promise.all([getLibraryMovies(), getLibrarySources()])
+  movies.value = libraryMovies
+  sources.value = librarySources
+  loading.value = false
+})
 const activeMovieId = ref<string | null>(null)
 const activeTrigger = shallowRef<HTMLButtonElement | null>(null)
 const menuOpen = ref(false)
@@ -26,7 +37,7 @@ function defaultFilters(): LibraryFilters {
 const filters = ref<LibraryFilters>(defaultFilters())
 const sort = ref<LibrarySort>('added')
 // 承接原型首页 genre 链接；忽略未知类型，不修改路由配置。
-watch(() => route.query.genre, value => {
+watch([() => route.query.genre, () => loading.value], ([value]) => {
   const genre = typeof value === 'string' ? value : ''
   const known = baseGenres.includes(genre) || movies.value.some(movie => movie.genres.includes(genre))
   genreOptions.value = known && !baseGenres.includes(genre) ? [...baseGenres, genre] : [...baseGenres]
@@ -97,12 +108,18 @@ function recordIntent(action: 'detail' | 'play' | 'versions', movieId: string) {
   <section class="library-content" lang="zh-CN" aria-labelledby="library-title">
     <header class="movie-page-heading"><h1 id="library-title" class="page-title">电影</h1></header>
     <LibraryToolbar v-model:filters="filters" v-model:sort="sort"
-      :genre-options="genreOptions" :source-options="mockLibrarySources" @clear-filters="clearFilters" />
-    <div v-if="visibleMovies.length" class="movie-grid" aria-label="电影片库">
+      :genre-options="genreOptions" :source-options="sources" @clear-filters="clearFilters" />
+    <div v-if="loading" class="movie-grid" aria-label="电影片库" aria-busy="true">
+      <MovieCardSkeleton v-for="index in 12" :key="index" />
+    </div>
+    <div v-else-if="visibleMovies.length || loadingMore" class="movie-grid" aria-label="电影片库" :aria-busy="loadingMore">
       <MovieCard v-for="movie in visibleMovies" :key="movie.id" :movie="movie"
         :menu-id="menuId" :more-expanded="menuOpen && activeMovieId === movie.id"
         @detail="recordIntent('detail', $event)" @play="recordIntent('play', $event)"
         @more="openMenu" />
+      <template v-if="loadingMore">
+        <MovieCardSkeleton v-for="index in 6" :key="`loading-more-${index}`" />
+      </template>
     </div>
     <section v-else class="library-state">
       <span class="state-icon"><svg viewBox="0 0 256 256" aria-hidden="true"><template v-if="movies.length"><path d="M230.6,49.53A15.81,15.81,0,0,0,216,40H40A16,16,0,0,0,28.19,66.78L96,141.32V216a8,8,0,0,0,12.29,6.75l32-20A8,8,0,0,0,144,196V141.32l67.81-74.54A15.81,15.81,0,0,0,230.6,49.53ZM130.08,132.58A8,8,0,0,0,128,138v53.57l-16,10V138a8,8,0,0,0-2.08-5.42L40,56H216Z"/></template><use v-else :href="`${movieIcons}#ph-film-slate`" /></svg></span>
@@ -117,7 +134,7 @@ function recordIntent(action: 'detail' | 'play' | 'versions', movieId: string) {
       @close="menuOpen = false" @favorite-change="changeFavorite" @watch-status-change="changeWatchStatus"
       @play="recordIntent('play', $event)" @detail="recordIntent('detail', $event)"
       @versions="recordIntent('versions', $event)" />
-    <p class="sr-only" aria-live="polite">{{ announcement }}</p>
+    <p class="sr-only" role="status">{{ loading ? '正在加载片库' : loadingMore ? '正在加载更多电影' : announcement }}</p>
   </section>
 </template>
 
