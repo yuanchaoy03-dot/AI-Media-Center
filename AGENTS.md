@@ -1,116 +1,48 @@
 # 项目工作规则
 
-## 项目定位
+## 产品与架构边界
 
-本项目是“基于大语言模型的个人智能影音平台”，定位为类Infuse + AI的个人工具，不提供公共可播放影视资源。Spring Boot是唯一公共业务后端和事实源，FastAPI只负责AI增强，P0媒体来源仅为WebDAV，默认播放器为本机mpv。
+- 本项目是“基于大语言模型的个人智能影音平台”，定位为类 Infuse + AI 的个人影音资源管理与辅助工具，不提供公共可播放影视资源。
+- 新用户默认空片库，用户自行添加媒体来源；个人资源与数据严格隔离。公共 Movie 元数据可复用，但只有关联本人可访问 MediaResource 的影片才进入个人片库。
+- P0 只实现 `WebDavMediaSourceAdapter`，默认播放器为 Windows 本机 mpv；FileSystem、SMB、Local Agent、Redis 非 P0。不引入微服务、消息队列、复杂 RBAC、内容运营后台、自研播放器/launcher 等未批准范围。
+- Spring Boot 是唯一公共业务后端和业务事实源；Vue 业务请求只访问 Spring Boot。FastAPI 只负责 AI 增强，不直连核心 MySQL、不绕过 Spring Boot 权限；两者均不代理视频流。
 
-## 新任务阅读顺序
+## Context Routing / 文档导航
 
-1. 本文件。
-2. `PROJECT_STATUS.md`。
-3. 当前任务需要的稳定基线：`docs/01-项目需求文档.md`、`docs/02-系统架构设计文档.md`、`docs/开发规范与模块边界.md`。
-4. `docs/API.md`中当前功能相关部分。
-5. 当前功能相关源码。
+按任务选择上下文，可以先读相关源码；无需固定顺序或默认全文读取文档。优先定位相关章节，只有证据不足或影响跨边界时才扩大阅读。下表也是事实的维护归属，摘要和历史记录不替代正式基线。
 
-小任务不必无条件全文重读稳定文档；涉及需求、架构或模块边界判断时必须回查对应基线。
-
-## P0与开发方式
-
-- 新用户默认空片库；公共Movie元数据可复用，但只有用户本人可访问的MediaResource关联后才进入个人片库。
-- P0只实现`WebDavMediaSourceAdapter`；FileSystem、SMB、Local Agent和Redis均非P0。
-- Vue只访问Spring Boot业务接口；FastAPI不直连核心MySQL；Spring Boot/FastAPI不代理视频流。
-- 采用前端优先、垂直切片、尽早联调；Frontend Mock与页面解耦，接口随真实页面逐步确认。
-- 不引入微服务、消息队列、复杂RBAC、内容运营后台、自研播放器/launcher或其他未批准范围。
-
-## Frontend UI Development Rules
-
-- 当前前端采用 Vue 3 + Vite + TypeScript + Vue Router。
-- 页面开发遵循：`HTML Prototype → Vue Component Implementation → Design System Refinement → Interaction Enhancement`。设计系统细化与交互增强必须在原型结构内进行。
-- 前端 UI 任务开始前，阅读 `DESIGN.md`、对应 HTML 原型及其引用的共享样式、资源和交互脚本，再核对 `frontend/src/` 的相关实现；使用 Apple Design Skill 时阅读 `.agents/skills/apple-design/SKILL.md`。
-- 已有 HTML 原型页面是已有页面的视觉 Source of Truth。**Componentize the prototype, not redesign the prototype.** Vue 的职责是将 HTML 原型组件化，而不是重新设计 HTML 原型。
-- Vue 实现必须优先保持页面布局、信息架构、模块顺序、视觉层级、内容组织方式和主要组件关系；不得因为 Vue 组件化、工程优化或设计建议改变已有页面结构。
-- 当前占位 View 或尚未完整迁移的组件不构成新的视觉基准；原型已有但 Vue 尚缺的区域属于待迁移内容，不能据此删除原型入口或模块。没有 HTML 原型的全新页面按 `DESIGN.md` 和已有项目视觉语言设计。
-- 迁移完成前，在相同视口、内容和对应状态下对照 HTML 与 Vue，检查布局、区域完整性、层级及交互；构建通过不等于视觉迁移完成。HTML 的视觉基准地位不覆盖正式业务事实、用户隔离和 P0 约束。
-
-## Current Frontend Implementation Scope
-
-- **当前正式 Vue 实现与视觉验收目标：Windows 11 + Desktop Chromium（Edge / Chrome）+ Mouse interaction。** 采用 Desktop-first、Windows-browser-first、Mouse-first，面向普通桌面／笔记本屏幕；Mobile / Phone / Tablet touch 不是当前验收环境。
-- 桌面必须保证 layout、hover、pointer click、menu / popover、scroll、resize 与鼠标操作正常。覆盖常见窗口宽度（如 1920 / 1600 / 1440 / 1366px）、非最大化窗口、窗口高度变化及高 DPI / Windows scaling，不限于固定 1920×1080。
-- 当前阶段不主动实现 mobile-specific layout、touch-specific / touch-first interaction、Mobile Action Sheet、mobile scrim、safe-area、body scroll lock for mobile、`(hover: none)` / `(pointer: coarse)` 专用行为、touch-specific pressed state、touch-only hit-area enlargement、custom mobile navigation 和手机／触屏专属动画。
-- **当前阶段不新增自定义键盘交互代码**：包括 ArrowUp / ArrowDown、Home / End、custom roving focus、custom Tab / Shift+Tab handling、manual focus restoration、`keyboardInput` 等键盘专用状态及为键盘添加的 `document keydown` listener。
-- 保留浏览器原生语义：优先使用正确的 `<button>`、`<a>`、`<input>` 等元素，保留原生 Enter / Space、自然 Tab 顺序和基本可操作性；不得为了去掉键盘逻辑将 button 改成 div。Accessibility 当前以 semantic HTML、真正必要的基础 aria、不破坏原生行为为准，不要求每个组件主动增加复杂增强。
-- Mobile / Touch、responsive cross-device behavior、完整 Keyboard / focus management / Accessibility enhancement 统一 **Deferred 到 Windows 桌面核心业务闭环完成之后的跨端 / Accessibility enhancement 阶段**，届时再作为正式验收要求；不是永久取消这些能力。
-- **HTML Prototype 仍是完整 Visual Source of Truth**。其中 Mobile layout、Touch behavior、Action Sheet、窄屏菜单、touch hit area、mobile scrim 等状态保留为未来参考；当前 Vue 迁移只要求忠实迁移 Windows Desktop 对应状态，不要求同步实现所有 Mobile / Touch endpoint。
-- 桌面窗口适配仍允许 CSS Grid、auto-fill、minmax、clamp、media query 和 Desktop responsive sizing。后续清理必须先区分 Desktop layout adaptation 与 Mobile / Touch adaptation，不能看到 `@media` 就删除，也不能仅因窗口变窄就要求迁移移动端交互。
-- 已提前实现的跨端／自定义键盘代码不因本规则自动删除；按后续专项审计、确认范围、清理的顺序处理。
-
-## Vue Architecture Rules
-
-以下路径均相对于 `frontend/src/`：
-
-| 路径 | 职责 |
+| 任务 / 信息 | 读取位置 |
 |---|---|
-| `views/` | 路由级页面与完整页面入口 |
-| `components/` | 可复用 UI 组件与页面内部公共模块；优先演进已有组件 |
-| `router/` | 路由定义与页面路径映射 |
-| `App.vue` | 应用级 Shell、全局布局与 `RouterView` 容器 |
+| 普通 Vue Bug、局部逻辑、文案 | 相关源码；不自动加载状态、设计文档或 Skill |
+| 当前进度、继续任务、判断下一步 | [PROJECT_STATUS.md](PROJECT_STATUS.md) |
+| 产品范围、P0、验收标准 | [需求文档](docs/01-项目需求文档.md)相关章节 |
+| 服务边界、数据流、架构决策 | [架构文档](docs/02-系统架构设计文档.md)相关章节 |
+| 模块职责、长期工程规范 | [开发规范与模块边界](docs/开发规范与模块边界.md)相关章节 |
+| 接口设计、修改或联调 | [API.md](docs/API.md)对应契约与相关实现 |
+| UI Token、样式、视觉和动效规范 | [DESIGN.md](DESIGN.md)对应章节 |
+| 已有页面 Vue 迁移、视觉对照 | DESIGN 的视觉基准与对应组件章节、[html/](html/) 对应原型及实际引用的 CSS/资源/脚本、相关 Vue |
+| Apple 风格交互、动效、材质或排版精修 | [Apple Design Skill](.agents/skills/apple-design/SKILL.md)及其中匹配任务的 reference |
+| 查找正式资料或历史审计 | [docs/README.md](docs/README.md)；不把索引中的全部文件作为必读清单 |
 
-- 禁止在 `App.vue` 中实现具体业务页面。
-- 禁止使用 `currentView` 等本地状态模拟路由；页面导航使用 Vue Router。
-- 禁止把多个页面逻辑堆积到一个组件中。
-- 禁止在没有真实复用需求时过度拆分组件。
+## 前端边界
 
-## Design Skill Usage Rules
+- Vue 3 + Vite + TypeScript + Vue Router；`frontend/src/views/` 承担路由页面，`components/` 承担真实复用模块，`router/` 管理导航，`App.vue` 仅负责 Shell 与 RouterView。不得用 `currentView` 模拟路由或将多个页面堆入一个组件。
+- 已有 HTML Prototype 是对应页面完整视觉 Source of Truth：**Componentize the prototype, not redesign the prototype.** 保留布局、信息架构、模块/导航顺序、密度及各状态视觉终点；占位或未迁移 Vue 不能成为删减原型内容的依据。Apple Design Skill 只辅助交互体验，无权重设计。无原型的新页面按 DESIGN 与已有视觉语言设计。
+- 当前验收为 **Windows 11 + Desktop Chromium（Edge / Chrome）+ Mouse**，Desktop-first / Mouse-first；覆盖桌面窗口宽高变化、非最大化及高 DPI / Windows scaling，保证 hover、点击、菜单、滚动和 resize 可用。
+- Mobile / Touch、完整 Keyboard / focus management / 高级 Accessibility 延后至桌面核心闭环后的增强阶段。当前不新增移动专用布局/Action Sheet/safe-area/触摸专用分支，或方向键、Home/End、roving focus、自定义 Tab、手动焦点归还等键盘代码；保留语义 HTML、必要基础 aria、原生 Enter/Space/Tab、焦点可见性与 reduced-motion。
+- 桌面 Grid、minmax、clamp、media query 等窗口适配仍有效；不能将窄窗口等同手机。HTML 跨端状态保留作未来参考，已有跨端/键盘代码不自动删除，清理须有专项任务范围。
 
-项目鼓励在相关 UI 开发中积极使用 Apple Design Skill。目标不是简单模仿 Apple 外观，而是提升 Apple 风格的底层交互体验：不仅看起来像 Apple，而且使用感觉接近 Apple。
+## 工作方式与完成标准
 
-当前阶段在保留原型结构并遵守 `DESIGN.md` 的前提下，Apple Design Skill 主要用于：
+- 前端优先、垂直切片、尽早联调；Mock 与页面解耦，契约随真实页面确认。实现以简洁、可维护为准，不为展示技术增加抽象、组件或依赖。
+- 用户明确任务优先于 Skill 通用建议。在已授权范围内自主完成安全、可逆的本地读取、修改、检查与修复，不因第一轮修改完成就停下等待确认；只有影响结果的必要信息缺失或超出授权时才询问。
+- 若 Skill 导致额外确认、停工或偏离任务，指出并链接具体 SKILL.md，引用对应规则，区分规则原文与自己的解释；不要把通用建议推断成审批要求。
+- 完成意味着任务范围内问题已处理、改动经过审查与相称验证、必要文档已更新，结果和未验证限制如实报告。纯文档修改检查路径、引用、结构、Skill front matter 与 diff；仅代码改动运行对应检查，不机械执行全量构建/测试。
+- Vue 视觉迁移需在相同视口、内容和状态下对照 HTML/Vue；构建通过不等于迁移验收完成。
+- 按上表职责更新受影响文档。需求、架构、开发规范是正式毕业设计稳定基线，不因普通 UI/Bug/单个接口修改重写；DESIGN 保管设计值，API 保管契约，状态保管进度，数据库事实留给未来 03。不创建零散任务 Markdown 或平行事实源。
 
-- Desktop pointer interaction、hover、pressed state、active state 与点击反馈。
-- Desktop motion、transition、animation easing。
-- Desktop perceived performance、loading feedback 与 desktop scroll behavior。
-- 桌面窗口适配与 reduced motion；保留原生焦点可见性和基础语义。
+## Git 与安全
 
-Mobile-specific responsive interaction、touch interaction、advanced keyboard navigation、manual focus management 及复杂 accessibility enhancement 当前 Deferred，按上节后续阶段再启用；不得因 Skill 建议自动为组件补入方向键、Home / End 或 Mobile Action Sheet。
-
-尤其关注快速反馈、连续交互、自然过渡、克制动画和物理感；需要动画时保持可中断、可反向操作，不以动画阻塞输入。按实际交互需求选用 Skill 能力，不为展示 Skill 强加效果或依赖；具体动效规范遵守 `DESIGN.md`。
-
-**Apple Design Skill 不拥有重新设计已有页面的权限。** 对于已有 HTML Prototype：
-
-- HTML 决定页面外观、布局、信息架构、组件位置、视觉密度和静止状态表现。
-- Design Skill 在上述边界内决定状态变化如何发生、动画如何表现、交互如何反馈。
-
-**HTML decides what it looks like. Design Skill decides how it feels.** 即：HTML 决定长什么样，Design Skill 决定怎么动、怎么交互。
-
-Design Skill 不得因为 Apple 风格建议、最佳实践、AI 自己判断或 UI 趋势而主动：
-
-- 修改 Sidebar 结构、删除已有入口或改变导航顺序。
-- 修改页面信息架构或改变 HTML 已确定的布局。
-- 将影音应用改造成 Dashboard 风格。
-- 随意改变卡片、海报墙或内容架结构。
-
-如果 Design Skill 建议与 HTML Prototype 冲突，优先遵守 HTML Prototype；通用 Token、状态、无障碍与动效实现遵守 `DESIGN.md`，Skill 示例不能覆盖项目规范。改变已有页面设计需要用户明确的设计变更要求，不能把交互增强视为重设计授权。
-
-## Engineering Preference
-
-- 项目开发优先简洁、可维护、易理解，符合毕业设计实际需求。
-- 避免过早抽象、为了展示技术而增加技术、不必要组件拆分、不必要依赖和不必要架构复杂化。
-- 实现应服务产品，而不是服务技术堆叠。
-
-## 文档与完成检查
-
-- `docs/01-项目需求文档.md`、`docs/02-系统架构设计文档.md`、`docs/开发规范与模块边界.md`是当前冻结的正式稳定基线；普通页面、组件、样式、Bug或单个接口实现变化不得修改它们。
-- 按实际影响更新文档：产品需求/P0范围/验收标准→`docs/01-项目需求文档.md`，架构/ADR→`docs/02-系统架构设计文档.md`，长期开发规则→`docs/开发规范与模块边界.md`，接口→`docs/API.md`，进度→`PROJECT_STATUS.md`，工作规则→`AGENTS.md`；数据库事实留给未来03。
-- 不因小型UI或组件改动重写稳定基线，不创建零散任务Markdown。
-- 文档职责保持分离：`AGENTS.md` 负责 AI 行为规则、项目纪律、架构边界和开发流程；`DESIGN.md` 负责 Design Token、视觉规范、动效规范和 UI 设计原则；`docs/` 负责需求、架构、模块设计、API 及既有正式开发规范。`AGENTS.md` 不承担 `DESIGN.md` 的职责，不复制具体颜色、尺寸、圆角或布局参数；本文件的行为约束不替代正式基线。
-- 每个切片结束前完成相应测试、Code Review、必要文档更新和Git提交检查，并确认用户隔离、secret、模块边界及P0范围未被破坏。
-
-## Git工作规则
-
-- Git提交信息默认使用中文描述，可保留`feat:`、`fix:`、`docs:`、`design:`、`refactor:`、`chore:`等类型前缀。
-- 每次提交前检查`git status`和必要的`git diff`，只提交当前任务相关修改，不混入无关文件。
-- 不得提交`.env`、密码、Token、API Key、AccessKey、JWT Secret、WebDAV密码等敏感信息。
-- 不得擅自执行`push`、`force push`、添加或修改remote、创建远程仓库；只有用户明确要求时才能进行远程操作。
-- 不得擅自撤销、覆盖、reset或丢弃用户已有的未提交修改。
-- 一个完整功能切片或明确阶段完成后再形成有意义的提交，不因每个微小修改机械创建commit。
-- 修改历史提交、rebase、reset、force push等可能改写Git历史的操作，必须在用户明确要求后执行。
+- 不提交 `.env`、密码、Token、API Key、AccessKey、JWT Secret、WebDAV 密码等 secret。
+- 未获明确授权，不执行 push / force push，不添加或修改 remote、不创建远程仓库，不 reset / rebase / 改写历史，不撤销、覆盖或丢弃用户已有修改；其他危险或不可逆操作同样需要明确授权。
+- 提交前检查 `git status` 与相关 `git diff`，只包含当前任务改动；按完整切片形成有意义的提交，默认中文提交信息，可保留 `feat:` / `fix:` / `docs:` 等前缀。

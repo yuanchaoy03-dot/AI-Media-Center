@@ -5,159 +5,50 @@
 
 ## Current Implementation Phase / 当前实现阶段
 
-长期 Design System 保留 desktop、mobile、touch、keyboard 与 accessibility 能力；当前毕业设计 Vue 实际 implementation target 为 **Windows 11 Desktop Chromium（Edge / Chrome）+ Mouse**。当前首先验收 Desktop visual endpoint 与 Desktop pointer interaction。
-
-本节是全文实施与验收要求的阶段性适用范围：后文涉及跨端、键盘和焦点的长期原则、示例及清单仍保留，但不据此要求当前组件新增 Deferred 能力。完整规则见 `AGENTS.md` 的 Current Frontend Implementation Scope。
-
-| 能力 | 当前阶段 |
-|---|---|
-| Desktop layout、pointer click / hover / pressed / active、menu / popover、scroll、motion / transition | 执行；动效保持可中断，并遵守 reduced-motion 规则 |
-| Desktop resize / responsive sizing | 执行；覆盖常见桌面窗口宽高、非最大化、高 DPI / Windows scaling，不限固定分辨率 |
-| Semantic HTML、必要基础 aria、浏览器原生 Enter / Space / Tab 和焦点可见性 | 保留，不破坏原生可操作性 |
-| Keyboard enhancement、自定义键盘监听／状态、roving focus、Tab 管理、manual focus management / restore | Deferred，当前不新增自定义交互代码 |
-| Mobile / Touch endpoint、Action Sheet、scrim、safe-area、手机滚动锁、hover:none / pointer:coarse 专用逻辑、触摸命中区／动画 | Deferred |
-| Responsive cross-device enhancement、完整 Accessibility enhancement | Deferred |
-
-Deferred 能力统一在 **Windows 桌面核心业务闭环完成之后的跨端 / Accessibility enhancement 阶段**再启用为正式验收要求，并非永久取消。HTML Prototype 仍是完整 Visual Source of Truth；其 mobile/touch 状态原样保留为未来参考，当前 Vue 只要求忠实迁移 Windows Desktop 对应状态。
-
-桌面响应式继续允许 CSS Grid、auto-fill、minmax、clamp 和 media query。必须区分 Desktop layout adaptation 与 Mobile / Touch adaptation；不能因窗口变窄自动要求 Action Sheet，也不能将 `@media` 一律删除。
+实施范围由 [AGENTS.md 的前端边界](AGENTS.md#前端边界)统一定义。本文保留长期跨端与可访问性设计参考；后文的 Mobile / Touch、完整键盘和手动焦点增强不构成当前阶段实施要求。各节按任务读取，不要求每个 UI 修改通读全文。
 
 ## 1. Design Vision
 
-AI-Media-Center 是个人智能影音平台。以现代 Apple 产品的克制为视觉基线，以深色电影内容为主体，以成熟桌面工具交互组织来源、检索和扫描，用少量 Floating Glass Surface 表达临时覆盖层。最终只有一套 AI-Media-Center 设计语言。
+以深色电影内容为主体，以成熟桌面工具交互组织来源、检索和扫描，用少量 Floating Glass Surface 表达临时覆盖层。海报、剧照和背景图承担色彩与情绪，软件控件保持安静；浏览页与工具页共享一套设计语言。
 
-用户首先回答“我现在想看什么”，需要时再进入“我的资源怎样接入、识别和管理”。Movie Artwork 的视觉优先级高于 UI Decoration。海报、剧照和背景图承担色彩与情绪，软件控件保持安静。
-
-整体体验参考 Apple TV、Infuse、Apple Music 与 Apple 平台的沉浸式媒体体验。AI-Media-Center 是个人智能影音平台，不是企业后台管理系统、Admin Dashboard 或 SaaS 管理控制台。设计选择应保持影音消费应用的感觉；这些参考方向不能成为 AI 重新设计已有 HTML 页面的理由。来源、扫描等工具页面保留原型已有的任务信息和必要统计，不将“拒绝 Dashboard”误解为删除它们。
+体验参考 Apple TV、Infuse、Apple Music 的沉浸式媒体体验。来源、扫描等工具页面保留已有任务信息与必要统计，不能因“拒绝 Dashboard”而删除它们。
 
 ### 1.1 事实优先级
 
-本项目真实产品需求、用户隔离、安全和业务约束是所有视觉决策的前提，不参与视觉参考之间的排序。HTML 中的 Mock 数据、演示进度和接口注释不能覆盖这些事实。
+产品事实由[需求文档](docs/01-项目需求文档.md)定义，服务与播放链路由[架构文档](docs/02-系统架构设计文档.md)定义；原型 Mock、演示进度和接口注释不替代正式事实。
 
-视觉决策按下方“设计优先级与视觉基准”章节执行：已有页面以对应 HTML 原型为最高视觉基准；全新页面继承项目视觉语言。当前 Vue 组件不能仅因已存在，就覆盖原型尚未迁移的结构。`awesome-design-md` 与设计 Skill 均为辅助参考，不是替换原型的授权。
+### 1.2 业务事实的 UI 表达
 
-第 4 节的 Normalize / Improve / Replace 只约束 Token、交互、可读性和实现质量的局部改进；不得据此改写原型视觉终点、重新排列模块、删除核心区域或改变页面类型。需要改变原型外观时，必须有用户明确的设计变更要求，不能由 Agent 自行决定。
-
-### 1.2 业务对 UI 的硬约束
-
-- 新用户默认空片库。公共 Movie 元数据不等于个人拥有；必须有关联到本人可访问来源的 MediaResource。不得用热门公共影片填充真实空片库。
-- P0 只提供 WebDAV 来源。不得把 FileSystem、SMB、Local Agent、Redis、资源分享或公共播放入口包装为已支持能力。
-- Vue 只访问 Spring Boot 业务接口；FastAPI 只增强 AI。页面不持有 TMDB/WebDAV 服务密钥，不代理视频流，不以浏览器 Mock 推断正式业务事实。
-- 默认 Windows 本机 mpv；P0 不承诺 PotPlayer。按钮使用“使用 mpv 播放”或上下文明确的“播放”。获得受控播放信息后才发起外部协议；只能反馈“已发起播放”，不能据此宣布播放成功、自动标记看过或生成精确进度。
-- 精确 Watch Progress 是有可靠进度数据后的组件能力。P0 无反馈时用观看状态和最近播放时间；不显示虚构百分比、“继续至 01:23:00”或内嵌播放器。
-- 技术字段未知显示“未知”或 `—` 并解释原因；不根据海报、文件名或 AI 猜测 HDR、码率、语言。Movie.runtime 与 MediaResource.duration 分开标注。
-- AI 搜索、推荐和 Agent 主结果只来自本人片库；硬条件不能自动放宽。RAG 默认无剧透，剧透需明确许可。AI 生成内容与影片/文件事实分开呈现。
-- 正式需求允许同一应用内受保护的轻量 ADMIN 管理区。个人首页禁止统计大盘不等于删除该需求；管理区沿用工具组件，只展示获准聚合数据、脱敏审计和账号启停，不做内容运营后台，不暴露用户私人影片、路径、对话或凭据。
+空片库引导添加本人来源，不填公共热门电影；未支持的来源与播放能力不伪装为可用。播放唤起仅反馈“已发起播放”，不推断真实进度或已看。AI 解释与资源事实分开，未知、失败、无权限分别呈现。具体契约按 [API.md](docs/API.md)对应条目读取。
 
 ## 设计优先级与视觉基准（Design Priority and Source of Truth）
 
-**现有 HTML 原型是已有页面的最高视觉基准（Visual Source of Truth）。Vue 的目标是将 HTML 原型组件化，而不是重新设计 HTML 原型。**
+原型的权威地位及禁止自动重设计的边界见 [AGENTS.md](AGENTS.md#前端边界)。这里定义视觉值如何选取：
 
-> Existing HTML prototypes are the visual source of truth for screens that have already been designed.
-> Design skills may refine motion, interaction, accessibility, responsiveness, and implementation quality, but must not independently redesign an existing prototype.
-> Vue implementation should preserve the visual intent and information architecture of the original HTML prototype.
-
-### 已有页面：HTML 决定视觉结构与状态终点
-
-**HTML defines the visual endpoints. Design Skill defines the transition between those endpoints.**
-
-**HTML 决定各交互状态最终长什么样，Design Skill 决定这些状态之间如何自然变化。** Vue 负责忠实工程实现，DESIGN.md 负责设计系统与实现约束；状态过渡优化不是改变视觉终点的授权。
-
-只要页面已有对应 HTML 原型，就以该页面及其实际引用的共享 CSS、资源和脚本呈现的完整状态为基准，不能只看空容器或截取某个 CSS 声明。旧详情重定向文件以目标页面为准，不视为独立设计。
-
-HTML 原型决定以下内容：
-
-- 页面整体布局、信息架构、内容顺序与模块相对位置。
-- Sidebar 结构、导航分组和顺序，以及 Header、Search 等主要区域是否存在及其位置。
-- 卡片布局、海报比例、海报墙形态、内容架排列方式与原有滚动意图。
-- 栏宽、主要组件尺寸、主要间距关系、标题层级、主要圆角形态与整体视觉密度。
-- 页面的沉浸式影音风格、内容组织和主要交互意图。
-- 已明确的颜色、透明度、字号、图标尺寸、圆角、shadow、surface / material 等视觉结果。
-- 已明确的 default / hover / active / selected / pressed / open / closed / disabled state，以及已有 focus visual state；包括菜单展开、搜索框 hover、导航选中后的完整视觉结果。只要原型已表达该状态，Vue 就必须忠实迁移其视觉终点。
-
-已有页面的视觉决策顺序：
-
-1. **Existing HTML Prototype**：当前对应 HTML 原型。
-2. **Existing Project Visual Language**：已有项目视觉语言及忠实承接原型的 Vue 实现。
-3. **DESIGN.md**：设计系统与质量约束，冲突按下方职责表区分。
-4. **Design Skill**：Apple Design Skill / 其他设计 Skill 的适用增强。
-5. **AI discretionary design decisions**：仅处理前四项均未规定的细节。
-
-### Vue：忠实迁移与组件化
-
-**Vue 不是新的视觉设计起点。Componentize the prototype, not redesign the prototype.**
-
-正确路径：`HTML → 拆分 Vue Component → 接入 Vue Router → 接入 Mock Data → 接入真实 API`。这里表示职责演进；项目已接入 Router，无需为了迁移某个页面重新建立路由基础设施。Mock 与真实 API 仍须遵守正式开发规范中的数据访问边界。
-
-禁止路径：`HTML → AI 根据设计规范重新设计 → 再实现 Vue`。
-
-迁移应保持原布局、原视觉层级、原结构、原比例、原内容组织和原交互意图。例如 `movie-card → MovieCard.vue`、`sidebar → AppSidebar.vue`、`movie shelf → MediaShelf.vue`；可以调整 DOM 封装、类名和文件组织，但组件化、路由化或数据接入本身都不是重新设计页面的理由。
-
-当前 Vue 的占位 View 只验证路由，不是该页面的新视觉方案。尚未接入的搜索、内容架或其他原型区域，应标为迁移未完成，不能因 Vue 暂时没有这些区域就认定可以删除。优先演进已有组件；若其结构不完整，按原型补齐，而不是反向简化 HTML。
-
-### DESIGN.md：统一规范，不覆盖页面设计
-
-本文统一 Color Token、Typography、Spacing、Radius、Surface、Border、Motion、Interaction State、Component Consistency、Accessibility 和 Responsive Behavior。通用规范用于约束实现与增强质量，不能覆盖 HTML 已明确表达的布局、信息结构及视觉状态。
-
-Design Token 用于抽象和复用 HTML 已存在的视觉事实，为多个页面中完全相同的值提供统一变量；仅在 HTML 未定义视觉细节或状态时提供 fallback，并为全新页面提供统一设计语言。不得因全局 Token 已存在，就覆盖原型明确的颜色、透明度、字号、图标尺寸、圆角、阴影、材质或 selected / hover / active 等状态。
-
-已有页面迁移遇到 Token 冲突时，优先保持 HTML 的视觉结果：可新增准确的语义 Token、使用局部 component token、复用 HTML 原值，后续再统一抽象；不能强套不匹配的全局 Token，也不为单个组件改写全局值。
-
-| 冲突类型 | 决策规则 |
+| 场景 | 设计来源 |
 |---|---|
-| 页面布局、信息架构、区域存在性、模块顺序、主要尺寸/比例/密度 | 优先保留 HTML 原型，不用通用组件示例重排页面 |
-| HTML 已明确的颜色、透明度、字号、图标尺寸、圆角、材质、shadow 等视觉结果 | HTML Prototype 优先，Token 抽象必须保持原视觉结果 |
-| HTML 已明确的 default / hover / selected / active / pressed / open / closed / disabled / focus 视觉状态 | HTML Prototype 优先，包括状态叠加及展开后的完整视觉结果 |
-| HTML 未定义的状态或视觉细节 | DESIGN.md 提供 fallback，沿用项目视觉语言 |
-| Motion timing、easing、interruptibility、keyboard、focus management、reduced motion、accessibility | DESIGN.md + Design Skill 约束交互与实现质量，保留已有视觉终点 |
-| 全新页面或没有 HTML 原型的组件 | 现有项目视觉语言 + DESIGN.md + Design Skill |
-| 原型中的演示业务事实与正式需求冲突 | 遵守第 1.2 节；忠实视觉迁移不等于迁移假进度、假播放结果或越权数据 |
+| 已有页面的布局、模块、导航、尺寸、比例、密度与完整状态 | 对应 HTML 及实际引用的共享 CSS、资源、脚本；旧详情重定向以目标页面为准 |
+| 原型已明确的颜色、透明度、字号、图标、圆角、阴影与材质 | 保留原值；包括 default / hover / pressed / selected / open / disabled / focus 及状态叠加 |
+| 原型未定义的视觉细节或状态 | 本文对应 Token 与组件规范提供 fallback |
+| Motion timing、easing、响应与减少偏好 | 本文第 15、36 节；需要 Apple 领域知识时按 Skill 路由补充 |
+| 无 HTML 原型的新页面 | 本文、已有项目视觉语言及相似 HTML/Vue 页面；占位 View 不算完整设计 |
 
-上表为长期职责分工，当前执行 Desktop motion / pointer interaction；keyboard enhancement、manual focus management、mobile/touch interaction、responsive cross-device enhancement 均 Deferred，不能由冲突表重新引入当前实现范围。
+Token 是对视觉事实的命名与复用。同值才复用全局 Token；不匹配时保留原型值或使用准确的语义/组件 Token，不为单组件改写全局值。例如原型 Sidebar icon 为 17px 时，不套用通用 20px；selected 背景已确定时，不能因 Accent Token 改成蓝色。
 
-后文所有视觉 Token、组件状态、材质与尺寸示例均受上表约束，是未定义细节与全新页面的通用基线，不是已有原型的替代设计。相关质量要求按“当前实现阶段”执行：桌面动效、原生焦点可见性与减少动效保留；keyboard enhancement、manual focus management、mobile/touch 与跨端 accessibility 当前 Deferred。若已明确的外观与可读性等要求确有冲突，应说明证据与影响，按明确设计变更处理，不静默换色或改字号；系统高对比、文本放大、减少动效/透明度等适配仍按本文执行。
+Apple 交互精修按 [Skill 入口](.agents/skills/apple-design/SKILL.md)选择领域 reference，不因 Vue/CSS 文件自动加载。Skill 示例不能覆盖本文 Motion、材质、Poster 无缩放和原生滚动规则。
 
-例如：HTML 的 selected 背景为 `rgba(255,255,255,.075)`，Vue 就保留该终点；Skill 可按 Motion 规则优化 120ms / 180ms 过渡、easing、pointerdown 反馈、中断及 reduced-motion，不能改成蓝色背景。HTML 的 Sidebar icon 为 17px 时，即使通用 Token 为 20px，也保留对应状态的 17px，除非用户明确要求重新设计。
+### 按主题定位
 
-### Design Skill：增强体验的边界
-
-鼓励积极使用 Apple Design Skill，获得 Apple fluid interaction 的即时反馈、低延迟、自然运动、克制动画与物理连续性；其职责不限于添加 transition。在保留 HTML 已明确视觉终点的前提下增强：
-
-- **Motion**：优化 transition、easing、motion timing、interruptibility 与 reversible interaction；从当前呈现值连续响应快速反向操作，保持 physical continuity。
-- **Interaction**：降低 response latency，优化 pointer down feedback timing 与 hover → pressed → release 连续性，完善 keyboard interaction、focus management 和 natural feedback。
-- **UX Quality**：改善 accessibility、responsive behavior、scroll behavior、reduced motion、loading feedback 与 perceived performance；缺失视觉状态按本文 fallback 补齐，不重新定义已有状态终点。
-
-这些是可评估的能力范围，不是每个页面必须添加的效果清单。卡片轻微缩放、blur transition、页面切换动画等 Skill 示例必须先通过本项目 Motion 与组件规则：现有 Poster / Movie Card 的无缩放行为继续保留；默认不做整页过场，不为展示 Skill 添加 blur 动画，不引入动画锁或滚动劫持。Skill 不得降低本文对 Reduced Motion、性能、焦点和可读性的要求。
-
-Skill 不得因为 Apple 风格最佳实践或其他建议，主动改变已有原型的页面布局、导航结构、模块顺序、主要组件尺寸、搜索框是否存在、内容区结构、Sidebar 信息架构、视觉密度或海报墙/内容架形态。
-
-### 允许的增强与禁止的变化
-
-| 允许的增强 | 前提 |
+| 当前问题 | 本文位置 |
 |---|---|
-| 更自然的 hover、transition、必要的页面进入/退出反馈 | 遵守 Motion，保留原型已明确的视觉终点和空间关系 |
-| focus-visible、键盘操作、reduced-motion、loading / skeleton | 补齐原型状态，保留核心区域和操作可达性 |
-| responsive breakpoint 优化、文本放大与触摸适配 | 保留原信息架构、内容顺序和交互意图，先验证已有响应式行为 |
-| Design Token 抽象、CSS 重构、class 命名优化 | 复用相同视觉事实，不以统一 Token 改变原型外观，不随意改写全局值 |
-| 组件化、复用公共组件、Router / Mock / API 接入 | 改善实现与复用，不把工程重构变成视觉重设计 |
-
-未经用户明确要求，不允许：删除 HTML 已有的重要区域；无理由新增大型区域；重新排列主要内容；随意修改 Sidebar 导航内容或分组；删除搜索框等核心 UI；把电影内容架改成完全不同的布局；因 Skill 建议重构整个视觉体系；将沉浸式影音页面改成企业后台、Dashboard 或 SaaS 管理布局。
-
-迁移验收应在相同视口、相同内容与对应交互状态下对照 HTML 和 Vue，检查区域完整性、位置、比例、密度、视觉层级及各状态的颜色、文字、图标和材质。Token 抽象保持视觉终点，交互增强单独验证响应与连续性；不能仅凭构建成功或路由可用，宣称页面已忠实迁移。
-
-### 全新页面：继承项目视觉语言
-
-完全没有 HTML 原型的页面，可使用 `DESIGN.md + 现有项目视觉语言 + 相似 HTML/Vue 页面 + Design Skill` 推导设计。已有原型但 Vue 尚未实现的页面，不属于全新设计。
-
-全新页面的视觉决策顺序：
-
-1. **Existing Project Visual Language**：保持项目已形成的影音视觉语言。
-2. **DESIGN.md**：遵守统一设计系统与交互规范。
-3. **Existing similar HTML/Vue screens**：借鉴相似页面并复用已有组件；占位 View 不构成完整视觉参考。
-4. **Design Skill**：补强交互、动效、无障碍与响应式质量。
-5. **AI discretionary design decisions**：仅补足前四项均未规定的细节，不为每页另建主题。
-
-已有页面 HTML 优先；全新页面在现有项目语言内设计。两者都受产品事实约束，均不得凭空把个人影音平台改成后台管理产品。
+| 颜色、字体、间距、圆角 | 第 5–8 节 |
+| 桌面布局、层级、材质与图标 | 第 9–14 节 |
+| 动效、打断、减少动效 | 第 15 节；偏好与可读性见第 36 节 |
+| Artwork、Poster、Backdrop | 第 16–18 节 |
+| Shell、导航、按钮、表单、搜索 | 第 19–23 节 |
+| 具体业务页面与组件 | 第 24–34 节对应部分 |
+| 窗口适配、长期跨端与 Accessibility | 第 35–36 节，并遵守当前阶段范围 |
+| 设计溯源 | 第 4 节历史研究，仅在追溯依据时读 |
 
 ## 2. Product Personality
 
@@ -194,7 +85,7 @@ Skill 不得因为 Apple 风格最佳实践或其他建议，主动改变已有�
 | Interaction-level consistency | 不同组件中的相同语义操作使用统一反馈语言：普通 clickable surface 的 hover 强度接近、pressed 响应方式和 focus-visible 语言统一；同类菜单共享 opening / closing motion、keyboard navigation、Escape 与 focus restore 规则 |
 | Motion-level consistency | 相同性质的动画优先共享第 15 节的 duration、easing、movement distance、opacity behavior、pressed feedback timing、interruption behavior 和 reduced-motion behavior，不按页面另设一套参数 |
 
-Apple Design Skill 用于帮助 AI-Media-Center 建立**统一的项目级交互语言**，不是让每个页面分别应用一套 Apple 风格效果。Immediate feedback、low latency、physical continuity、interruptibility、reversible interaction、natural easing、reduced motion、focus management 和 accessibility 应尽可能通过公共组件与统一 Motion 规则复用；Skill 只增强状态间的过渡和操作质量，不改变 HTML 已明确的视觉终点。
+同一语义组件复用第 15 节动效和共用状态契约；页面差异不产生第二套交互语言。
 
 #### 页面与公共组件的职责
 
@@ -213,7 +104,7 @@ Apple Design Skill 用于帮助 AI-Media-Center 建立**统一的项目级交互
 - **输入设备适配**：mouse、touch、keyboard 可按设备能力提供不同操作入口与反馈，但核心交互语义、视觉语言和操作可达性保持一致。
 - **HTML Prototype 已明确的差异**：先忠实保留各自视觉终点，再判断组件身份与冲突，不以一致性为由强行改值。
 
-**HTML defines the visual endpoints. Design Skill defines the transition between those endpoints.** 本节不改变该优先级：已有 HTML 明确的状态必须忠实迁移；多个页面复用同一语义组件时，优先识别并复用同一个公共组件。若多个 HTML 对同一语义组件存在明显不一致，先判断是否属于不同组件 / variant，或原型历史遗留不一致；在当前任务说明或既有正式记录中列明来源、差异与影响，必要时请求用户确认。涉及改变既有视觉终点而尚无明确授权时，保留各自原型结果，不得由 Agent 任选一种覆盖所有页面，也不得静默“统一”。
+按视觉基准处理冲突：已有 HTML 明确的状态必须忠实迁移；多个页面复用同一语义组件时，优先识别并复用同一个公共组件。若多个 HTML 对同一语义组件存在明显不一致，先判断是否属于不同组件 / variant，或原型历史遗留不一致；在当前任务说明或既有正式记录中列明来源、差异与影响，必要时请求用户确认。涉及改变既有视觉终点而尚无明确授权时，保留各自原型结果，不得由 Agent 任选一种覆盖所有页面，也不得静默“统一”。
 
 **Reuse real patterns, not imagined patterns.** 只有存在明确复用、同一语义和相同行为时才抽公共组件；不提前创建大量抽象、不构建巨型万能组件、不堆积只用一次的 variant，也不为 DRY 牺牲可读性。统一规则不要求本轮批量重构尚未迁移的页面。
 
@@ -221,9 +112,7 @@ Apple Design Skill 用于帮助 AI-Media-Center 建立**统一的项目级交互
 
 ### 4.1 本地事实来源与覆盖范围
 
-初版设计审计参考 [AGENTS.md](AGENTS.md)、[PROJECT_STATUS.md](PROJECT_STATUS.md)、[需求](docs/01-项目需求文档.md)、[架构](docs/02-系统架构设计文档.md)、[开发规范](docs/开发规范与模块边界.md)、[API](docs/API.md)。当前 `frontend/src/` 已有 Vue 3 + TypeScript 实现、Vue Router、`AppSidebar.vue`、全局 Token 和九个占位 View；`App.vue` 负责布局与 `RouterView`。页面主体尚未完成 HTML 迁移，不能把占位页面当成视觉基准，也不能将原型接口注释升级成契约。
-
-初版治理核对覆盖下列 16 个 HTML 与当时 Vue 源码。当前 Vue 侧栏已补齐搜索入口、账号菜单、导航文案及资料库顺序；仍有选中色、图标尺寸、部分字号、次级文字色和搜索材质与 HTML 不同，说明几何接近不等于视觉状态迁移完成。本次只修订 DESIGN.md，不修改或回退现有代码。
+以下为 2026-09-11 初版设计研究的原型清单，记录当时来源，不代表当前 Vue 完成度。实现进度见 [PROJECT_STATUS.md](PROJECT_STATUS.md)，组件历史分析见 [前端组件边界审计](docs/前端组件边界审计.md)。
 
 以下页面均位于 `html/`，文件名前缀为 `personal-cinema-`：
 
@@ -241,45 +130,29 @@ Apple Design Skill 用于帮助 AI-Media-Center 建立**统一的项目级交互
 | `scan-task.html` | 运行阶段、进度、成功结果、待匹配与失败队列 |
 | `movie-matching.html` | 原文件/候选对照、人工匹配、稍后处理、非影片 |
 
-共 16 个 HTML（含 3 个重定向）。读取 `html/assets/css/` 全部 6 份样式：`personal-cinema-base.css`、`personal-cinema-movie-card.css`、`personal-cinema-library-view.css`、`personal-cinema-workflow.css`、`personal-cinema-ingest.css`、`personal-cinema-collection-detail.css`。同时核对 `html/assets/js/` 的 shell、library-view/library-mock、collection-detail/collection-mock、movie-detail、source-workflow、media-source-detail/media-source-mock、scan-task/scan-mock、movie-matching 的状态与导航模式，以及 `personal-cinema-icons.svg` 的图标语法。
+初版共核对 16 个 HTML（含 3 个重定向）及 `html/assets/css/` 全部 6 份样式：`personal-cinema-base.css`、`personal-cinema-movie-card.css`、`personal-cinema-library-view.css`、`personal-cinema-workflow.css`、`personal-cinema-ingest.css`、`personal-cinema-collection-detail.css`。同时核对 `html/assets/js/` 的 shell、library-view/library-mock、collection-detail/collection-mock、movie-detail、source-workflow、media-source-detail/media-source-mock、scan-task/scan-mock、movie-matching 的状态与导航模式，以及 `personal-cinema-icons.svg` 的图标语法。
 
-### 4.2 提取事实：不能把重复次数当作设计正确性
+### 4.2 初版提取事实（历史统计）
 
-统计口径：16 个 HTML 的内联样式与 6 份 CSS 中的静态声明；不含 SVG 图形颜色、JS 动态渲染和浏览器计算样式。重复 Shell 会增加计数，数值是源码分布而非屏幕视觉占比；font shorthand 未计入独立 `font-size` 频次。下表及第 4.3 节保留初版收敛建议作为审计记录；其中字号、圆角、材质等改值建议不作为已有页面的迁移指令，涉及已明确视觉终点的调整须有明确设计变更要求。
+统计口径为当时 16 个 HTML 与 6 份 CSS 的静态声明，不含 SVG、JS 动态渲染或浏览器计算样式；数值是源码分布，不是现行 Token 定义。重复次数不能证明设计正确性。
 
-| 类别 | 现有事实 | 收敛判断 |
-|---|---|---|
-| 色彩骨架 | `#0a0a0b / #141416 / #1c1c1e`；`#f5f5f7 / #a1a1a6`；Accent `#73a9b7` | 保留底色与青灰 Accent；补齐 Elevated、Floating 与语义状态 |
-| 透明白 | `.055` 28 次、`.1` 25 次、`.035` 与 `.07` 各 23 次；另有 `.025/.045/.06/.075/.08/.09/.11/.12/.16/.2` 等 | 只保留具明确用途的 Hover/Pressed/Selected/Hairline，禁止逐页调 alpha |
-| 文字色 | `#f5f5f7` 18 次，`#d7d7dc` 9 次；还并存 white `.92/.62/.46` 与 `#6e6e73` | 固定文本 Token，弱色不承担关键小字；玻璃中收紧为两层文字 |
-| 字号 | `12px` 89 次、`13px` 80 次、`11px` 39 次、`14px` 26 次、`15px` 13 次、`17px` 10 次 | 保留 12 元数据、13 紧凑控件/片名、15 正文的不同职责；10–11 提升至 12；17 收敛到 18 |
-| 字重/行高/字距 | 600 为主（69 次），650 有 17 次；正文常见 1.45/1.6，标题负字距混杂 | 字重 400/500/600/700；中文正文 1.6，标题适度收紧而不压字 |
-| 标题 | Page 约 32；Section 18；详情与合集可到 56；海报标题 13/16、元数据 12/15 | 页面 32，电影/合集上限 48；海报文字增大行高，防中文裁切 |
-| 间距 | 单值 12（32 次）、10（28）、9（26）、20（24）、7/8（各22）、16（17）、24（16）；存在 5/6/11/18/22/28 等 | 40px 桌面内容边距已稳定；12/20/24 保留职责，其余按语义归并 |
-| 圆角 | sm 12、xs 8、md 16、lg 20；nav/poster 10；editorial 14；另有 24、5 和 pill/circle | 保留 8/10/12/16/20；14→16、24→20，几何圆形专用 |
-| 海报 | 2:3、cover、10px；Hover 黑 Scrim `.38`，110ms；本体不缩放、不滤色 | Preserve；微阴影与辅助按钮材质需统一 |
-| Shell / Layout | Sidebar 220，外距 8，Main 左偏移 236；桌面内容左右 40；全宽网格 | Preserve 几何；取消全 Sidebar 默认玻璃 |
-| 浮层 | 搜索 blur26、账号18、详情侧栏20；阴影可达 `0 32px 90px`；alpha `.76/.82/.88/.92` | Normalize 为单套 Floating Material；不迁移高成本阴影/模糊 |
+| 类别 | 现有事实 |
+| --- | --- |
+| 色彩骨架 | `#0a0a0b / #141416 / #1c1c1e`；`#f5f5f7 / #a1a1a6`；Accent `#73a9b7` |
+| 透明白 | `.055` 28 次、`.1` 25 次、`.035` 与 `.07` 各 23 次；另有 `.025/.045/.06/.075/.08/.09/.11/.12/.16/.2` 等 |
+| 文字色 | `#f5f5f7` 18 次，`#d7d7dc` 9 次；还并存 white `.92/.62/.46` 与 `#6e6e73` |
+| 字号 | `12px` 89 次、`13px` 80 次、`11px` 39 次、`14px` 26 次、`15px` 13 次、`17px` 10 次 |
+| 字重/行高/字距 | 600 为主（69 次），650 有 17 次；正文常见 1.45/1.6，标题负字距混杂 |
+| 标题 | Page 约 32；Section 18；详情与合集可到 56；海报标题 13/16、元数据 12/15 |
+| 间距 | 单值 12（32 次）、10（28）、9（26）、20（24）、7/8（各22）、16（17）、24（16）；存在 5/6/11/18/22/28 等 |
+| 圆角 | sm 12、xs 8、md 16、lg 20；nav/poster 10；editorial 14；另有 24、5 和 pill/circle |
+| 海报 | 2:3、cover、10px；Hover 黑 Scrim `.38`，110ms；本体不缩放、不滤色 |
+| Shell / Layout | Sidebar 220，外距 8，Main 左偏移 236；桌面内容左右 40；全宽网格 |
+| 浮层 | 搜索 blur26、账号18、详情侧栏20；阴影可达 `0 32px 90px`；alpha `.76/.82/.88/.92` |
 
-### 4.3 Preserve / Normalize / Improve / Replace
+### 4.3 已被视觉基准规则取代的收敛建议
 
-下表是设计系统层面的局部收敛建议，必须服从“设计优先级与视觉基准”。Normalize / Improve / Replace 均不授权修改原型布局；涉及主要几何关系或内容显隐的调整，不能仅凭表中通用尺寸或材质建议自动执行。
-
-| 判断 | 具体对象与理由 | 今后实现动作 |
-|---|---|---|
-| Preserve | 深色背景、青灰 Accent、白色 Primary Button；已有内容优先方向合理 | 沿用语义并映射 Token，不换品牌色 |
-| Preserve | 220px Sidebar、40px 内容边距、全宽片库/扫描结果、统一电影详情 | 保留阅读路径与空间骨架 |
-| Preserve | 2:3/10px Poster、无缩放 Hover、轻 Scrim、播放/更多分离 | 复用共享 Movie Card，不让每页重写 |
-| Preserve | 首页媒体 Shelf、最近观看→类型→最近添加→未看；合集仅聚合拥有成员 | 不重新加入营销 Hero 或统计卡片 |
-| Preserve | 来源→扫描→待匹配→结果→片库闭环；错误分队列 | 不用单一转圈遮盖全部进度 |
-| Normalize | 透明白、文本灰、650 字重、随机间距、14/24 圆角、不同浮层阴影 | 随相关组件迁移到统一 Token，不做全仓机械替换 |
-| Improve | 10–11px 技术小字、超长中文片名、详情 56px 紧行高 | 提升最小字号与换行，电影标题上限 48，内容可自然增高 |
-| Improve | 搜索/AI 输入焦点、触摸更多入口、错误恢复和键盘菜单 | 补齐 focus-visible、可达操作、语义属性与焦点归还 |
-| Improve | Source Card 常驻边框、详情技术密度、玻璃背景上的小字 | 在原结构内统一 Surface 与文字对比；技术字段保留原型显隐和顺序，新增细节再按渐进展开组织 |
-| Replace | 常驻 Sidebar 玻璃、静态 AI 输入的 blur、过大浮层阴影 | 后续相应切片改成实色或本文临时材质 |
-| Replace | 原型计时器制造的业务百分比、示例进度或假播放成功（若沿用至正式产品） | 必须接真实状态；未知总量使用不定进度；不得迁移 Mock 假事实 |
-
-这是一份迁移判断，不授权本轮修改任何现有 UI。尚无完整 HTML 原型的设置、登录注册、专属 RAG/Agent 页面按全新页面规则组合；已有设置占位 View 不等于完整设计，电影详情中的 AI 影片助手也不等于独立 RAG 页面。
+初版曾建议统一字号/圆角、取消 Sidebar 玻璃及合并不同浮层材质。这些建议已被“保留原型已明确视觉终点”的现行规则取代，不作为待执行迁移工作。现行默认值以第 5–15 节为准，已明确的页面例外按对应原型保留；不再保留可被误执行的改值清单。
 
 ### 4.4 外部研究及吸收边界
 
@@ -467,12 +340,12 @@ Z-index 只表达层次：页内 sticky < 导航 < 非模态浮层 < 模态遮�
 
 | 层 | Token / 值 | 适用 |
 |---|---|---|
-| Canvas | background `#0a0a0b` | 页面、海报墙、电影详情底色 |
-| Surface 1 | surface `#141416` | Sidebar、设置组和来源卡必要承载面 |
-| Surface 2 | surface-2 `#1c1c1e` | Input、嵌入工具区域、选项承载 |
-| Elevated | surface-elevated `#242427` | 实色 Dialog/Drawer、临时面板基础 |
-| Floating | surface-floating `#2c2c30` | 浮层无透明回退、Tooltip |
-| Overlay | overlay 黑 48% | 模态遮罩；不用于普通 Card |
+| Canvas | `--color-background` | 页面、海报墙、电影详情底色 |
+| Surface 1 | `--color-surface` | Sidebar、设置组和来源卡必要承载面 |
+| Surface 2 | `--color-surface-2` | Input、嵌入工具区域、选项承载 |
+| Elevated | `--color-surface-elevated` | 实色 Dialog/Drawer、临时面板基础 |
+| Floating | `--color-surface-floating` | 浮层无透明回退、Tooltip |
+| Overlay | `--color-overlay` | 模态遮罩；不用于普通 Card |
 
 每加一层必须有分组或覆盖理由。不要 Canvas→Card→Card→Card 连续嵌套。Hover 在当前 Surface 加一层 `color-hover`，Pressed 用 `color-pressed`；不得叠多层 alpha 导致颜色不可预测。
 
@@ -482,7 +355,7 @@ Z-index 只表达层次：页内 sticky < 导航 < 非模态浮层 < 模态遮�
 
 允许：搜索建议/展开搜索、Dropdown、Popover、Context Menu、临时工具条、Filter、AI Suggestions/临时动作、Backdrop 上临时操作、Sheet/Drawer 局部覆盖区域。现有全局搜索 Modal 可沿用材质，长表单 Modal/Drawer 主体默认实色。
 
-禁止：Poster、Movie Card 本体、Page Background、所有 Section、整页 Settings、Source Main Card、每组表单、普通正文、每个按钮/Input、整个 Sidebar。不得同时叠两层实时 backdrop blur；父层已玻璃时，子菜单用 Floating 实色。
+禁止：Poster、Movie Card 本体、Page Background、所有 Section、整页 Settings、Source Main Card、每组表单、普通正文、每个按钮/Input，以及未在原型定义材质的整个 Sidebar。不得同时叠两层实时 backdrop blur；父层已玻璃时，子菜单用 Floating 实色。
 
 ```css
 :root {
@@ -492,7 +365,7 @@ Z-index 只表达层次：页内 sticky < 导航 < 非模态浮层 < 模态遮�
   --material-floating-saturation: 115%;
   --material-floating-border: rgb(255 255 255 / 12%);
   --material-floating-highlight: inset 0 1px 0 rgb(255 255 255 / 6%);
-  --material-floating-fallback: #2c2c30;
+  --material-floating-fallback: var(--color-surface-floating);
 }
 .floating-glass {
   background: var(--material-floating-fallback);
@@ -524,6 +397,8 @@ html[data-transparency="reduced"] .floating-glass {
   backdrop-filter: none;
 }
 ```
+
+**已确认的 Sidebar 例外**：现有 Vue 侧栏及搜索/选中态按对应 HTML 保留材质，不因系统 `prefers-reduced-transparency` 改实色；账号浮层仍响应该偏好。提高对比度、显式 `data-transparency="reduced"` 和无滤镜回退保留。该例外仅适用于这些侧栏状态，不推广到其他浮层。
 
 Reduced Transparency 查询是渐进增强，不能假定每个浏览器都支持；页面级“减少透明效果”偏好通过明确属性实现，未知支持时默认实色依然完整。Material 只定义深色，不在浅色系统偏好下自动反转一半 UI。暗色背景不降低到 `.5` 以追求玻璃感。
 
@@ -626,7 +501,7 @@ Poster 2:3；Backdrop/Still 优先 16:9 原图；演员头像 1:1；Logo Artwork
 
 ## 18. Backdrop
 
-详情保留当前**全视口背景图、内容位于 Main 内、居中标题与动作**的结构；不因参考品牌改为左侧营销海报。侧栏保持自身不透明承载，文字不能漂在图上无保护。
+详情保留当前**全视口背景图、内容位于 Main 内、居中标题与动作**的结构；不因参考品牌改为左侧营销海报。侧栏材质按第 19 节与对应原型承载，文字不能漂在图上无保护。
 
 ```css
 .movie-backdrop {
@@ -687,7 +562,7 @@ Top Bar 默认 64px，用于返回、当前位置、搜索和页级动作；Home
 | Default | 本组件 Surface、字体、尺寸；语义正确的元素 |
 | Hover | 仅可操作目标加 hover；触摸不依赖 Hover 才发现入口 |
 | Active / Pressed | 输入发生立即反馈，使用 pressed；离开/取消可恢复 |
-| Focus | `:focus-visible` 2px Accent，offset3px；白按钮/图上叠深色隔离环，避免焦点淹没 |
+| Focus | `:focus-visible` 使用第 12 节 focus Token；白按钮/图上叠深色隔离环，避免焦点淹没 |
 | Selected | 持续状态用 selected+勾/文字/对应 aria 属性；与临时 Pressed、Keyboard Focus 区分 |
 | Disabled | 原生 disabled 或正确 aria-disabled 并阻止动作；disabled 色，不仅 cursor；原因在旁边可读，不能只靠不可聚焦 Tooltip |
 | Loading | 固定原控件尺寸，小 spinner+动作文字、aria-busy；防重复提交但保留必要取消/关闭；无接口取消能力不可伪称取消任务 |
@@ -907,14 +782,14 @@ Empty State / Error State 正文最多两三句，标题18，说明15，图标32
 
 本节完整目标留待后续 Accessibility enhancement 阶段。当前保留 semantic HTML、必要基础 aria、原生行为与焦点可见性、可读性及减少动效；不新增自定义键盘导航、焦点圈定／归还或触摸增强。
 
-- **Focus Visible**：已有原型明确的焦点外观应保留；缺失时采用2px Accent外环、3pxoffset，图片和白按钮添加Canvas隔离。焦点必须清晰可见，不能仅 `outline:none`，不被overflow/sticky裁掉，必要时scroll-margin。
+- **Focus Visible**：已有原型明确的焦点外观应保留；缺失时采用第12节 focus Token，图片和白按钮添加Canvas隔离。焦点必须清晰可见，不能仅 `outline:none`，不被overflow/sticky裁掉，必要时scroll-margin。
 - **Keyboard Navigation**：所有核心流程仅键盘可完成；按Tab自然顺序、菜单方向键、Escape关顶层、Dialog圈定并归还；输入法composition正确处理，无正tabindex。
 - **Contrast**：普通文字目标≥4.5:1，大字≥3:1；关键控件边界与状态图形≥3:1。Hairline仅装饰。对Artwork/Glass必须检查合成后的最不利背景，不能只测透明前的颜色。
 - **Target Size**：桌面独立操作有效目标至少32×32；触摸44×44；小图标扩充点击区且不能重叠邻居。整行Label可用于扩大Checkbox/Toggle目标。
 - **Labels**：Icon Button有中文aria-label；当前页aria-current；勾选/展开/忙状态有正确aria属性；图片旁已有相同片名时装饰图可空alt避免重复，独立有意义图片提供描述。
 - **Hover Alternative**：Focus展示海报动作，触摸可见更多；完整片名和错误原因不能仅靠hover。
 - **Reduced Motion**：遵守系统偏好和显式减少设置；禁位移/弹簧/视差/自动滚动，状态仍立即更新；无需动画也能理解流程。
-- **Reduced Transparency**：系统查询+显式属性+无filter实色回退；减少透明与减少动效分别处理，不推断同一偏好。
+- **Reduced Transparency**：系统查询+显式属性+无filter实色回退，Sidebar 的已确认例外见第 11 节；减少透明与减少动效分别处理。
 - **Forced Colors**：保留原生系统高对比，装饰Scrim可关闭，焦点使用系统Highlight，控件用CanvasText边界；不要强制关闭浏览器颜色适配。
 - **Readable Content**：支持文本放大、200%缩放、长中文/英文路径；状态不用颜色独立编码。Disabled低对比只用于真不可用控件，不用于重要帮助。
 - **Announcements**：扫描阶段/错误以合适live region汇总，不每个百分比或AI token播报；用户阅读时不夺焦点。
@@ -944,7 +819,7 @@ Empty State / Error State 正文最多两三句，标题18，说明15，图标32
 
 - **Traditional Admin Dashboard / SaaS Dashboard aesthetic / Unnecessary Dashboard Statistics**：个人首页四块数量卡、KPI为主；禁止用后台密度替代观影内容。获准ADMIN区也保持轻量。
 - **Apple.com Clone / Apple TV Clone / Spotify Clone / Infuse Clone / Linear Clone / Raycast Clone / PlayStation Clone**：品牌色/Logo/专有字体、购买导航、音乐播放条、游戏商店或项目管理布局不能拼接进本项目。
-- **Glassmorphism Everywhere / Excessive Liquid Glass / Everything Having Blur**：全Sidebar、海报、所有Card/Input/Settings毛玻璃，多层叠blur。
+- **Glassmorphism Everywhere / Excessive Liquid Glass / Everything Having Blur**：无原型依据的全Sidebar、海报、所有Card/Input/Settings毛玻璃，多层叠blur；已有 Sidebar 例外见第 11 节。
 - **Purple AI Gradient / AI Glow / Everything Having Glow**：AI另起紫色主题、发光Sparkle边框、霓虹对话框。
 - **Excessive Gradient / Excessive Shadow / Excessive Border**：用装饰渐变、大阴影、每卡描边建立层级；Artwork功能性Scrim除外。
 - **Excessive Card / Card inside Card**：已有间距和标题能分组仍套多层容器。
@@ -957,7 +832,7 @@ Empty State / Error State 正文最多两三句，标题18，说明15，图标32
 
 ## 实施验收与维护边界
 
-本文初版完成了源码审计、指定参考研究与规则收敛；本次补充 HTML 优先的设计治理规则，并校正 Vue 迁移状态，仅修改文档，不宣称完成页面迁移或新的浏览器视觉验收。后续相关切片执行以下检查，结果随正常项目进度记录，不另建第二份设计事实源。
+下表用于当前任务涉及的 UI 状态验收；不要求普通局部修改重验整个产品。完成标准、文档更新与 Git 规则见 [AGENTS.md](AGENTS.md#工作方式与完成标准)。
 
 初版文档检查记录：本地来源链接可解析、CSS Token 引用均有定义、代码围栏成对。按不透明 Surface 的 sRGB 对比计算，Primary/Secondary/Tertiary 最低分别为12.77/5.41/4.61:1；control-border 对最亮 Floating 为3.13:1。88%玻璃覆盖白色背景时，合成底色约为`#373739`，Floating辅助文字对比约6.02:1。这是数值校验，不代替真实图片、焦点状态、浏览器渲染及性能验收。
 
@@ -977,31 +852,6 @@ Empty State / Error State 正文最多两三句，标题18，说明15，图标32
 | Responsive | 当前检查桌面窗口宽高变化、高 DPI / scaling、长片名/路径与布局稳定；五区间中的跨端布局及触摸验收 Deferred |
 | Business / Security | 无用户越权、凭据/临时定位泄露、伪播放进度；P0不新增服务或播放器 |
 
-当前代码与原型有差异时按“确认对应 HTML 及完整状态→忠实拆分/补齐 Vue 组件→统一 Token→补状态与可访问性→对照验证视觉及 Material/Motion”逐组件迁移。首批建议覆盖 Movie Card、Search/Popover、Source Form，不以建立设计系统为由改写所有 HTML，也不以当前 Vue 尚未实现为由删减原型。需要改 API 或业务状态时走正式切片契约确认，本文不承担接口设计。
-
 ## Agent Implementation Rules
 
-以下规则均受“当前实现阶段”约束；提及 keyboard、focus management、touch 或跨端响应式时是长期能力要求，不能据此为当前组件新增 Deferred 实现。
-
-1. 新增或重构 UI 前按 AGENTS.md 阅读项目状态与相关事实；完整核对对应 HTML、其共享样式和状态，以及当前 Vue 实现，再按本文判定已有页面或全新页面。
-2. 已有页面以 HTML 为最高视觉基准，优先演进已有 Vue 组件以忠实承接原型；没有组件时从共享 HTML/CSS 抽取。组件化不是重设计理由，Vue 占位不能覆盖原型。
-3. 优先复用匹配 HTML 视觉事实的 Token；不匹配时保留原值或使用准确语义/组件 Token。全局 Token 保持唯一出口，旧命名可暂存等值别名，不为统一变量改变视觉终点。
-4. 不创建无意义随机颜色；Artwork自身颜色不等于新增UI Accent。
-5. 不创建无意义随机Radius；圆形/比例/Checkbox明确例外不得推广。
-6. 不创建无意义随机Spacing；先判断属于哪种内容关系再选值。
-7. 不因单页需求创造新的Design Language；工具页只调密度，不换主题。
-8. Movie Artwork优先于UI Decoration；普通片库卡不得增加装饰容器。
-9. AI页面不得脱离影音视觉语言，AI推断不能覆盖影片/资源事实。
-10. Floating Glass只用于合适的临时浮层，必须有实色回退与可读性检查。
-11. 不滥用Liquid Glass；整页/Sidebar/Poster默认实色或图片本身。
-12. 不滥用Hover Scale；保留当前Poster不缩放行为，Focus和触摸有等效入口。
-13. 不滥用Spring；需要时实现Interruptibility与正确速度承接，不锁动画输入。
-14. 不滥用Card；Spacing与Typography足以表达关系时不套容器。
-15. 小UI修改不要随意修改整个设计系统或冻结需求/架构/开发规范。
-16. 冲突时明确指出证据和影响：产品事实遵守第 1 节；已有布局与明确视觉状态以 HTML 为准，未定义视觉细节由本文 fallback，运动、响应、无障碍与实现质量由本文 + Design Skill 约束，不静默重设计。
-17. 新设计经真实内容、状态、键盘和响应式验证成熟后才考虑更新本文。
-18. DESIGN.md改动属于设计系统变更，说明来源、影响和迁移边界；不创建DESIGN-v2等平行事实源。
-19. 积极使用 Apple Design Skill / 其他设计 Skill 增强即时反馈、连续性、可中断交互、自然动效、无障碍、响应式和实现质量；不得改变已有 HTML 的视觉终点、布局、导航、搜索入口、模块顺序、主要尺寸、密度和内容架形态。
-20. Skill示例不得直接覆盖项目规范；原生Web行为、不适用手势/营销模式需要主动舍弃。
-21. 完成切片前按上表审查全部适用状态；Mock演示、静态检查和真实浏览器/接口验证分开报告，不虚报完成度。
-22. 本文不授权扩展P0、修改业务/数据库/API、写入远程应用或执行Git操作；遵守当前任务授权和AGENTS.md。
+Agent 的上下文路由、自主执行、授权与完成规则统一见 [AGENTS.md](AGENTS.md)。本文维护设计值与适用 UI 验收，不另设任务阅读顺序或工作流。
