@@ -1,6 +1,7 @@
 # PROJECT STATUS
 
 - 最后更新时间：2026-09-15
+- 最近媒体来源范围决策：WebDAV MediaSource与扫描目录正式分离。添加WebDAV只建立连接，不自动扫描，也不默认选择根目录`/`；连接成功后可浏览来源当前可见的完整目录结构，并选择一个或多个MediaScanRoot。ScanTask只处理本人已启用来源下已配置、已启用的扫描根，目录浏览本身不产生MediaResource。用户后续可随时继续浏览、新增或移除MediaScanRoot，无需重建来源。当前只是产品/架构基线确认，尚未实现Vue、API、数据库或Spring Boot；MediaSourcesView仍为占位页，既有HTML / Mock不代表该规则已实现。
 - 最近详情图片 Mock 修正：15 部电影全部配置独立 backdropUrl，与竖版 posterUrl 分离；复用仓库已有横图并补齐 6 部 TMDB 横图，奥本海默改用真正横版素材。取消详情以竖图回退的行为，缺失 / 失败保留深色背景。浏览器逐片验证横图尺寸、与海报的内容哈希差异及横图失败不影响卡片；仍为本地 Mock。
 - 最近详情滚动条补齐：按 HTML 原型隐藏电影详情页的文档滚动条，保留鼠标滚轮滚动；使用页面存在条件限定样式，离页自动恢复。Chrome 验证隐藏 / 滚动 / 返回片库恢复通过，build 通过。
 - 最近电影详情验证：npm run build 与 git diff --check 通过；Chrome 完成 1366 / 1440 / 1600 / 1920px 同内容原型几何对照及整页截图检查，15 部电影、500px 短窗口、内容架箭头、三个入口、收藏 / 观看状态、简介展开、剧透确认与未接入提示、空片库访问限制、请求失败、非法 ID、缺图、无资源、减少动效 / 透明度和离页背景 / 侧栏材质清理检查通过。未单独验证 Edge 或系统级 Windows scaling；未提交 Git。
@@ -26,7 +27,7 @@
 - 最近片库加载状态：新增薄 movieService，复用 LibraryMovie 类型，350ms 异步获取独立 Mock 副本及来源选项；首次显示 12 个同尺寸骨架，loadingMore 默认关闭、开启后在网格尾部显示 6 个骨架，未实现分页或无限滚动。保持空片库、筛选无结果与既有卡片布局；未修改 Sidebar、MovieCard、LibraryToolbar 或 DESIGN.md。Chrome 自动化通过正常 15 部电影、首次 / 追加加载、空片库 / 无结果、卡片尺寸一致、四档桌面宽度和 reduced-motion 检查，npm run build 通过。追加 / 空片库通过自动化设置页面状态验收，无测试按钮；当前仍为演示 Mock，尚无真实登录接入。
 - 最近合集与搜索迁移：新增 CollectionCard、合集详情路由与薄 collectionService；15 部电影默认聚合为 13 张单片卡 + 1 张合集卡，有筛选时恢复单片，合集菜单只提供查看合集。详情仅展示本人拥有成员，支持非法 ID、空成员和图片降级；仍为本地 Mock，不扩展后端 P0 Collection 业务。Shell 搜索通过 movieService 查询片名、原片名、导演 / 演员（兼容年份 / 类型），保留原型浮层、最近 5 部内容、清空 / 无结果与关闭反馈，处理旧请求覆盖；电影结果仍记录 detail intent 并提示详情尚未开放。复用原生 dialog 行为，未新增自定义键盘或移动端交互。保留前次加载结束不覆盖用户筛选的修复。验证通过 npm run build、合集四档桌面宽度原型几何对照、搜索浮层原型几何对照、聚合 / 筛选 / 单成员 / 空成员 / 缺图 / 菜单、搜索最近内容 / 人员 / 原片名 / 无结果 / 连续输入 / 重新打开 / 空片库 / 短窗口滚动，以及加载筛选回归；本轮按用户要求未提交 Git。
 - 最近合集背景调整：按用户设计变更，Vue 与 HTML 合集页同步采用独立全宽首屏背景，延伸至侧栏背后，复用电影详情的渐变遮罩；保留标题、海报与成员网格布局。四档桌面宽度、路由离开背景清理与 build 验证通过，未提交。
-- 下一步：安排登录 / 空片库、WebDAV 来源与扫描的 Spring Boot 垂直联调。继续 Desktop + Mouse，复用已验收组件；随真实页面交互确认 API draft。
+- 下一步：登录 / 注册前端 → 媒体来源Vue → WebDAV目录选择与MediaScanRoot管理 → API契约 → Spring Boot垂直联调，逐步跑通空片库到主动扫描的闭环。继续Desktop + Mouse，复用已验收组件；媒体来源Endpoint / Request / Response随正式Vue交互确认后再新增draft。
 - 阻塞问题：无。
 - 最近图片规则决策：TMDB主Poster / 主Backdrop的P0选图规则已确定，直接使用Movie Details默认`poster_path` / `backdrop_path`，不再执行自定义图片语言优先级；中文片名和中文简介仍保持中文本地化优先。
 - 最近关键决策：前端优先、垂直切片、尽早联调；`UNIQUE(tmdb_id)`保证公共Movie唯一；TMDB负责图片来源、OSS负责长期存储与日常展示；管理员预建档为非P0。

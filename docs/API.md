@@ -87,6 +87,18 @@ Response：当前前端复用 `LibraryMovie` 展示字段，搜索行可附带�
 
 合集不是 Movie，不承载收藏、观看状态或播放操作，不建立 user_collection。此条仅记录用户授权的原型 / Mock 迁移，不新增 Spring Boot Collection API，不改变冻结基线中 Collection 完整业务非 P0 的范围。
 
+## 已确认的媒体来源接口语义边界
+
+当前仅确认产品/架构语义，尚未实现媒体来源Vue、HTTP API、数据库或Spring Boot能力，不属于implemented接口。
+
+- MediaSource是当前用户保存的一套WebDAV连接配置，MediaSource ≠ MediaScanRoot；一个来源允许0~N个MediaScanRoot，后者是用户明确选择、允许递归扫描的目录根。
+- 创建MediaSource不自动扫描，也不默认将`/`加入扫描根；需要支持连接测试及来源当前可见完整目录结构的逐层浏览。
+- 需要支持查看目录是否已为扫描根，以及MediaScanRoot新增、移除；后续增加扫描目录无需重建来源。
+- ScanTask由用户主动发起，只扫描本人已启用来源下已配置、已启用的MediaScanRoot；没有启用扫描根时不产生实际扫描结果。
+- 目录浏览是只读操作，不创建MediaResource、不建立个人片库关系、不触发TMDB、ffprobe或扫描；只返回展示所需目录/文件元信息。
+- Spring Boot依据可信CurrentUser校验来源、扫描根归属及路径边界，不信任前端sourceId、path、scanRootId或声明身份的userId；WebDAV密码、Token和认证Header不得返回Vue。
+- 正式Endpoint / Request / Response及错误契约等待Vue媒体来源切片确认后再新增draft，本轮不锁定具体路径。
+
 ## 条目模板
 
 ### 接口名称
