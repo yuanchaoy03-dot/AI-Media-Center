@@ -424,10 +424,14 @@ const groups: SidebarGroup[] = [
   :is(.sidebar-button, .sidebar-search, .sidebar-user, .menu-action, .account-menu) { transition: none; }
   .account-menu { transform: none; }
 }
-@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+/* Keep the prototype sidebar material when Windows disables transparency effects. */
+@media (prefers-contrast: more) {
   .app-sidebar { background: var(--color-surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
   .sidebar-search { background: var(--color-surface-2); -webkit-backdrop-filter: none; backdrop-filter: none; }
   .sidebar-button.router-link-active { -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .account-menu { background: var(--material-floating-fallback); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+@media (prefers-reduced-transparency: reduce) {
   .account-menu { background: var(--material-floating-fallback); -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
 :global(html[data-transparency='reduced'] .app-sidebar) { background: var(--color-surface); -webkit-backdrop-filter: none; backdrop-filter: none; }

@@ -1,6 +1,7 @@
 # PROJECT STATUS
 
-- 最后更新时间：2026-09-14
+- 最后更新时间：2026-09-15
+- 最近侧栏透明度修正：按用户确认，Vue 侧栏及其搜索 / 选中态不再因系统 prefers-reduced-transparency 自动切为实色，保持 HTML 原型材质；提高对比度、显式减少透明属性、无滤镜回退及账号浮层降级保留。Chrome 模拟普通 / 减少透明两种偏好，侧栏计算背景与模糊参数均与 HTML 一致。
 - 当前阶段：稳定文档基线已经完成并冻结，已开始首个正式前端业务切片，当前使用 Frontend Mock，尚未接入后端。
 - 最新阶段决策：当前 Vue 实现调整为 Windows 11 Desktop Chromium（Edge / Chrome）+ Mouse 优先；Mobile / Touch 和完整 Keyboard / Accessibility enhancement 延后到桌面核心业务闭环之后。HTML 原型跨端状态保留为后续参考，不在当前 Vue 迁移中同步实现；桌面窗口宽高适配仍须保证。
 - 范围调整说明：本轮 Windows Desktop + Mouse 确定项收敛已完成，已清理 MovieContextMenu、MovieCard、AppSidebar 和 App 的 Touch / 自定义键盘 / 手动焦点实现；保留桌面窗口适配、原生 HTML 行为、基础 aria、简单 focus-visible 和 reduced-motion。历史审计与原型中的跨端状态仅作为后续参考。
