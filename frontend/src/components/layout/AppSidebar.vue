@@ -94,7 +94,7 @@ const groups: SidebarGroup[] = [
 
 <template>
   <!-- 与原型语言一致，避免继承宿主 lang=en 后改变中文字体回退。 -->
-  <aside class="app-sidebar" lang="zh-CN" aria-label="应用侧栏">
+  <aside class="app-sidebar" :data-material="route.name === 'movie-detail' ? 'detail' : undefined" lang="zh-CN" aria-label="应用侧栏">
     <div class="sidebar-brand">
       <span class="sidebar-brand-mark" aria-hidden="true">
         <svg class="sidebar-icon" viewBox="0 0 256 256" focusable="false">
@@ -119,7 +119,7 @@ const groups: SidebarGroup[] = [
         <ul class="sidebar-list">
           <li v-for="item in group.items" :key="item.id">
             <RouterLink v-slot="{ isActive }" :to="{ name: item.id }"
-              class="sidebar-button" :class="{ 'router-link-active': item.id === 'library' && route.name === 'collection-detail' }" :aria-label="item.label" :title="item.label">
+              class="sidebar-button" :class="{ 'router-link-active': item.id === 'library' && (route.name === 'collection-detail' || route.name === 'movie-detail') }" :aria-label="item.label" :title="item.label">
               <svg class="sidebar-icon" viewBox="0 0 256 256" aria-hidden="true" focusable="false">
                 <use :href="`${sidebarIcons}#${isActive ? (item.activeIcon ?? item.icon) : item.icon}`" />
               </svg>
@@ -392,12 +392,17 @@ const groups: SidebarGroup[] = [
   }
 }
 @media (min-width: 901px) {
+  .app-sidebar[data-material='detail'] {
+    --sidebar-background: rgba(18, 18, 20, .72);
+    --sidebar-blur: blur(20px) saturate(110%);
+    --sidebar-border: rgba(255, 255, 255, .055);
+  }
   .app-sidebar {
-    border-color: rgba(255, 255, 255, .06);
-    background: rgba(20, 20, 22, .78);
+    border-color: var(--sidebar-border, rgba(255, 255, 255, .06));
+    background: var(--sidebar-background, rgba(20, 20, 22, .78));
     box-shadow: 0 8px 28px rgba(0, 0, 0, .16);
-    -webkit-backdrop-filter: blur(16px) saturate(118%);
-    backdrop-filter: blur(16px) saturate(118%);
+    -webkit-backdrop-filter: var(--sidebar-blur, blur(16px) saturate(118%));
+    backdrop-filter: var(--sidebar-blur, blur(16px) saturate(118%));
   }
 }
 @media (max-width: 900px) {

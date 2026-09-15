@@ -1,16 +1,17 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { RouterView, useRoute } from 'vue-router'
+import { RouterView, useRoute, useRouter } from 'vue-router'
 import AppSidebar from './components/layout/AppSidebar.vue'
 import GlobalSearch from './components/layout/GlobalSearch.vue'
 import type { LibraryMovie } from './types/movie'
 
 const searchOpen = ref(false)
 const route = useRoute()
+const router = useRouter()
 watch(() => route.fullPath, () => { searchOpen.value = false })
 function selectSearchMovie(movie: LibraryMovie) {
-  if (import.meta.env.DEV) console.info('[Library Mock intent]', 'detail', movie.id)
-  showNotice(`已选择《${movie.title}》，电影详情尚未开放。`)
+  searchOpen.value = false
+  void router.push({ name: 'movie-detail', params: { movieId: movie.id } })
 }
 const notice = ref('')
 function showNotice(message: string) {

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, shallowRef, useId, watch } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import MovieCard from '../components/media/MovieCard.vue'
 import MovieContextMenu from '../components/media/MovieContextMenu.vue'
 import { getLibraryCollections, getOwnedCollectionMembers } from '../services/collectionService'
@@ -9,6 +9,7 @@ import type { LibraryCollection } from '../types/collection'
 import type { LibraryMovie, WatchStatus } from '../types/movie'
 
 const route = useRoute()
+const router = useRouter()
 const collection = ref<LibraryCollection>()
 const movies = ref<LibraryMovie[]>([])
 const loading = ref(true)
@@ -55,6 +56,7 @@ function watchStatus(id: string, next: WatchStatus) {
   if (movie) { movie.watchStatus = next; announcement.value = `《${movie.title}》已标记为${next === 'watched' ? '已看' : '未看'}` }
 }
 function intent(action: string, id: string) {
+  if (action === 'detail') { void router.push({ name: 'movie-detail', params: { movieId: id } }); return }
   if (import.meta.env.DEV) console.info('[Library Mock intent]', action, id)
   announcement.value = action === 'detail' ? '电影详情尚未开放。' : action === 'play' ? '播放尚未接入。' : '媒体版本尚未开放。'
 }

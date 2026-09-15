@@ -115,8 +115,9 @@ function changeWatchStatus(movieId: string, next: WatchStatus) {
   movie.watchStatus = next
   announcement.value = `《${movie.title}》已标记为${next === 'watched' ? '已看' : '未看'}`
 }
-// 临时开发验收入口；仅记录意图，不代表已导航、播放或打开媒体版本。
+// 详情进入正式页面；播放与版本选择仍为 Mock 占位。
 function recordIntent(action: 'detail' | 'play' | 'versions', movieId: string) {
+  if (action === 'detail') { void router.push({ name: 'movie-detail', params: { movieId } }); return }
   if (import.meta.env.DEV) console.info('[Library Mock intent]', action, movieId)
 }
 </script>
