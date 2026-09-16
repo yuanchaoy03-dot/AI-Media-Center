@@ -163,6 +163,7 @@
   </style>
   <link rel="stylesheet" href="assets/css/personal-cinema-movie-card.css" />
   <link rel="stylesheet" href="assets/css/personal-cinema-workflow.css" />
+  <link rel="stylesheet" href="assets/css/personal-cinema-source-management.css" />
 </head>
 <body>
   <svg class="icon-sprite" fill="currentColor" aria-hidden="true">
@@ -228,7 +229,7 @@
 
           <div class="sources-workspace">
             <section class="sources-section" aria-labelledby="connectedTitle" data-od-id="connected-sources">
-              <h2 class="section-title" id="connectedTitle">已连接</h2>
+              <h2 class="section-title" id="connectedTitle">我的来源</h2>
               <div class="source-list" id="sourceList"></div>
               <div class="source-empty" id="sourceEmpty" hidden>
                 <div class="empty-icon"><svg aria-hidden="true"><use href="#ph-hard-drives"></use></svg></div>
@@ -277,12 +278,11 @@
       <div class="dialog-body">
         <form id="sourceFormPanel">
           <div class="form-grid" id="webdavFields">
-            <div class="form-field"><label for="sourceName">来源名称</label><input id="sourceName" name="name" placeholder="例如：AList · 迅雷云盘" autocomplete="off" /></div>
-            <div class="form-field"><label for="sourceAddress">WebDAV 地址</label><input id="sourceAddress" name="address" placeholder="https://example.com/dav" inputmode="url" autocomplete="url" /></div>
+            <div class="form-field"><label for="sourceName">来源名称</label><input id="sourceName" name="name" required maxlength="80" placeholder="例如：AList · 迅雷云盘" autocomplete="off" /></div>
+            <div class="form-field"><label for="sourceAddress">WebDAV 地址</label><input id="sourceAddress" name="address" type="url" required placeholder="https://example.com/dav" inputmode="url" autocomplete="url" /></div>
             <div class="form-field"><label for="sourceUsername">用户名</label><input id="sourceUsername" name="username" value="user" autocomplete="username" /></div>
-            <div class="form-field"><label for="sourcePassword">密码 / 凭据</label><input id="sourcePassword" name="password" type="password" autocomplete="current-password" /></div>
-            <div class="form-field"><label for="sourcePath">扫描根路径</label><input id="sourcePath" name="path" value="/" autocomplete="off" /></div>
-            <p class="form-help">支持 AList、NAS WebDAV、Nextcloud 等提供的标准 WebDAV 服务。</p>
+            <div class="form-field"><label for="sourcePassword">密码 / 凭据</label><input aria-describedby="credentialHelp" id="sourcePassword" name="password" type="password" autocomplete="current-password" /></div>
+            <p class="form-help" id="credentialHelp">原型仅模拟连接，请勿填写真实凭据。跳转后地址使用示例值，凭据不会保存。</p><p class="form-help">先保存连接，再进入来源选择扫描目录。添加来源不会开始扫描。</p>
           </div>
           <p class="connection-feedback" id="connectionFeedback" aria-live="polite"></p>
           <div class="dialog-actions">
@@ -324,25 +324,30 @@
     const sourceMenuScrim = document.getElementById('sourceMenuScrim');
     let activeSourceId = '';
     let sourceMenuButton = null;
-    let scanTimer = null;
+    const { escapeHtml, scanLabel } = window.PersonalCinemaSourceWorkflow;
+    const { persist, enabledRoots } = window.PersonalCinemaMediaSourceMock;
 
     function statusMarkup(source){
       return window.PersonalCinemaSourceWorkflow.sourceStatusMarkup(source);
     }
 
+    window.addEventListener('pageshow', event => { if (event.persisted) location.reload(); });
+
     function renderSources(){
       sourceList.innerHTML = sources.map(source => `
         <article class="source-item" data-source-id="${source.id}" data-od-id="source-item-${source.id}">
-          <button class="source-hit" type="button" data-source-detail="${source.id}" data-route="source-detail" aria-label="查看${source.name}详情"></button>
+          <button class="source-hit" type="button" data-source-detail="${source.id}" data-route="source-detail" aria-label="查看${escapeHtml(source.name)}详情"></button>
           <span class="source-icon"><svg aria-hidden="true"><use href="#${source.icon}"></use></svg></span>
           <span class="source-copy">
-            <strong class="source-name">${source.name}</strong>
+            <strong class="source-name">${escapeHtml(source.name)}</strong>
             <span class="source-type">${source.type}</span>
-            <span class="source-location">${source.location}</span>
+            <span class="source-location">${escapeHtml(source.location)}</span>
           </span>
           <span class="source-status" aria-live="polite">${statusMarkup(source)}</span>
+          <span class="source-config">${source.scanRoots.length ? `已配置 ${source.scanRoots.length} 个扫描目录 · ${enabledRoots(source).length} 个启用` : '未配置扫描目录'}</span>
+          ${!source.scanRoots.length ? `<a class="source-config-link" href="personal-cinema-media-source-detail.html?source=${encodeURIComponent(source.id)}#scan-roots">选择扫描目录 →</a>` : ''}
           <span class="source-footer"><span class="source-count">${getMoviesBySourceId(source.id).length} 部电影</span><span class="meta-divider" aria-hidden="true">·</span><span class="source-last-scan">上次扫描 · ${source.lastScan}</span></span>
-          <button class="source-more" type="button" data-source-more="${source.id}" aria-label="${source.name}更多操作" aria-haspopup="menu" aria-expanded="false"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button>
+          <button class="source-more" type="button" data-source-more="${source.id}" aria-label="${escapeHtml(source.name)}更多操作" aria-haspopup="menu" aria-expanded="false"><svg aria-hidden="true"><use href="#ph-dots-three-bold"></use></svg></button>
         </article>
       `).join('');
       sourceList.hidden = sources.length === 0;
@@ -354,9 +359,9 @@
       const visibleScans = scans.filter(scan => currentIds.has(scan.sourceId));
       scanList.innerHTML = visibleScans.map(scan => `
         <article class="scan-item" data-od-id="scan-item-${scan.sourceId}">
-          <button class="scan-hit" type="button" data-scan-detail="${scan.id}" data-scan-source="${scan.sourceId}" aria-label="查看${getSourceById(scan.sourceId).name}扫描详情"></button>
-          <span class="scan-icon"><svg aria-hidden="true"><use href="#ph-check-circle"></use></svg></span>
-          <span class="scan-copy"><strong>${getSourceById(scan.sourceId).name}</strong><span>${scan.status === 'pending' ? '等待首次扫描' : `扫描完成 · 新增 ${getAddedMovies(scan).length} 部 · 待确认 ${getPendingIds(scan).length} 个 · 需要注意 ${scan.attentionCount} 个`}</span></span>
+          <button class="scan-hit" type="button" data-scan-detail="${scan.id}" data-scan-source="${scan.sourceId}" aria-label="查看${escapeHtml(getSourceById(scan.sourceId).name)}扫描详情"></button>
+          <span class="scan-icon"><svg aria-hidden="true"><use href="${scan.status === 'running' ? '#ph-clock-counter-clockwise' : '#ph-check-circle'}"></use></svg></span>
+          <span class="scan-copy"><strong>${escapeHtml(getSourceById(scan.sourceId).name)}</strong><span>${scan.status === 'running' ? '扫描中 · 仅扫描已启用的目录' : scan.status === 'pending' ? '等待首次扫描' : `扫描完成 · 新增 ${getAddedMovies(scan).length} 部 · 待确认 ${getPendingIds(scan).length} 个 · 需要注意 ${scan.attentionCount} 个`}</span></span>
           <time class="scan-time">${scan.time}</time>
           <svg class="scan-chevron" aria-hidden="true"><use href="#ph-caret-right"></use></svg>
         </article>
@@ -391,19 +396,25 @@
     function openSourceMenu(button,id){
       closeSourceMenu(false);
       activeSourceId = id;
+      sourceMenu.querySelector('[data-source-action=scan] span').textContent = scanLabel(getSourceById(id));
       sourceMenuButton = button;
       button.setAttribute('aria-expanded','true');
       sourceMenu.dataset.open = 'true';
       sourceMenuScrim.dataset.open = 'true';
+      positionSourceMenu();
+      sourceMenu.querySelector('button').focus();
+    }
+
+    function positionSourceMenu(){
+      if (!sourceMenuButton || sourceMenu.dataset.open !== 'true') return;
       if(window.innerWidth > 900){
-        const rect = button.getBoundingClientRect();
+        const rect = sourceMenuButton.getBoundingClientRect();
         const menuWidth = 176;
         const top = Math.min(rect.bottom + 6,window.innerHeight - sourceMenu.offsetHeight - 12);
         const left = Math.min(rect.right - menuWidth,window.innerWidth - menuWidth - 12);
         sourceMenu.style.top = `${Math.max(12,top)}px`;
         sourceMenu.style.left = `${Math.max(12,left)}px`;
       }
-      sourceMenu.querySelector('button').focus();
     }
 
     function closeSourceMenu(restoreFocus=true){
@@ -419,13 +430,7 @@
     function scanSource(id){
       const source = sources.find(item => item.id === id);
       if(!source) return;
-      source.status = 'scanning';
-      renderSources();
-      announce(`${source.name}正在扫描`);
-      clearTimeout(scanTimer);
-      scanTimer = setTimeout(() => {
-        window.location.href = window.PersonalCinemaSourceWorkflow.getScanStartHref(id);
-      },120);
+      window.location.href = window.PersonalCinemaSourceWorkflow.getScanStartHref(id);
     }
 
     function openSourceDetail(sourceId){
@@ -448,10 +453,12 @@
       const source = sources.find(item => item.id === detail.dataset.scanSource);
       if(source){
         announce(`正在打开${source.name}的扫描详情`);
-        window.location.href = `personal-cinema-scan-task.html?state=complete&source=${encodeURIComponent(source.id)}&task=${encodeURIComponent(detail.dataset.scanDetail)}`;
+        window.location.href = `personal-cinema-scan-task.html?state=${scans.find(task => task.id === detail.dataset.scanDetail)?.status === 'running' ? 'running' : 'complete'}&source=${encodeURIComponent(source.id)}&task=${encodeURIComponent(detail.dataset.scanDetail)}`;
       }
     });
 
+    window.addEventListener('resize', () => closeSourceMenu(false));
+    document.querySelector('.app-main').addEventListener('scroll', positionSourceMenu);
     sourceMenuScrim.addEventListener('click',() => closeSourceMenu());
     sourceMenu.addEventListener('click',event => {
       const action = event.target.closest('[data-source-action]');
@@ -465,7 +472,9 @@
       if(action.dataset.sourceAction === 'edit') openSourceDialog(source);
       if(action.dataset.sourceAction === 'remove'){
         const index = sources.findIndex(item => item.id === id);
+        if (!confirm(`移除“${source.name}”及其扫描目录配置？此原型不会删除云端文件。`)) return;
         if(index > -1) sources.splice(index,1);
+        persist();
         renderSources();renderScans();renderRecentMedia();announce(`已移除${source.name}`);
       }
     });
@@ -488,12 +497,10 @@
       dialogTrigger = document.activeElement;
       sourceDialogScrim.dataset.open = 'true';
       document.body.setAttribute('data-dialog-open','true');
+      document.querySelector('.app-shell').inert = true;
       editingSourceId = source ? source.id : '';
       showSourceForm(source);
-      requestAnimationFrame(() => {
-        const target = sourceDialog.querySelector('button:not([hidden]),input:not([hidden])');
-        if(target) target.focus();
-      });
+      document.getElementById('sourceName').focus();
     }
 
     function showSourceForm(source=null){
@@ -505,18 +512,19 @@
       webdavFields.hidden = false;testConnection.hidden = false;
       document.getElementById('sourceName').value = source?.name || '';
       document.getElementById('sourceAddress').value = source?.address || '';
-      document.getElementById('sourceUsername').value = source?.username || '';
+      document.getElementById('sourceUsername').value = '';
+      document.getElementById('sourcePassword').placeholder = source ? '留空保留已保存的凭据（演示）' : '输入凭据（演示）';
       document.getElementById('sourcePassword').value = '';
-      document.getElementById('sourcePath').value = source?.rootPath || '/';
       testConnection.textContent = '测试连接';testConnection.disabled = false;
-      saveSource.disabled = !source;saveSource.textContent = source ? '保存更改' : '添加来源';
-      requestAnimationFrame(() => document.getElementById('sourceName').focus());
+      saveSource.disabled = true;saveSource.textContent = source ? '保存更改' : '添加来源';
     }
 
     function closeSourceDialog(){
       clearTimeout(connectionTimer);
+      document.getElementById('sourcePassword').value = '';
       sourceDialogScrim.dataset.open = 'false';
       document.body.removeAttribute('data-dialog-open');
+      document.querySelector('.app-shell').inert = false;
       dialogState = 'closed';
       if(dialogTrigger && document.contains(dialogTrigger)) dialogTrigger.focus();
     }
@@ -524,36 +532,51 @@
     document.getElementById('addSourceButton').addEventListener('click',() => openSourceDialog());
     document.getElementById('emptyAddSource').addEventListener('click',() => openSourceDialog());
     document.getElementById('dialogClose').addEventListener('click',closeSourceDialog);
-    sourceDialogScrim.addEventListener('click',event => {if(event.target === sourceDialogScrim) closeSourceDialog();});
+    // Outside clicks do not discard the connection form.
 
     testConnection.addEventListener('click',() => {
+      if (!sourceFormPanel.reportValidity()) return;
+      const endpoint = new URL(document.getElementById('sourceAddress').value);
+      if (!['http:','https:'].includes(endpoint.protocol) || endpoint.username || endpoint.password || endpoint.search || endpoint.hash) {
+        connectionFeedback.textContent = '请输入 HTTP(S) WebDAV 地址；凭据请填在独立字段，不要放入地址。'; return;
+      }
       testConnection.disabled = true;saveSource.disabled = true;testConnection.textContent = '正在连接…';
       connectionFeedback.textContent = '正在连接…';connectionFeedback.dataset.success = 'false';
       clearTimeout(connectionTimer);
       connectionTimer = setTimeout(() => {
         testConnection.disabled = false;testConnection.textContent = '重新测试';saveSource.disabled = false;
-        connectionFeedback.textContent = '✓ 连接成功';connectionFeedback.dataset.success = 'true';
+        const failed = endpoint.hostname.includes('offline') || endpoint.hostname === 'cloud.example.com';
+        saveSource.disabled = failed;
+        connectionFeedback.textContent = failed ? '连接失败（演示）：服务不可达，请检查地址后重试。' : '连接成功（演示）。尚未扫描；连接结果不代表文件可播放。';
+        connectionFeedback.dataset.success = String(!failed);
       },850);
+    });
+
+    sourceFormPanel.addEventListener('input', () => {
+      clearTimeout(connectionTimer); saveSource.disabled = true; testConnection.disabled = false;
+      testConnection.textContent = '测试连接'; connectionFeedback.dataset.success = 'false';
+      connectionFeedback.textContent = '连接信息已更改，请重新测试。';
     });
 
     sourceFormPanel.addEventListener('submit',event => {
       event.preventDefault();
+      if (saveSource.disabled || connectionFeedback.dataset.success !== 'true') return;
       const name = document.getElementById('sourceName').value.trim() || '我的 WebDAV';
       const address = document.getElementById('sourceAddress').value.trim();
-      const username = document.getElementById('sourceUsername').value.trim();
-      const rootPath = document.getElementById('sourcePath').value.trim() || '/';
       const host = address.replace(/^https?:\/\//,'').replace(/\/$/,'') || 'WebDAV';
-      const location = `${host} · ${rootPath}`;
+      const location = host;
       const typeLabel = 'WebDAV';
       const icon = 'ph-cloud';
-      const existing = editingSourceId ? sources.find(item => item.id === editingSourceId) : sources.find(item => item.name === name);
-      if(existing){Object.assign(existing,{name,address,username,rootPath,location,type:typeLabel,icon});}
+      const existing = editingSourceId ? sources.find(item => item.id === editingSourceId) : null;
+      if(existing){Object.assign(existing,{name,address,location,type:typeLabel,icon,status:'available',connectionError:'',lastConnection:'刚刚'});}
       else{
         const id = `source-${Date.now()}`;
-        sources.push({id,name,address,username,rootPath,type:typeLabel,location,status:'available',lastScan:'尚未扫描',icon});
-        scans.unshift({id:`scan-${id}`,sourceId:id,status:'pending',recognizedMovieIds:[],pendingIds:[],attentionCount:0,time:'刚刚'});
+        sources.push({id,name,address,type:typeLabel,location,status:'available',lastConnection:'刚刚',lastScan:'尚未扫描',scanRoots:[],icon});
       }
-      renderSources();renderScans();renderRecentMedia();closeSourceDialog();announce(`${name}已添加`);
+      persist();
+      const saved = existing || sources.at(-1);
+      closeSourceDialog();
+      window.location.href = `personal-cinema-media-source-detail.html?source=${encodeURIComponent(saved.id)}${existing ? '' : '&created=1'}`;
     });
 
     sourceDialog.addEventListener('keydown',event => {
@@ -624,14 +647,14 @@
         else if(sourceMenu.dataset.open === 'true') closeSourceMenu();
         else if(accountWrap.dataset.open === 'true'){accountWrap.dataset.open='false';accountButton.setAttribute('aria-expanded','false');accountButton.focus();}
       }
-      if(event.key === '/' && document.activeElement !== searchInput){event.preventDefault();openSearch();}
+      if(event.key === '/' && !event.target.closest('input,textarea,[contenteditable]') && sourceDialogScrim.dataset.open !== 'true'){event.preventDefault();openSearch();}
     });
 
     renderSources();
     renderScans();
     const editSource = getSourceById(new URLSearchParams(window.location.search).get('edit'));
     if(editSource) openSourceDialog(editSource);
-    window.addEventListener('pageshow', event => { if(event.persisted) renderScans(); });
+
     window.addEventListener('storage', event => {
       if(event.key === null || event.key.startsWith('personalCinema.matching.')) renderScans();
     });

@@ -3,11 +3,20 @@
   const icon = name => `<svg aria-hidden="true"><use href="#${name}"></use></svg>`;
   const params = new URLSearchParams(window.location.search);
   const { getTask, getAddedMovies, getPendingIds } = window.PersonalCinemaScanMock;
-  const scanTask = getTask(params.get('task'), params.get('source'));
+  const sourceMock = window.PersonalCinemaMediaSourceMock;
+  const detailHref = id => `personal-cinema-media-source-detail.html?source=${encodeURIComponent(id || '')}#scan-roots`;
+  const requestedSource = sourceMock.getSourceById(params.get('source'));
+  const startsNew = params.get('autostart') === '1';
+  if (startsNew && (!requestedSource || requestedSource.status !== 'available' || !sourceMock.enabledRoots(requestedSource).length)) {
+    window.location.replace(detailHref(params.get('source'))); return;
+  }
+  const scanTask = startsNew ? window.PersonalCinemaScanMock.startTask(requestedSource) : getTask(params.get('task'), params.get('source'));
+  const sourceProfile = sourceMock.getSourceById(scanTask.sourceId);
+  if (!sourceProfile || !scanTask.rootPaths?.length) { window.location.replace(detailHref(scanTask.sourceId)); return; }
+  if (startsNew) params.set('task', scanTask.id);
   const addedMovies = getAddedMovies(scanTask);
   const requestedTaskId = scanTask.id;
-  const sourceProfile = window.PersonalCinemaMediaSourceMock.getSourceById(scanTask.sourceId)
-    || { name: '未找到媒体来源', type: 'WebDAV', rootPath: '/' };
+  const scopeLabel = scanTask.rootPaths.join('、');
   const storageKey = `personalCinema.scan.${requestedTaskId}`;
   const matchingKey = `personalCinema.matching.${requestedTaskId}`;
   const duration = 16000;
@@ -49,9 +58,9 @@
 
   $('sourceName').textContent = sourceProfile.name;
   $('taskOverviewTitle').textContent = `${sourceProfile.name} · ${sourceProfile.type}`;
-  $('taskRootLabel').textContent = `扫描根路径 ${sourceProfile.rootPath}`;
+  $('taskRootLabel').textContent = `扫描目录（${scanTask.rootPaths.length}） · ${scopeLabel}`;
   $('taskSourceMeta').lastChild.textContent = sourceProfile.name;
-  $('taskPathMeta').lastChild.textContent = sourceProfile.rootPath;
+  $('taskPathMeta').lastChild.textContent = scopeLabel;
   $('taskIdMeta').textContent = `task_id · ${requestedTaskId}`;
 
   function readJSON(key) {
@@ -65,10 +74,10 @@
   }
 
   let task = readJSON(storageKey);
-  let forceComplete = params.get('state') === 'complete';
+  let forceComplete = params.get('state') === 'complete' || (!startsNew && scanTask.status === 'completed' && params.get('state') !== 'failed');
   let forceFailed = params.get('state') === 'failed';
   if (params.get('autostart') === '1' || !task || task.sourceId !== scanTask.sourceId) {
-    task = { id: requestedTaskId, sourceId: scanTask.sourceId, createdAt: Date.now(), status: 'running' };
+    task = { id: requestedTaskId, sourceId: scanTask.sourceId, createdAt: Date.now(), status: forceComplete ? 'completed' : 'running' };
     writeJSON(storageKey, task);
     if (params.get('autostart') === '1') {
       try { localStorage.removeItem(matchingKey); } catch { /* no-op */ }
@@ -242,6 +251,10 @@
     const failed = forceFailed;
     if (completed && task.status !== 'completed') {
       task.status = 'completed';
+      if (scanTask.prototypeRun) {
+        scanTask.status = 'completed'; sourceProfile.lastScan = '刚刚';
+        window.PersonalCinemaScanMock.persistTasks(); sourceMock.persist();
+      }
       task.completedAt = Date.now();
       writeJSON(storageKey, task);
       window.PersonalCinemaShell?.announce(`扫描完成，${completedMovies} 部电影已加入片库，${pendingTotal()} 部电影需要确认`);
@@ -329,24 +342,16 @@
   });
 
   $('retryScan').addEventListener('click', () => {
-    if (timer) clearInterval(timer);
-    forceComplete = false;
-    forceFailed = false;
-    task = { id: requestedTaskId, sourceId: scanTask.sourceId, createdAt: Date.now(), status: 'running' };
-    writeJSON(storageKey, task);
-    try { localStorage.removeItem(matchingKey); } catch { /* no-op */ }
-    params.delete('state');
-    params.delete('autostart');
-    const query = params.toString();
-    history.replaceState({}, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
-    render();
-    timer = setInterval(render, 600);
-    window.PersonalCinemaShell?.announce(`扫描任务 ${requestedTaskId} 已重新开始`);
+    const source = sourceMock.getSourceById(scanTask.sourceId);
+    if (!source || source.status !== 'available' || !sourceMock.enabledRoots(source).length) {
+      window.location.href = detailHref(scanTask.sourceId); return;
+    }
+    window.location.href = `personal-cinema-scan-task.html?autostart=1&source=${encodeURIComponent(source.id)}`;
   });
 
   // Matching can change while this completed page is cached or open in another tab.
   window.addEventListener('pageshow', event => {
-    if (event.persisted) render();
+    if (event.persisted) location.reload();
   });
   window.addEventListener('storage', event => {
     if (event.key === matchingKey || event.key === null) render();

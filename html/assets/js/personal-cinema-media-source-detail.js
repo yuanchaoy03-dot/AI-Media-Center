@@ -23,16 +23,99 @@
   $('summaryType').textContent = source.type;
   $('summaryStatus').innerHTML = sourceStatusMarkup(source);
   $('summaryAddress').textContent = source.address;
-  $('summaryPath').textContent = source.rootPath;
+  $('summaryConnection').textContent = source.lastConnection;
   $('summaryMovieCount').textContent = `${sourceMovies.length} 部电影`;
   $('summaryLastScan').textContent = source.lastScan;
   $('sourceMovieCount').textContent = `${sourceMovies.length} 部`;
   $('editSourceLink').href = `personal-cinema-media-sources.html?edit=${encodeURIComponent(sourceId)}`;
-  document.querySelectorAll('[data-start-scan]').forEach(link => { link.href = getScanStartHref(sourceId); });
   $('sourceWorkspace').hidden = false;
   $('recentMediaGrid').replaceChildren(...sourceMovies.map(renderMovieCard));
   $('recentMediaGrid').hidden = sourceMovies.length === 0;
   $('sourceMoviesEmpty').hidden = sourceMovies.length !== 0;
+
+  const mock = window.PersonalCinemaMediaSourceMock;
+  const { escapeHtml, scanLabel } = window.PersonalCinemaSourceWorkflow;
+  const notice = $('connectionNotice');
+  function renderConfiguration() {
+    $('summaryStatus').innerHTML = sourceStatusMarkup(source);
+    $('summaryConnection').textContent = source.lastConnection;
+    $('scanRootsEmpty').hidden = source.scanRoots.length > 0;
+    $('scanRootsList').innerHTML = source.scanRoots.map((root, index) => `<div class="scan-root-row"><div><code>${escapeHtml(root.path)}</code><span>${root.enabled ? '已启用' : '已停用 · 不参与扫描'}</span></div><div class="root-actions"><button class="secondary-action" data-toggle-root="${index}" type="button">${root.enabled ? '停用' : '启用'}</button><button class="quiet-action" data-remove-root="${index}" type="button">移除</button></div></div>`).join('');
+    $('addScanRoot').disabled = source.status !== 'available';
+    notice.textContent = source.status === 'error' ? source.connectionError : params.has('created') && !source.scanRoots.length ? '来源已创建。尚未配置扫描目录，也未开始扫描。' : source.status === 'testing' ? '正在测试连接（演示）…' : '连接测试仅验证连通性，不代表已扫描或文件可播放。';
+    document.querySelectorAll('[data-start-scan]').forEach(link => {
+      link.textContent = scanLabel(source);
+      link.href = getScanStartHref(sourceId);
+    });
+  }
+  $('scanRootsList').addEventListener('click', event => {
+    const toggle = event.target.closest('[data-toggle-root]');
+    const remove = event.target.closest('[data-remove-root]');
+    if (toggle) { const root = source.scanRoots[Number(toggle.dataset.toggleRoot)]; root.enabled = !root.enabled; }
+    if (remove) {
+      const index = Number(remove.dataset.removeRoot);
+      if (!confirm(`移除扫描目录“${source.scanRoots[index].path}”？后续扫描将不再包含此配置；不会删除云端文件。`)) return;
+      source.scanRoots.splice(index, 1);
+    }
+    mock.persist(); renderConfiguration();
+  });
+  $('testSourceConnection').addEventListener('click', () => {
+    source.status = 'testing'; renderConfiguration(); $('testSourceConnection').disabled = true;
+    setTimeout(() => {
+      source.status = source.connectionError ? 'error' : 'available'; source.lastConnection = '刚刚';
+      mock.persist(); renderConfiguration(); $('testSourceConnection').disabled = false;
+    }, 650);
+  });
+  const directoryDialog = $('directoryDialog');
+  let currentPath = '/';
+  const selectedPaths = new Set();
+  function renderDirectory() {
+    $('directoryPath').textContent = currentPath;
+    $('directoryUp').disabled = currentPath === '/';
+    const configured = source.scanRoots.find(root => root.path === currentPath);
+    const selected = selectedPaths.has(currentPath);
+    $('selectDirectory').disabled = Boolean(configured);
+    $('selectDirectory').textContent = configured ? '已配置此目录' : selected ? '取消选择当前目录' : '选择当前目录';
+    $('directorySelectionState').textContent = configured ? `已配置 · ${configured.enabled ? '已启用' : '已停用，可在详情中启用'}` : selected ? '已加入本次选择' : '当前目录尚未选择';
+    const children = mock.directories[currentPath] || [];
+    $('directoryList').replaceChildren(...children.map(name => {
+      const path = `${currentPath === '/' ? '' : currentPath}/${name}`;
+      const button = document.createElement('button'); button.type = 'button'; button.className = 'directory-row';
+      const existing = source.scanRoots.find(root => root.path === path);
+      button.innerHTML = `<svg aria-hidden="true"><use href="#ph-folder"></use></svg><span>${escapeHtml(name)}</span><small>${existing ? '已配置' : selectedPaths.has(path) ? '已选' : '目录'}</small><span aria-hidden="true">›</span>`;
+      button.addEventListener('click', () => { currentPath = path; renderDirectory(); }); return button;
+    }));
+    if (!children.length) { const empty = document.createElement('p'); empty.className = 'source-note'; empty.textContent = '没有子目录。你仍可以选择当前目录。'; $('directoryList').append(empty); }
+    $('selectedDirectoryCount').textContent = selectedPaths.size;
+    $('selectedDirectories').replaceChildren(...[...selectedPaths].map(path => {
+      const button = document.createElement('button'); button.className = 'selected-directory'; button.type = 'button';
+      button.textContent = `${path} ×`; button.setAttribute('aria-label', `取消选择 ${path}`);
+      button.addEventListener('click', () => { selectedPaths.delete(path); renderDirectory(); }); return button;
+    }));
+    $('saveDirectories').disabled = !selectedPaths.size;
+  }
+  $('addScanRoot').addEventListener('click', () => {
+    if (source.status !== 'available') return;
+    currentPath = '/'; selectedPaths.clear(); renderDirectory(); directoryDialog.showModal();
+  });
+  $('directoryUp').addEventListener('click', () => { currentPath = currentPath.slice(0, currentPath.lastIndexOf('/')) || '/'; renderDirectory(); });
+  $('selectDirectory').addEventListener('click', () => {
+    if (selectedPaths.has(currentPath)) selectedPaths.delete(currentPath); else selectedPaths.add(currentPath);
+    renderDirectory();
+  });
+  function cancelDirectory(event) {
+    if (selectedPaths.size && !confirm('放弃本次尚未保存的目录选择？')) { event?.preventDefault(); return; }
+    directoryDialog.close();
+  }
+  $('closeDirectory').addEventListener('click', cancelDirectory);
+  directoryDialog.addEventListener('cancel', cancelDirectory);
+  $('saveDirectories').addEventListener('click', () => {
+    if (!selectedPaths.size || source.status !== 'available') return;
+    source.scanRoots.push(...[...selectedPaths].filter(path => !source.scanRoots.some(root => root.path === path)).map(path => ({path, enabled:true})));
+    mock.persist(); renderConfiguration(); directoryDialog.close();
+    notice.textContent = '扫描目录已保存。准备好后，点击“立即扫描”。';
+  });
+  renderConfiguration();
 
   function renderScans() {
     const sourceTasks = tasks.filter(task => task.sourceId === sourceId);
@@ -56,7 +139,7 @@
     $('sourceScansEmpty').hidden = sourceTasks.length !== 0;
   }
   renderScans();
-  window.addEventListener('pageshow', event => { if (event.persisted) renderScans(); });
+  window.addEventListener('pageshow', event => { if (event.persisted) location.reload(); });
   window.addEventListener('storage', event => {
     if (event.key === null || event.key.startsWith('personalCinema.matching.')) renderScans();
   });

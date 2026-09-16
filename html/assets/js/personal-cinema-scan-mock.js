@@ -90,6 +90,20 @@
         } } }
   ];
 
+  // Historical scopes remain stable when current directory configuration changes.
+  tasks.forEach(task => { task.rootPaths = task.sourceId === 'source-nextcloud' ? ['/Cinema'] : ['/Movies']; });
+  try { const saved = JSON.parse(sessionStorage.getItem('personalCinema.scanTasks.v2')); if (Array.isArray(saved)) tasks.unshift(...saved); } catch { /* fixtures only */ }
+  function persistTasks() {
+    try { sessionStorage.setItem('personalCinema.scanTasks.v2', JSON.stringify(tasks.filter(task => task.prototypeRun))); } catch { /* unavailable */ }
+  }
+  function startTask(source) {
+    const rootPaths = window.PersonalCinemaMediaSourceMock.enabledRoots(source).map(root => root.path);
+    if (source.status !== 'available' || !rootPaths.length) return null;
+    // New scans illustrate execution only; do not invent files outside the chosen roots.
+    const task = {id:`scan-demo-${Date.now()}`,sourceId:source.id,rootPaths,prototypeRun:true,status:'running',time:'刚刚',recognizedMovieIds:[],pendingIds:[],skippedFiles:[],results:{}};
+    withCounts(task); tasks.unshift(task); persistTasks(); return task;
+  }
+
   function getAddedMovies(task) {
     const sourceMovies = getMoviesBySourceId(task.sourceId);
     return [...new Set(task.recognizedMovieIds)]
@@ -109,7 +123,7 @@
   function getTask(taskId, sourceId) {
     const seed = tasks.find(task => task.id === taskId && (!sourceId || task.sourceId === sourceId))
       || tasks.find(task => task.sourceId === sourceId)
-      || (!sourceId && tasks[0]);
+      || (!sourceId && tasks.find(task => !task.prototypeRun));
     if (!seed) return { id: taskId || `scan-${sourceId}`, sourceId, recognizedMovieIds: [],
       pendingIds: [], skippedFiles: [], results: {}, attentionCount: 0 };
     return taskId && !tasks.some(task => task.id === taskId) ? withCounts({ ...seed, id: taskId }) : seed;
@@ -123,5 +137,5 @@
     return task;
   }
   tasks.forEach(withCounts);
-  window.PersonalCinemaScanMock = { tasks, getTask, getAddedMovies, getPendingIds };
+  window.PersonalCinemaScanMock = { tasks, getTask, getAddedMovies, getPendingIds, startTask, persistTasks };
 })();

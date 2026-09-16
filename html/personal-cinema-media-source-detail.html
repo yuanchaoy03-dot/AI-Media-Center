@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="assets/css/personal-cinema-ingest.css" />
   <link rel="stylesheet" href="assets/css/personal-cinema-workflow.css" />
   <link rel="stylesheet" href="assets/css/personal-cinema-movie-card.css" />
+  <link rel="stylesheet" href="assets/css/personal-cinema-source-management.css" />
 </head>
 <body>
   <svg class="icon-sprite" fill="currentColor" aria-hidden="true" focusable="false">
@@ -83,11 +84,18 @@
               </div>
               <dl class="source-meta-grid">
                 <div><dt>地址</dt><dd id="summaryAddress"></dd></div>
-                <div><dt>根目录</dt><dd id="summaryPath"></dd></div>
+                <div><dt>最近连接测试</dt><dd id="summaryConnection"></dd></div>
                 <div><dt>电影</dt><dd id="summaryMovieCount"></dd></div>
                 <div><dt>最近扫描</dt><dd id="summaryLastScan"></dd></div>
               </dl>
-              <div class="header-actions"><a class="secondary-action" id="editSourceLink">编辑来源</a><a class="primary-action" data-start-scan>立即扫描</a></div>
+              <p class="source-note" id="connectionNotice" aria-live="polite"></p>
+              <div class="header-actions"><button class="secondary-action" id="testSourceConnection" type="button">测试连接</button><a class="secondary-action" id="editSourceLink">编辑来源</a><a class="primary-action" data-start-scan>立即扫描</a></div>
+            </section>
+            <section class="sources-section" id="scan-roots" aria-labelledby="scanRootsTitle">
+              <div class="section-heading-row"><h2 class="section-title" id="scanRootsTitle">扫描目录</h2><button class="secondary-action" id="addScanRoot" type="button">添加扫描目录</button></div>
+              <p class="source-note" id="rootExplanation">仅递归扫描已启用的目录；保存目录后仍需主动开始扫描。</p>
+              <div id="scanRootsList"></div>
+              <p class="source-empty-panel" id="scanRootsEmpty">尚未选择扫描目录。添加目录后，系统只扫描你指定的位置。</p>
             </section>
             <section class="sources-section" aria-labelledby="sourceMoviesTitle">
               <div class="section-title-line"><h2 class="section-title" id="sourceMoviesTitle">此来源的电影</h2><span class="section-count" id="sourceMovieCount"></span></div>
@@ -106,6 +114,15 @@
       </div>
     </main>
   </div>
+
+  <dialog class="directory-dialog" id="directoryDialog" aria-labelledby="directoryTitle">
+    <div class="directory-heading"><div><h2 id="directoryTitle">添加扫描目录</h2><p class="source-note">浏览此 WebDAV，选择一个或多个目录。保存不会开始扫描。</p></div><button class="secondary-action" id="closeDirectory" type="button">取消</button></div>
+    <div class="directory-toolbar"><button class="secondary-action" id="directoryUp" type="button">返回上一级</button><code id="directoryPath"></code></div>
+    <div class="directory-list" id="directoryList"></div>
+    <div class="directory-current"><span class="source-note" id="directorySelectionState" aria-live="polite"></span><button class="secondary-action" id="selectDirectory" type="button">选择当前目录</button></div>
+    <div class="directory-selection"><h3>本次已选 <span id="selectedDirectoryCount">0</span></h3><div id="selectedDirectories"></div></div>
+    <div class="directory-footer"><p class="source-note">已配置的目录会标记显示，不能重复添加。</p><button class="primary-action" id="saveDirectories" type="button" disabled>保存扫描目录</button></div>
+  </dialog>
 
   <div class="account-menu movie-preview-menu" id="moviePreviewMenu" popover role="menu" aria-label="电影操作">
     <button class="menu-action" role="menuitem" data-movie-action="detail">查看详情</button>
