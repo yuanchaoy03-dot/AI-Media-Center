@@ -11,6 +11,8 @@ Learn more about the recommended Project Setup and IDE Support in the [Vue Docs 
 - 新增页面时，在 `views/` 创建页面并在路由表注册；需要侧栏入口时再更新 `AppSidebar.vue` 的菜单数据。
 - 侧栏按路由记录高亮，嵌套子路由会保留父级入口的选中态。电影、合集等详情路由应明确所属导航，不依靠路径字符串前缀猜测。
 - 用户入口目前仅显示未实现提示，不代表登录或账号功能。
+- `/login`、`/register` 为独立 Vue 登录/注册页面，不显示业务侧栏；共用 `components/auth/AuthForm.vue`。可直接访问和互相切换，现有业务路由不强制跳转登录。
+- 认证当前仅为 UI 预览：用户名/密码必填，注册确认密码一致；提交短暂显示 Loading 后提示服务尚未接入。不发送或存储凭据、不创建账号或登录态；字段和规则为待后端确认的草案。
 
 开发运行 `npm run dev`，构建运行 `npm run build`，本地查看构建结果运行 `npm run preview`。
 

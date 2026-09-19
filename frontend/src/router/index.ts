@@ -8,6 +8,18 @@ const router = createRouter({
   },
   routes: [
     {
+      path: '/login',
+      name: 'login',
+      meta: { layout: 'auth' },
+      component: () => import('../views/LoginView.vue'),
+    },
+    {
+      path: '/register',
+      name: 'register',
+      meta: { layout: 'auth' },
+      component: () => import('../views/RegisterView.vue'),
+    },
+    {
       path: '/library/movies/:movieId',
       name: 'movie-detail',
       component: () => import('../views/MovieDetailView.vue'),

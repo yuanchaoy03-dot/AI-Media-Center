@@ -1,6 +1,6 @@
 # PROJECT STATUS
 
-- 最后更新时间：2026-09-15
+- 最后更新时间：2026-09-19
 
 ## 当前状态
 
@@ -11,7 +11,9 @@
 - 最近完成：详情横图与竖版海报分离、详情滚动条补齐，以及电影详情桌面视觉与异常状态验证。此前验证覆盖 Chrome 四档桌面宽度；未单独验证 Edge 或系统级 Windows scaling。
 - 最近文档维护：Agent 固定阅读流程改为 Context Routing，Apple Skill 拆分领域 reference，DESIGN 清理重复治理与过期收敛建议；仅文档变化，不代表新增业务实现。
 - 媒体来源下一切片：WebDAV 连接与扫描根分离的基线已确认，Vue/API/后端尚未实现；正式范围见需求第 16 节、架构对应 MediaSource/MediaScanRoot 部分。
-- 下一步：登录 / 注册前端 → 媒体来源Vue → WebDAV目录选择与MediaScanRoot管理 → API契约 → Spring Boot垂直联调，逐步跑通空片库到主动扫描的闭环。继续Desktop + Mouse，复用已验收组件；媒体来源Endpoint / Request / Response随正式Vue交互确认后再新增draft。
+- 登录 / 注册 UI：已直接用 Vue 实现 `/login`、`/register`，独立无侧栏布局、页面互切、必填/确认密码校验、密码显隐、提交中和服务未接入反馈。只预览 UI，不发送/存储凭据、不创建账号/登录态、不改变现有业务路由访问。真实认证、路由守卫及注册后的空片库闭环尚未实现。
+- 登录 / 注册验证：类型检查与构建通过；内置 Chromium 验证必填、密码显隐、注册密码不一致、Enter 提交、Loading 禁用、未接入反馈及页面切换；1366/1440/1920px 与900×500短窗口无横向溢出，已检查页面截图。未单独验证 Edge、系统级 Windows scaling 或真实密码管理器。
+- 下一步：媒体来源Vue → WebDAV目录选择与MediaScanRoot管理 → API契约 → Spring Boot认证与媒体来源垂直联调，逐步跑通空片库到主动扫描的闭环。继续Desktop + Mouse，复用已验收组件；媒体来源Endpoint / Request / Response随正式Vue交互确认后再新增draft。
 - 已知问题 / 限制：当前个人状态仅 Mock 副本，无后端持久化；播放、版本选择与 AI 仍提示未接入。完整原型不代表功能已实现。
 - 阻塞问题：无。
 

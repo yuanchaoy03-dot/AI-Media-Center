@@ -23,7 +23,10 @@ function dismissNotice() {
 </script>
 
 <template>
-  <div class="app-layout">
+  <main v-if="route.meta.layout === 'auth'" class="auth-main">
+    <RouterView />
+  </main>
+  <div v-else class="app-layout">
     <div class="app-sidebar-container">
       <AppSidebar :search-expanded="searchOpen" @search="searchOpen = true" @notice="showNotice" />
     </div>
