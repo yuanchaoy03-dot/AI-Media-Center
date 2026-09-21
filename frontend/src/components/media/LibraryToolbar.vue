@@ -178,4 +178,13 @@ button:active, .option-row:active { background: rgba(255,255,255,.09); }
   .popover, .toolbar-button, .option-row { transition: none; }
   .popover { transform: none; }
 }
+/* 材质由页面显式偏好控制，不跟随系统透明度设置。 */
+:global(html[data-transparency='reduced']) .popover { background: var(--material-floating-fallback); -webkit-backdrop-filter: none; backdrop-filter: none; }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .popover { background: var(--material-floating-fallback); }
+}
+:global(html[data-transparency='reduced']) .movie-toolbar { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .movie-toolbar { background: var(--bg); }
+}
 </style>

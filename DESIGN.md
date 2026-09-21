@@ -384,13 +384,6 @@ Z-index 只表达层次：页内 sticky < 导航 < 非模态浮层 < 模态遮�
     background: var(--material-floating-background-busy);
   }
 }
-@media (prefers-reduced-transparency: reduce) {
-  .floating-glass, .floating-glass[data-backdrop="busy"] {
-    background: var(--material-floating-fallback);
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
-}
 html[data-transparency="reduced"] .floating-glass {
   background: var(--material-floating-fallback);
   -webkit-backdrop-filter: none;
@@ -398,9 +391,9 @@ html[data-transparency="reduced"] .floating-glass {
 }
 ```
 
-**已确认的 Sidebar 例外**：现有 Vue 侧栏及搜索/选中态按对应 HTML 保留材质，不因系统 `prefers-reduced-transparency` 改实色；账号浮层仍响应该偏好。提高对比度、显式 `data-transparency="reduced"` 和无滤镜回退保留。该例外仅适用于这些侧栏状态，不推广到其他浮层。
+**统一透明度规则**：现有 Vue 认证窗口、侧栏及账号菜单、全局搜索、筛选/排序浮层、影片菜单、海报悬浮按钮与详情操作保留各自已确认材质，不因系统 `prefers-reduced-transparency` 改实色。仅显式 `data-transparency="reduced"` 或无滤镜支持时降级；已有提高对比度、强制颜色和减少动效规则保留。
 
-Reduced Transparency 查询是渐进增强，不能假定每个浏览器都支持；页面级“减少透明效果”偏好通过明确属性实现，未知支持时默认实色依然完整。Material 只定义深色，不在浅色系统偏好下自动反转一半 UI。暗色背景不降低到 `.5` 以追求玻璃感。
+页面级“减少透明效果”偏好通过明确属性实现，不跟随系统透明度设置；无滤镜支持时实色回退仍保证可读。Material 只定义深色，不在浅色系统偏好下自动反转一半 UI。暗色背景不降低到 `.5` 以追求玻璃感。
 
 浮层文字只用 Primary / `color-text-on-floating`；禁用除外。亮白、高对比海报背景仍需逐帧可读，必要时 `data-backdrop="busy"` 或直接实色。Hover/Selected 改菜单行，不改变整个玻璃透明度；Focus 用统一焦点环，不用彩色 Glow。小尺寸 Poster 更多按钮优先半透明深色实底，不为每张海报开一个 blur。
 
@@ -795,7 +788,7 @@ Empty State / Error State 正文最多两三句，标题18，说明15，图标32
 - **Labels**：Icon Button有中文aria-label；当前页aria-current；勾选/展开/忙状态有正确aria属性；图片旁已有相同片名时装饰图可空alt避免重复，独立有意义图片提供描述。
 - **Hover Alternative**：Focus展示海报动作，触摸可见更多；完整片名和错误原因不能仅靠hover。
 - **Reduced Motion**：遵守系统偏好和显式减少设置；禁位移/弹簧/视差/自动滚动，状态仍立即更新；无需动画也能理解流程。
-- **Reduced Transparency**：系统查询+显式属性+无filter实色回退，Sidebar 的已确认例外见第 11 节；减少透明与减少动效分别处理。
+- **Reduced Transparency**：显式属性+无filter实色回退，不跟随系统透明度设置，统一规则见第 11 节；减少透明与减少动效分别处理。
 - **Forced Colors**：保留原生系统高对比，装饰Scrim可关闭，焦点使用系统Highlight，控件用CanvasText边界；不要强制关闭浏览器颜色适配。
 - **Readable Content**：支持文本放大、200%缩放、长中文/英文路径；状态不用颜色独立编码。Disabled低对比只用于真不可用控件，不用于重要帮助。
 - **Announcements**：扫描阶段/错误以合适live region汇总，不每个百分比或AI token播报；用户阅读时不夺焦点。

@@ -193,4 +193,8 @@ button:active { filter:brightness(.88); }
 :is(button,a,input):focus-visible { outline:2px solid var(--accent);outline-offset:3px; }
 @media(max-width:900px) { .hero-content { padding-inline:28px; }.detail-content { padding-inline:28px; } }
 @media(prefers-reduced-motion:reduce) { *,*::before,*::after { transition:none!important;scroll-behavior:auto!important; } }
+:global(html[data-transparency='reduced']) :is(.hero-control, .secondary-action, .hero-menu) { background: var(--color-surface-2); -webkit-backdrop-filter: none; backdrop-filter: none; }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :is(.hero-control, .secondary-action, .hero-menu) { background: var(--color-surface-2); }
+}
 </style>

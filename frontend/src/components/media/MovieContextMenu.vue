@@ -153,4 +153,9 @@ onBeforeUnmount(() => {
   .context-menu, .context-action, .context-action svg { transition: none; }
   .context-menu { transform: none; }
 }
+/* 材质由页面显式偏好控制，不跟随系统透明度设置。 */
+:global(html[data-transparency='reduced']) .context-menu { background: var(--material-floating-fallback); -webkit-backdrop-filter: none; backdrop-filter: none; }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .context-menu { background: var(--material-floating-fallback); }
+}
 </style>

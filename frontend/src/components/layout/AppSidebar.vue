@@ -436,9 +436,6 @@ const groups: SidebarGroup[] = [
   .sidebar-button.router-link-active { -webkit-backdrop-filter: none; backdrop-filter: none; }
   .account-menu { background: var(--material-floating-fallback); -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
-@media (prefers-reduced-transparency: reduce) {
-  .account-menu { background: var(--material-floating-fallback); -webkit-backdrop-filter: none; backdrop-filter: none; }
-}
 :global(html[data-transparency='reduced'] .app-sidebar) { background: var(--color-surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
 :global(html[data-transparency='reduced'] .app-sidebar .sidebar-search) { background: var(--color-surface-2); -webkit-backdrop-filter: none; backdrop-filter: none; }
 :global(html[data-transparency='reduced'] .app-sidebar .sidebar-button.router-link-active) { -webkit-backdrop-filter: none; backdrop-filter: none; }

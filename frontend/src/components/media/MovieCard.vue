@@ -101,4 +101,13 @@ svg { display: block; max-width: 100%; fill: currentColor; }
 @media (prefers-reduced-motion: reduce) {
   .poster-art::after, .play-mark, .poster-more-mark { transition: none; }
 }
+/* 材质由页面显式偏好控制，不跟随系统透明度设置。 */
+:global(html[data-transparency='reduced']) .poster-more-mark { background: var(--color-surface-2); -webkit-backdrop-filter: none; backdrop-filter: none; }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .poster-more-mark { background: var(--color-surface-2); }
+}
+:global(html[data-transparency='reduced']) .play-mark { background: #f6f6f6; -webkit-backdrop-filter: none; backdrop-filter: none; }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .play-mark { background: #f6f6f6; }
+}
 </style>
