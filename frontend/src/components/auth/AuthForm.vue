@@ -191,7 +191,7 @@ button:focus-visible, a:focus-visible { outline: var(--focus-width) solid var(--
   .auth-content { background: rgb(18 18 20 / 68%); -webkit-backdrop-filter: blur(22px) saturate(125%); backdrop-filter: blur(22px) saturate(125%); }
 }
 /* 认证入口保留玻璃材质；减少透明度仅响应显式页面偏好。 */
-:global(html[data-transparency='reduced']) .auth-content { background: rgb(20 20 22 / 94%); -webkit-backdrop-filter: none; backdrop-filter: none; }
+:global(html[data-transparency='reduced'] .auth-content) { background: rgb(20 20 22 / 94%); -webkit-backdrop-filter: none; backdrop-filter: none; }
 @media (max-width: 640px) {
   .auth-page { padding: 24px 16px 20px; gap: 28px; }
   .auth-content { width: min(420px, calc(100vw - 32px)); padding: 28px 22px; }

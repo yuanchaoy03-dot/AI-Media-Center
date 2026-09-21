@@ -101,11 +101,11 @@ svg { display: block; max-width: 100%; fill: currentColor; }
   .poster-art::after, .series-mark, .poster-more-mark { transition: none; }
 }
 /* 材质由页面显式偏好控制，不跟随系统透明度设置。 */
-:global(html[data-transparency='reduced']) .poster-more-mark { background: var(--color-surface-2); -webkit-backdrop-filter: none; backdrop-filter: none; }
+:global(html[data-transparency='reduced'] .poster-more-mark) { background: var(--color-surface-2); -webkit-backdrop-filter: none; backdrop-filter: none; }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .poster-more-mark { background: var(--color-surface-2); }
 }
-:global(html[data-transparency='reduced']) .series-mark { background: #f6f6f6; -webkit-backdrop-filter: none; backdrop-filter: none; }
+:global(html[data-transparency='reduced'] .series-mark) { background: #f6f6f6; -webkit-backdrop-filter: none; backdrop-filter: none; }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .series-mark { background: #f6f6f6; }
 }

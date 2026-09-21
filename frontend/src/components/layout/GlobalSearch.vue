@@ -130,9 +130,9 @@ function select(movie: LibraryMovie) { emit('select', movie); close() }
 }
 @media(prefers-reduced-motion:reduce) { *,*::before,*::after { transition:none!important; } }
 /* 材质由页面显式偏好控制，不跟随系统透明度设置。 */
-:global(html[data-transparency='reduced']) .search-dialog { background: var(--material-floating-fallback); -webkit-backdrop-filter: none; backdrop-filter: none; }
+:global(html[data-transparency='reduced'] .search-dialog) { background: var(--material-floating-fallback); -webkit-backdrop-filter: none; backdrop-filter: none; }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .search-dialog { background: var(--material-floating-fallback); }
 }
-:global(html[data-transparency='reduced']) .search-dialog::backdrop { background: rgb(0 0 0 / 55%); backdrop-filter: none; }
+:global(html[data-transparency='reduced'] .search-dialog::backdrop) { background: rgb(0 0 0 / 55%); backdrop-filter: none; }
 </style>
