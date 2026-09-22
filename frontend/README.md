@@ -16,4 +16,8 @@ Learn more about the recommended Project Setup and IDE Support in the [Vue Docs 
 
 开发运行 `npm run dev`，构建运行 `npm run build`，本地查看构建结果运行 `npm run preview`。
 
+媒体来源 `/media-sources` 与 `/media-sources/:sourceId` 使用内存 Mock，刷新恢复示例来源；不执行真实 WebDAV 请求或保存凭据。`offline` 主机名及 `cloud.example.com` 模拟连接失败，其余合法 HTTP(S) 地址仅模拟成功。名称/地址变化后需重新测试；扫描约 4 秒完成且不生成虚构影片。
+
+媒体来源服务回归：在本目录使用 Node.js 24 运行 `node --test tests/mediaSourceService.test.mjs`。测试通过 Node 内置 TypeScript 支持读取实际服务，使用虚拟计时器验证扫描范围快照、前置条件、失败与删除任务清理；不增加测试依赖。单独类型检查使用 `npx vue-tsc -b`；当前未配置独立 lint 脚本。
+
 使用 History 模式部署时，静态服务器需要将非静态资源的前端路径回退到 `index.html`，使 `/library` 等地址支持直接访问和刷新；业务 API 不应走此回退。本次未添加部署配置。参见 [Vue Router History 模式说明](https://router.vuejs.org/guide/essentials/history-mode.html)。

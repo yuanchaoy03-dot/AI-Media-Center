@@ -45,6 +45,11 @@ const router = createRouter({
       component: () => import('../views/AiDiscoveryView.vue'),
     },
     {
+      path: '/media-sources/:sourceId',
+      name: 'media-source-detail',
+      component: () => import('../views/MediaSourceDetailView.vue'),
+    },
+    {
       path: '/media-sources',
       name: 'media-sources',
       component: () => import('../views/MediaSourcesView.vue'),

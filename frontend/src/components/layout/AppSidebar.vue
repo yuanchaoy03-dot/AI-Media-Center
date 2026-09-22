@@ -119,7 +119,7 @@ const groups: SidebarGroup[] = [
         <ul class="sidebar-list">
           <li v-for="item in group.items" :key="item.id">
             <RouterLink v-slot="{ isActive }" :to="{ name: item.id }"
-              class="sidebar-button" :class="{ 'router-link-active': item.id === 'library' && (route.name === 'collection-detail' || route.name === 'movie-detail') }" :aria-label="item.label" :title="item.label">
+              class="sidebar-button" :class="{ 'router-link-active': (item.id === 'library' && (route.name === 'collection-detail' || route.name === 'movie-detail')) || (item.id === 'media-sources' && route.name === 'media-source-detail') }" :aria-label="item.label" :title="item.label">
               <svg class="sidebar-icon" viewBox="0 0 256 256" aria-hidden="true" focusable="false">
                 <use :href="`${sidebarIcons}#${isActive ? (item.activeIcon ?? item.icon) : item.icon}`" />
               </svg>

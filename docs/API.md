@@ -97,7 +97,7 @@ Response：当前前端复用 `LibraryMovie` 展示字段，搜索行可附带�
 
 ## 已确认的媒体来源接口语义边界
 
-当前仅确认产品/架构语义，尚未实现媒体来源Vue、HTTP API、数据库或Spring Boot能力，不属于implemented接口。
+状态：`draft`。媒体来源列表与详情已实现 Vue + Frontend Mock；尚无 HTTP API、数据库或 Spring Boot 能力，不属于 implemented 接口。
 
 - MediaSource是当前用户保存的一套WebDAV连接配置，MediaSource ≠ MediaScanRoot；一个来源允许0~N个MediaScanRoot，后者是用户明确选择、允许递归扫描的目录根。
 - 创建MediaSource不自动扫描，也不默认将`/`加入扫描根；需要支持连接测试及来源当前可见完整目录结构的逐层浏览。
@@ -105,7 +105,26 @@ Response：当前前端复用 `LibraryMovie` 展示字段，搜索行可附带�
 - ScanTask由用户主动发起，只扫描本人已启用来源下已配置、已启用的MediaScanRoot；没有启用扫描根时不产生实际扫描结果。
 - 目录浏览是只读操作，不创建MediaResource、不建立个人片库关系、不触发TMDB、ffprobe或扫描；只返回展示所需目录/文件元信息。
 - Spring Boot依据可信CurrentUser校验来源、扫描根归属及路径边界，不信任前端sourceId、path、scanRootId或声明身份的userId；WebDAV密码、Token和认证Header不得返回Vue。
-- 正式Endpoint / Request / Response及错误契约等待Vue媒体来源切片确认后再新增draft，本轮不锁定具体路径。
+- 正式 Endpoint / Request / Response、错误码与分页仍待垂直联调确认；下面只记录 Vue 已确认的数据需求，不锁定具体路径或响应包裹。
+
+### 媒体来源 Vue 已确认的数据需求（draft）
+
+对应 `/media-sources` 和 `/media-sources/:sourceId`。展示类型位于 `frontend/src/types/mediaSource.ts`；它们不是数据库模型或已确认的 HTTP Response。
+
+| 概念 | 当前 UI 需要的最小数据 |
+| --- | --- |
+| MediaSource | `id`、`name`、`type: WebDAV`、不含认证信息的 `address`、连接状态、最近连接测试与最近扫描摘要、脱敏连接错误 |
+| MediaScanRoot | 独立 `id`、`sourceId`、`path`、`enabled`；来源允许 0~N 个根，不以来源 URL 代替扫描路径 |
+| DirectoryEntry | `name`、来源内 `path`、`kind: directory/file`；当前原型 fixture 只有目录，文件不可选作根 |
+| ScanTask | `id`、`sourceId`、状态、时间、本次 `rootPaths` 快照、识别电影 ID、待确认/需注意数量及脱敏失败原因 |
+
+- 当前连接状态为 `available/error/testing`；`testing` 是前端请求中状态，不要求后端持久化。扫描沿用原型 `pending/running/completed/failed`，无历史任务表达尚未扫描。时间目前为 Mock 展示字符串，正式时间格式待确认。
+- 添加/编辑输入名称、WebDAV 地址、用户名和密码；测试结果仅适用于当次输入，修改任意字段后须重新测试。当前拒绝 URL 内的账号密码、查询参数和 fragment，错误不回显输入值；此限制不代表所有 Provider 的正式兼容策略。
+- 密码不回填、不进入来源展示模型、不持久化；编辑空凭据目前只是“保留凭据”的 UI 演示，正式留空/更新/清除语义及测试授权凭证机制待后端确认。
+- 目录浏览与暂选无写入；显式保存才批量增加扫描根，精确同路径去重，新增后不扫描。父子目录重叠的执行去重策略仍待扫描设计确认，不擅自扩大范围。
+- 启动时检查来源存在、连接正常、存在已配置且启用的根；同一来源重复点击返回当前运行任务。Mock 在启动时复制 `rootPaths`，后续根配置变化不改变该任务；这仅明确当前前端展示需求，后端并发/幂等契约仍待确认。
+- 本轮操作都只修改应用内存，刷新恢复 fixture；目录浏览、连接测试和扫描不发送网络请求。新扫描仅模拟运行/完成，不伪造所选目录的媒体文件或入库结果。原型历史扫描摘要仍是示例数据。
+- 删除来源只清除当前 Mock 的来源、根及任务，取消运行计时器；不删除云端文件、公共 Movie 或修改其他片库 Mock。真实资源/个人片库关系生命周期按正式需求另行确认。来源本身启停、真实用户隔离与鉴权仍属于后续联调，本轮未据此添加原型不存在的控件。
 
 ## 条目模板
 
