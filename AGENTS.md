@@ -41,6 +41,15 @@
 - Vue 视觉迁移需在相同视口、内容和状态下对照 HTML/Vue；构建通过不等于迁移验收完成。
 - 按上表职责更新受影响文档。需求、架构、开发规范是正式毕业设计稳定基线，不因普通 UI/Bug/单个接口修改重写；DESIGN 保管设计值，API 保管契约，状态保管进度，数据库事实留给未来 03。不创建零散任务 Markdown 或平行事实源。
 
+## Windows Shell / 命令执行环境
+
+- 默认开发环境为 Windows 11 + PowerShell 7，终端命令默认使用 `pwsh`，优先且默认采用 PowerShell 7 兼容语法。
+- 除非用户明确要求，不主动切换到 Bash、Git Bash、WSL 或 CMD。
+- 不生成 Bash 专属 Shell 语法，包括 `export VAR=value`、`source xxx`、`<<EOF` / heredoc、`VAR=value command` 式环境变量赋值后直接执行命令，以及依赖 Bash 的管道、重定向或条件语法。
+- 命令因 Shell 语法不兼容而失败时，优先改写为 PowerShell 7 等价写法，不通过切换 Git Bash、WSL 等 Shell 规避。
+- `git`、`npm`、`pnpm`、`node`、`java`、`javac`、`mvn`、`python`、`pip`、`curl` 等跨平台命令可正常使用。PowerShell 有原生、清晰且稳定的实现时优先采用，但不为形式统一将常见跨平台命令强行改写为 cmdlet。
+- 本规则旨在减少 Windows 环境下误用 Bash / Git Bash 语法导致的失败与重试，降低无效工具调用、时间和上下文消耗。
+
 ## Git 与安全
 
 - 不提交 `.env`、密码、Token、API Key、AccessKey、JWT Secret、WebDAV 密码等 secret。
