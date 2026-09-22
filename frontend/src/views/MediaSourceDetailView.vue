@@ -82,7 +82,7 @@ onMounted(async () => { await syncRoute(); movies.value = await getLibraryMovies
         <div class="header-actions"><button class="secondary-action" :disabled="source.status === 'testing'" @click="testSourceConnection(sourceId)">测试连接</button><button class="secondary-action" :disabled="source.status === 'testing'" @click="editing = true">编辑来源</button><button class="primary-action" :disabled="source.status === 'testing'" @click="workflow">{{ scanLabel(source) }}</button></div>
       </section>
       <section id="scan-roots" ref="rootSection" class="sources-section scan-roots" aria-labelledby="scan-roots-title">
-        <div class="section-heading-row"><h2 id="scan-roots-title" class="section-title">扫描目录</h2><button class="secondary-action" :disabled="source.status !== 'available'" @click="browsing = true">添加扫描目录</button></div>
+        <div class="section-heading-row"><h2 id="scan-roots-title" class="section-title">扫描目录</h2><button class="secondary-action" :disabled="source.status !== 'available'" @click="browsing = true">{{ roots.length ? '管理扫描目录' : '选择扫描目录' }}</button></div>
         <p class="source-note">仅递归扫描已启用的目录；保存目录后仍需主动开始扫描。</p>
         <div v-if="roots.length"><div v-for="root in roots" :key="root.id" class="scan-root-row"><div><code>{{ root.path }}</code><span>{{ root.enabled ? '已启用' : '已停用 · 不参与扫描' }}</span></div><div class="root-actions"><button class="secondary-action" @click="setRootEnabled(sourceId, root.id, !root.enabled)">{{ root.enabled ? '停用' : '启用' }}</button><button class="quiet-action" @click="removeRoot(root.id, root.path)">移除</button></div></div></div>
         <p v-else class="source-empty-panel">尚未选择扫描目录。添加目录后，系统只扫描你指定的位置。</p>

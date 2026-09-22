@@ -13,6 +13,7 @@ export interface MediaSource {
   connectionError?: string
 }
 
+/** 递归包含全部后代；同一来源下路径互不包含，与 enabled 无关。 */
 export interface MediaScanRoot {
   id: string
   sourceId: string

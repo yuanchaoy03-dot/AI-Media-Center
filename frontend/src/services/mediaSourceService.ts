@@ -1,3 +1,4 @@
+import { normalizeScanRootPath, validateScanRootPaths } from './scanRootPaths'
 import { reactive, readonly } from 'vue'
 import { mockDirectories, mockMediaSources, mockScanRoots, mockScanTasks } from '../mocks/mediaSources'
 import type { DirectoryEntry, MediaSource, SourceConnectionInput, ScanTask } from '../types/mediaSource'
@@ -76,19 +77,27 @@ export function removeSource(id: string): void {
 
 export function browseDirectory(id: string, path: string): DirectoryEntry[] {
   if (requireSource(id).status !== 'available') throw new Error('请先检查来源连接。')
+  path = normalizeScanRootPath(path)
   const children = mockDirectories[path]
   if (!Object.hasOwn(mockDirectories, path) || !children) throw new Error('目录不存在，请返回上一级。')
   return children.map(name => ({ name, path: `${path === '/' ? '' : path}/${name}`, kind: 'directory' }))
 }
 
 export function addScanRoots(id: string, paths: string[]): void {
-  // 先验证整批再写入，浏览与保存均不会创建任务或资源。
-  for (const path of paths) browseDirectory(id, path)
-  for (const path of new Set(paths)) {
-    if (!state.roots.some(root => root.sourceId === id && root.path === path)) {
-      state.roots.push({ id: `root-${crypto.randomUUID()}`, sourceId: id, path, enabled: true })
-    }
-  }
+  saveScanRootSelection(id, [...state.roots.filter(root => root.sourceId === id).map(root => root.path), ...paths])
+}
+
+export function saveScanRootSelection(id: string, paths: readonly string[]): void {
+  requireSource(id)
+  const normalized = validateScanRootPaths(paths)
+  // 整批验证成功才写入；启停状态不影响范围互斥。
+  for (const path of normalized) browseDirectory(id, path)
+  const existing = new Map(state.roots.filter(root => root.sourceId === id).map(root => [normalizeScanRootPath(root.path), root]))
+  const reconciled = normalized.map(path => {
+    const root = existing.get(path)
+    return root ? { ...root, path } : { id: `root-${crypto.randomUUID()}`, sourceId: id, path, enabled: true }
+  })
+  state.roots = [...state.roots.filter(root => root.sourceId !== id), ...reconciled]
 }
 
 export function setRootEnabled(sourceId: string, rootId: string, enabled: boolean): void {
@@ -115,7 +124,9 @@ export function scanLabel(source: MediaSource): string {
 export function startScan(id: string): string {
   const source = requireSource(id)
   if (source.status !== 'available') throw new Error('请先检查来源连接。')
-  const rootPaths = state.roots.filter(root => root.sourceId === id && root.enabled).map(root => root.path)
+  const roots = state.roots.filter(root => root.sourceId === id)
+  validateScanRootPaths(roots.map(root => root.path))
+  const rootPaths = validateScanRootPaths(roots.filter(root => root.enabled).map(root => root.path))
   if (!rootPaths.length) throw new Error('请先选择并启用扫描目录。')
   const running = state.tasks.find(task => task.sourceId === id && task.status === 'running')
   if (running) return running.id
