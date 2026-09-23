@@ -54,18 +54,19 @@ test('directory browsing is read-only; save validates the whole selection and re
   assert.equal(JSON.stringify(s.mediaSourceState), before)
   s.addScanRoots('source-new', ['/Movies', '/TV'])
   assert.equal(s.mediaSourceState.roots.filter(root => root.sourceId === 'source-new').length, 2)
-  assert.throws(() => s.setRootEnabled('source-alist', 'root-nas-movies', false))
+  assert.throws(() => s.setRootEnabled('source-alist', 'root-nas-movies', false), /这个影片文件夹已被移除/)
 })
 
 test('scan guards distinguish unavailable sources, no roots and all roots disabled', async () => {
   const s = await fresh()
-  for (const id of ['missing', 'source-nextcloud', 'source-new']) assert.throws(() => s.startScan(id))
+  for (const id of ['missing', 'source-nextcloud']) assert.throws(() => s.startScan(id))
+  assert.throws(() => s.startScan('source-new'), /请先选择至少一个未暂停的影片文件夹/)
   s.setRootEnabled('source-ready', 'root-ready', false)
-  assert.throws(() => s.startScan('source-ready'))
+  assert.throws(() => s.startScan('source-ready'), /请先选择至少一个未暂停的影片文件夹/)
   const byId = id => s.mediaSourceState.sources.find(source => source.id === id)
   assert.equal(s.scanLabel(byId('source-nextcloud')), '检查连接')
   assert.equal(s.scanLabel(byId('source-new')), '选择影片文件夹')
-  assert.equal(s.scanLabel(byId('source-ready')), '查看暂停的文件夹')
+  assert.equal(s.scanLabel(byId('source-ready')), '查看暂停扫描的影片文件夹')
 })
 
 test('one running task per source; snapshot survives disabling/removing roots; completion invents no movies', async t => {
@@ -150,13 +151,13 @@ test('service rejects duplicates and overlaps regardless of enabled; writes atom
   s.saveScanRootSelection('source-new', ['/电影/4K'])
   const before = JSON.stringify(s.mediaSourceState)
   for (const candidate of ['/电影/4K', '/电影/4K/', '/电影', '/']) {
-    assert.throws(() => s.addScanRoots('source-new', [candidate]), /配置冲突/)
+    assert.throws(() => s.addScanRoots('source-new', [candidate]), /不能重复选择同一个影片文件夹/)
     assert.equal(JSON.stringify(s.mediaSourceState), before)
   }
   s.saveScanRootSelection('source-new', ['/电影'])
   const root = s.mediaSourceState.roots.find(root => root.sourceId === 'source-new')
   s.setRootEnabled('source-new', root.id, false)
-  assert.throws(() => s.addScanRoots('source-new', ['/电影/4K']), /配置冲突/)
+  assert.throws(() => s.addScanRoots('source-new', ['/电影/4K']), /不能重复选择同一个影片文件夹/)
   const disabled = JSON.stringify(s.mediaSourceState)
   assert.throws(() => s.saveScanRootSelection('source-new', ['/TV', '/missing']))
   assert.throws(() => s.saveScanRootSelection('missing', []))
@@ -200,7 +201,7 @@ test('fixtures are disjoint; corrupted overlap rejects task creation even with a
     let s
     try { s = await fresh() } finally { fixtures.mockScanRoots.pop() }
     const before = JSON.stringify(s.mediaSourceState)
-    assert.throws(() => s.startScan('source-alist'), /配置冲突/)
+    assert.throws(() => s.startScan('source-alist'), /不能重复选择同一个影片文件夹/)
     assert.equal(JSON.stringify(s.mediaSourceState), before)
   }
 })
@@ -252,8 +253,8 @@ test('DirectoryBrowser actual draft: disabled roots selected, navigation indepen
   const { setup: ui } = await directorySetup(s)
   assert.equal(ui.dirty.value, false)
   assert.equal(ui.selectionState(root.path).selected, true)
-  assert.equal(ui.selectionState(root.path).text, '已选择 · 当前暂停扫描')
-  assert.equal(ui.selectionState('/Movies').text, '含 3 个已选目录')
+  assert.equal(ui.selectionState(root.path).text, '已选择 · 扫描已暂停')
+  assert.equal(ui.selectionState('/Movies').text, '含 3 个已选文件夹')
   ui.select('/Movies')
   assert.equal(ui.currentPath.value, '/')
   assert.equal(ui.replacement.value.descendants.length, 3)

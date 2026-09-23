@@ -24,6 +24,12 @@ const notice = ref('')
 const removing = ref<MediaSource>()
 const recentMovies = computed(() => movies.value.filter(movie => movie.sourceIds.some(id => sourceList.value.some(source => source.id === id))).sort((a,b) => b.addedAt - a.addedAt).slice(0,6))
 const sourceRoots = (id: string) => mediaSourceState.roots.filter(root => root.sourceId === id)
+function folderSummary(id: string) {
+  const roots = sourceRoots(id)
+  if (!roots.length) return '未选择影片文件夹'
+  const paused = roots.filter(root => !root.enabled).length
+  return `已选择 ${roots.length} 个影片文件夹${paused ? ` · ${paused} 个已暂停` : ''}`
+}
 const movieCount = (id: string) => movies.value.filter(movie => movie.sourceIds.includes(id)).length
 function openMenu(source: MediaSource, event: MouseEvent) {
   if (!(event.currentTarget instanceof HTMLButtonElement)) return
@@ -61,7 +67,7 @@ onMounted(async () => { movies.value = await getLibraryMovies() })
             <RouterLink class="source-hit" :to="{ name: 'media-source-detail', params: { sourceId: source.id } }" :aria-label="`查看${source.name}详情`" />
             <div class="source-copy"><strong class="source-name" :title="source.name">{{ source.name }}</strong><span class="source-type">{{ source.type }}</span><span class="source-location" :title="source.address">{{ source.address.replace(/^https?:\/\//, '') }}</span></div>
             <span class="source-status"><span v-if="source.status === 'testing'" class="spinner" /><SourceIcon v-else :name="source.status === 'available' ? 'check-circle' : 'x'" />{{ source.status === 'available' ? '已连接' : source.status === 'testing' ? '正在测试' : '连接异常' }}</span>
-            <span class="source-config">{{ sourceRoots(source.id).length ? `已配置 ${sourceRoots(source.id).length} 个扫描目录 · ${sourceRoots(source.id).filter(root => root.enabled).length} 个启用` : '未配置扫描目录' }}</span>
+            <span class="source-config">{{ folderSummary(source.id) }}</span>
             <RouterLink v-if="!sourceRoots(source.id).length" class="source-config-link" :to="{ name: 'media-source-detail', params: { sourceId: source.id }, hash: '#scan-roots' }">选择影片文件夹 →</RouterLink>
             <span class="source-footer"><span>{{ movieCount(source.id) }} 部电影</span><span>上次扫描 · {{ source.lastScan }}</span></span>
             <button class="source-more" :aria-label="`${source.name}更多操作`" aria-controls="source-menu" :aria-expanded="menuSource?.id === source.id" @click="openMenu(source, $event)"><SourceIcon name="dots-three-bold" /></button>
@@ -77,7 +83,7 @@ onMounted(async () => { movies.value = await getLibraryMovies() })
     </div>
     <SourceMenu v-if="menuSource && trigger" :trigger="trigger" :scan-label="scanLabel(menuSource)" @close="menuSource = undefined" @action="menuAction" />
     <SourceDialog v-if="dialogOpen" :source="editing" @close="dialogOpen = false" @saved="saved" />
-    <SourceConfirmDialog v-if="removing" title="移除来源？" :message="`移除“${removing.name}”及其扫描目录配置？不会删除云端文件。`" confirm-label="移除来源" @close="removing = undefined" @confirm="confirmRemove" />
+    <SourceConfirmDialog v-if="removing" title="移除来源？" :message="`移除“${removing.name}”后，此来源已选择的影片文件夹也会移除。云端文件不会删除。`" confirm-label="移除来源" @close="removing = undefined" @confirm="confirmRemove" />
   </section>
 </template>
 <style scoped>

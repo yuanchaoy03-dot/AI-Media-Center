@@ -32,7 +32,7 @@ const taskSection = ref<HTMLElement>()
 const activeMovie = ref<LibraryMovie>()
 const movieTrigger = shallowRef<HTMLButtonElement | null>(null)
 const statusLabels = { pending: '等待首次扫描', running: '扫描中（演示）', completed: '扫描完成（演示）', failed: '扫描未完成（演示）' }
-const connectionNotice = computed(() => source.value?.status === 'error' ? source.value.connectionError : source.value?.status === 'testing' ? '正在测试连接（演示）…' : notice.value || (route.query.created && !roots.value.length ? '来源已创建。尚未配置扫描目录，也未开始扫描。' : '连接测试仅验证连通性，不代表已扫描或文件可播放。'))
+const connectionNotice = computed(() => source.value?.status === 'error' ? source.value.connectionError : source.value?.status === 'testing' ? '正在测试连接（演示）…' : notice.value || (route.query.created && !roots.value.length ? '来源已创建。尚未选择影片文件夹，也未开始扫描。' : '连接测试仅验证连通性，不代表已扫描或文件可播放。'))
 async function workflow() {
   if (!source.value) return
   if (source.value.status !== 'available') { await testSourceConnection(sourceId.value); return }
@@ -82,9 +82,9 @@ onMounted(async () => { await syncRoute(); movies.value = await getLibraryMovies
         <div class="header-actions"><button class="secondary-action" :disabled="source.status === 'testing'" @click="testSourceConnection(sourceId)">测试连接</button><button class="secondary-action" :disabled="source.status === 'testing'" @click="editing = true">编辑来源</button><button class="primary-action" :disabled="source.status === 'testing'" @click="workflow">{{ scanLabel(source) }}</button></div>
       </section>
       <section id="scan-roots" ref="rootSection" class="sources-section scan-roots" aria-labelledby="scan-roots-title">
-        <div class="section-heading-row"><h2 id="scan-roots-title" class="section-title">扫描目录</h2><button class="secondary-action" :disabled="source.status !== 'available'" @click="browsing = true">{{ roots.length ? '更改影片文件夹' : '选择影片文件夹' }}</button></div>
-        <p class="source-note">只扫描已选择、未暂停的文件夹及里面的内容；保存后仍需点击“立即扫描”。</p>
-        <div v-if="roots.length"><div v-for="root in roots" :key="root.id" class="scan-root-row"><div><code>{{ root.path }}</code><span>{{ root.enabled ? '已选择' : '当前暂停扫描' }}</span></div><div class="root-actions"><button class="secondary-action" @click="setRootEnabled(sourceId, root.id, !root.enabled)">{{ root.enabled ? '暂停扫描' : '恢复扫描' }}</button><button class="quiet-action" @click="removeRoot(root.id, root.path)">移除</button></div></div></div>
+        <div class="section-heading-row"><h2 id="scan-roots-title" class="section-title">影片文件夹</h2><button class="secondary-action" :disabled="source.status !== 'available'" @click="browsing = true">{{ roots.length ? '更改影片文件夹' : '选择影片文件夹' }}</button></div>
+        <p class="source-note">只扫描已选择、未暂停的影片文件夹及里面的内容；保存后仍需点击“立即扫描”。</p>
+        <div v-if="roots.length"><div v-for="root in roots" :key="root.id" class="scan-root-row"><div><code>{{ root.path }}</code><span>{{ root.enabled ? '已选择' : '已选择 · 扫描已暂停' }}</span></div><div class="root-actions"><button class="secondary-action" @click="setRootEnabled(sourceId, root.id, !root.enabled)">{{ root.enabled ? '暂停扫描' : '恢复扫描' }}</button><button class="quiet-action" @click="removeRoot(root.id, root.path)">移除</button></div></div></div>
         <p v-else class="source-empty-panel">还没有选择影片文件夹。选择后，只有这些文件夹及里面的内容会进入扫描范围。</p>
       </section>
       <section class="sources-section"><div class="section-title-line"><h2 class="section-title">此来源的电影</h2><span class="section-count">{{ sourceMovies.length }} 部</span></div>
@@ -94,13 +94,13 @@ onMounted(async () => { await syncRoute(); movies.value = await getLibraryMovies
       <section id="recent-scans" ref="taskSection" class="sources-section"><h2 class="section-title">最近扫描</h2>
         <ScanTaskList v-if="tasks.length" :tasks="tasks" :sources="[source]" @select="selectedTaskId = $event.id" />
         <div v-else class="source-empty-panel"><p>还没有扫描记录</p><button class="secondary-action" :disabled="source.status === 'testing'" @click="workflow">{{ scanLabel(source) }}</button></div>
-        <article v-if="selectedTask" class="task-detail" aria-label="扫描任务详情" aria-live="polite"><div class="section-heading-row"><h3 class="section-title">{{ statusLabels[selectedTask.status] }}</h3><button class="quiet-action" @click="selectedTaskId = ''">收起</button></div><p class="source-note">本次扫描目录（{{ selectedTask.rootPaths.length }}）</p><div><code v-for="path in selectedTask.rootPaths" :key="path">{{ path }}</code></div><p class="source-note">新增 {{ selectedTask.recognizedMovieIds.length }} 部 · 待确认 {{ selectedTask.pendingCount }} 个 · 需要注意 {{ selectedTask.attentionCount }} 个</p><p v-if="selectedTask.error" class="source-note danger">{{ selectedTask.error }}</p><p v-else class="source-note">{{ selectedTask.status === 'running' ? '正在模拟扫描所选目录，当前任务范围不受目录配置变更影响。' : '当前为扫描 UI 演示，未连接真实 WebDAV，也未产生新的媒体资源。' }}</p></article>
+        <article v-if="selectedTask" class="task-detail" aria-label="扫描任务详情" aria-live="polite"><div class="section-heading-row"><h3 class="section-title">{{ statusLabels[selectedTask.status] }}</h3><button class="quiet-action" @click="selectedTaskId = ''">收起</button></div><p class="source-note">本次扫描的影片文件夹（{{ selectedTask.rootPaths.length }}）</p><div><code v-for="path in selectedTask.rootPaths" :key="path">{{ path }}</code></div><p class="source-note">新增 {{ selectedTask.recognizedMovieIds.length }} 部 · 待确认 {{ selectedTask.pendingCount }} 个 · 需要注意 {{ selectedTask.attentionCount }} 个</p><p v-if="selectedTask.error" class="source-note danger">{{ selectedTask.error }}</p><p v-else class="source-note">{{ selectedTask.status === 'running' ? '正在模拟扫描开始时选中的影片文件夹；之后更改选择不会影响本次扫描。' : '当前为扫描 UI 演示，未连接真实 WebDAV，也未产生新的媒体资源。' }}</p></article>
       </section>
     </div>
     <div v-else class="source-empty-panel"><p>请返回来源列表，选择一个媒体来源。</p><RouterLink class="secondary-action" to="/media-sources">返回媒体来源</RouterLink></div>
-    <SourceDialog v-if="editing && source" :source="source" @close="editing = false" @saved="editing = false; notice = '来源已更新。扫描目录保持不变。'" />
-    <DirectoryBrowser v-if="browsing && source" :source-id="sourceId" @close="browsing = false" @saved="browsing = false; notice = '扫描目录已保存。准备好后，点击“立即扫描”。'" />
-    <SourceConfirmDialog v-if="removingRoot" title="移除扫描目录？" :message="`移除“${removingRoot.path}”？后续扫描将不再包含此配置；不会删除云端文件。`" confirm-label="移除目录" @close="removingRoot = undefined" @confirm="confirmRemoveRoot" />
+    <SourceDialog v-if="editing && source" :source="source" @close="editing = false" @saved="editing = false; notice = '来源已更新。影片文件夹的选择没有变化。'" />
+    <DirectoryBrowser v-if="browsing && source" :source-id="sourceId" @close="browsing = false" @saved="browsing = false; notice = '影片文件夹已保存。准备好后，点击“立即扫描”。'" />
+    <SourceConfirmDialog v-if="removingRoot" title="移除影片文件夹？" :message="`这只会移除“${removingRoot.path}”的扫描设置，以后不会再扫描它。云端文件不会删除。`" confirm-label="移除设置" @close="removingRoot = undefined" @confirm="confirmRemoveRoot" />
     <MovieContextMenu v-if="activeMovie" id="source-movie-menu" :open="true" :trigger="movieTrigger" :movie-id="activeMovie.id" :title="activeMovie.title" :favorite="activeMovie.favorite" :watch-status="activeMovie.watchStatus" @close="activeMovie = undefined" @detail="showMovie" @play="playback" @versions="notice = '媒体版本选择尚未接入。'" @favorite-change="(_id, value) => { if (activeMovie) activeMovie.favorite = value }" @watch-status-change="(_id, value) => { if (activeMovie) activeMovie.watchStatus = value }" />
   </section>
 </template>

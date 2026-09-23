@@ -17,7 +17,7 @@ const error = ref('')
 const replacement = ref<{ path: string; descendants: string[] }>()
 const directory = computed(() => {
   try { return { entries: browseDirectory(props.sourceId, currentPath.value), error: '' } }
-  catch (cause) { return { entries: [], error: cause instanceof Error ? cause.message : '目录读取失败。' } }
+  catch (cause) { return { entries: [], error: cause instanceof Error ? cause.message : '文件夹读取失败。' } }
 })
 
 function folderName(path: string) { return path === '/' ? '整个来源' : path.slice(path.lastIndexOf('/') + 1) }
@@ -32,7 +32,7 @@ function selectionState(path: string) {
   return {
     selected, ancestor, descendants,
     label: ancestor ? `${path} 已随${folderName(ancestor)}一起选择` : selected ? path === '/' ? '取消选择整个来源' : `取消选择 ${path}` : path === '/' ? '选择整个来源及里面的内容' : `选择 ${path} 及里面的内容`,
-    text: ancestor ? `已随${folderName(ancestor)}一起选择` : selected ? disabled ? '已选择 · 当前暂停扫描' : '已选择' : descendants.length ? `含 ${descendants.length} 个已选目录` : '',
+    text: ancestor ? `已随${folderName(ancestor)}一起选择` : selected ? disabled ? '已选择 · 扫描已暂停' : '已选择' : descendants.length ? `含 ${descendants.length} 个已选文件夹` : '',
     icon: ancestor ? 'folder' : selected ? 'check-circle' : 'plus',
   }
 }
@@ -64,7 +64,7 @@ function confirmReplacement() {
 function save() {
   if (!dirty.value) return
   try { saveScanRootSelection(props.sourceId, draftSelectedPaths.value); emit('saved') }
-  catch (cause) { error.value = cause instanceof Error ? cause.message : '保存目录失败。' }
+  catch (cause) { error.value = cause instanceof Error ? cause.message : '保存影片文件夹失败。' }
 }
 onMounted(() => dialog.value?.showModal())
 onBeforeUnmount(() => dialog.value?.close())
@@ -73,7 +73,7 @@ onBeforeUnmount(() => dialog.value?.close())
   <Teleport to="body">
     <dialog ref="dialog" class="media-source-ui directory-dialog" aria-labelledby="directory-title" @cancel.prevent="emit('close')">
       <div class="directory-heading">
-        <div><h2 id="directory-title">选择影片文件夹</h2><p class="source-note">选择存放影片的文件夹，里面的文件夹也会一起扫描。<br />保存后不会立即开始扫描。</p></div>
+        <div><h2 id="directory-title">选择影片文件夹</h2><p class="source-note">选择影片文件夹，里面的文件夹也会一起扫描。<br />保存后不会立即开始扫描。</p></div>
         <button class="secondary-action" @click="emit('close')">取消</button>
       </div>
       <div class="directory-toolbar">

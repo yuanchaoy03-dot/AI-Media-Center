@@ -1,6 +1,6 @@
 export function normalizeScanRootPath(path: string): string {
   if (!path.trim() || !path.startsWith('/') || path.split('/').some(part => part === '.' || part === '..')) {
-    throw new Error('扫描目录必须是有效的来源内绝对路径。')
+    throw new Error('无法选择这个影片文件夹，请返回上一级重试。')
   }
   return path.replace(/\/{2,}/g, '/').replace(/\/$/, '') || '/'
 }
@@ -27,7 +27,7 @@ export function validateScanRootPaths(paths: readonly string[]): string[] {
   for (let i = 0; i < normalized.length; i++) {
     for (let j = 0; j < i; j++) {
       if (getScanRootRelation(normalized[i]!, normalized[j]!) !== 'none') {
-        throw new Error('扫描目录配置冲突：同一路径不可重复，父目录与子目录不能同时配置。')
+        throw new Error('不能重复选择同一个影片文件夹，也不能同时选择它和里面的文件夹。')
       }
     }
   }

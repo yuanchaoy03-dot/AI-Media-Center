@@ -68,7 +68,7 @@ onBeforeUnmount(() => { revision++; input.password = ''; input.username = ''; di
             <div class="form-field"><label for="source-username">用户名</label><input id="source-username" v-model="input.username" :disabled="saving" autocomplete="username" /></div>
             <div class="form-field"><label for="source-password">密码 / 凭据</label><input id="source-password" v-model="input.password" :disabled="saving" type="password" autocomplete="current-password" aria-describedby="credential-help" :placeholder="source ? '留空保留已保存的凭据（演示）' : '输入凭据（演示）'" /></div>
             <p id="credential-help" class="form-help">当前仅模拟连接，请勿填写真实凭据。凭据不会保存；编辑时留空的正式行为待接口确认。</p>
-            <p class="form-help">先保存连接，再选择存放影片的文件夹。添加来源不会开始扫描。</p>
+            <p class="form-help">先保存连接，再选择影片文件夹。添加来源不会开始扫描。</p>
           </div>
           <p class="connection-feedback" :data-success="success" role="status">{{ feedback }}</p>
           <div class="dialog-actions"><button class="secondary-action" type="button" :disabled="testing || saving" @click="test">{{ testing ? '正在连接…' : success ? '重新测试' : '测试连接' }}</button><button class="primary-action" :disabled="!success || saving" type="submit">{{ saving ? '正在保存…' : source ? '保存更改' : '添加来源' }}</button></div>
