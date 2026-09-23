@@ -37,7 +37,7 @@ async function workflow() {
   if (!source.value) return
   if (source.value.status !== 'available') { await testSourceConnection(sourceId.value); return }
   if (!roots.value.length) { browsing.value = true; return }
-  if (!roots.value.some(root => root.enabled)) { rootSection.value?.scrollIntoView(); notice.value = '请先启用至少一个扫描目录。'; return }
+  if (!roots.value.some(root => root.enabled)) { rootSection.value?.scrollIntoView(); notice.value = '请先为至少一个影片文件夹恢复扫描。'; return }
   try { selectedTaskId.value = startScan(sourceId.value); await nextTick(); taskSection.value?.scrollIntoView() }
   catch (error) { notice.value = error instanceof Error ? error.message : '扫描未启动。' }
 }
@@ -82,10 +82,10 @@ onMounted(async () => { await syncRoute(); movies.value = await getLibraryMovies
         <div class="header-actions"><button class="secondary-action" :disabled="source.status === 'testing'" @click="testSourceConnection(sourceId)">测试连接</button><button class="secondary-action" :disabled="source.status === 'testing'" @click="editing = true">编辑来源</button><button class="primary-action" :disabled="source.status === 'testing'" @click="workflow">{{ scanLabel(source) }}</button></div>
       </section>
       <section id="scan-roots" ref="rootSection" class="sources-section scan-roots" aria-labelledby="scan-roots-title">
-        <div class="section-heading-row"><h2 id="scan-roots-title" class="section-title">扫描目录</h2><button class="secondary-action" :disabled="source.status !== 'available'" @click="browsing = true">{{ roots.length ? '管理扫描目录' : '选择扫描目录' }}</button></div>
-        <p class="source-note">仅递归扫描已启用的目录；保存目录后仍需主动开始扫描。</p>
-        <div v-if="roots.length"><div v-for="root in roots" :key="root.id" class="scan-root-row"><div><code>{{ root.path }}</code><span>{{ root.enabled ? '已启用' : '已停用 · 不参与扫描' }}</span></div><div class="root-actions"><button class="secondary-action" @click="setRootEnabled(sourceId, root.id, !root.enabled)">{{ root.enabled ? '停用' : '启用' }}</button><button class="quiet-action" @click="removeRoot(root.id, root.path)">移除</button></div></div></div>
-        <p v-else class="source-empty-panel">尚未选择扫描目录。添加目录后，系统只扫描你指定的位置。</p>
+        <div class="section-heading-row"><h2 id="scan-roots-title" class="section-title">扫描目录</h2><button class="secondary-action" :disabled="source.status !== 'available'" @click="browsing = true">{{ roots.length ? '更改影片文件夹' : '选择影片文件夹' }}</button></div>
+        <p class="source-note">只扫描已选择、未暂停的文件夹及里面的内容；保存后仍需点击“立即扫描”。</p>
+        <div v-if="roots.length"><div v-for="root in roots" :key="root.id" class="scan-root-row"><div><code>{{ root.path }}</code><span>{{ root.enabled ? '已选择' : '当前暂停扫描' }}</span></div><div class="root-actions"><button class="secondary-action" @click="setRootEnabled(sourceId, root.id, !root.enabled)">{{ root.enabled ? '暂停扫描' : '恢复扫描' }}</button><button class="quiet-action" @click="removeRoot(root.id, root.path)">移除</button></div></div></div>
+        <p v-else class="source-empty-panel">还没有选择影片文件夹。选择后，只有这些文件夹及里面的内容会进入扫描范围。</p>
       </section>
       <section class="sources-section"><div class="section-title-line"><h2 class="section-title">此来源的电影</h2><span class="section-count">{{ sourceMovies.length }} 部</span></div>
         <div v-if="sourceMovies.length" class="recent-media-grid"><MovieCard v-for="movie in sourceMovies" :key="movie.id" :movie="movie" :more-expanded="activeMovie?.id === movie.id" menu-id="source-movie-menu" @detail="showMovie" @play="playback" @more="moreMovie" /></div>

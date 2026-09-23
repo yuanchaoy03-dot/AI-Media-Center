@@ -20,7 +20,9 @@ const directory = computed(() => {
   catch (cause) { return { entries: [], error: cause instanceof Error ? cause.message : '目录读取失败。' } }
 })
 
-// 当前目录与子目录共用状态；membership 与 enabled 独立。
+function folderName(path: string) { return path === '/' ? '整个来源' : path.slice(path.lastIndexOf('/') + 1) }
+
+// 当前目录与子目录共用状态；已选择和暂停扫描分别展示。
 function selectionState(path: string) {
   path = normalizeScanRootPath(path)
   const selected = draftSelectedPaths.value.includes(path)
@@ -29,8 +31,8 @@ function selectionState(path: string) {
   const disabled = selected && roots.value.some(root => normalizeScanRootPath(root.path) === path && !root.enabled)
   return {
     selected, ancestor, descendants,
-    label: ancestor ? `${path} 已由 ${ancestor} 包含` : selected ? `取消选择 ${path}` : `选择 ${path} 作为扫描目录`,
-    text: ancestor ? `已包含于 ${ancestor}` : selected ? disabled ? '已选择 · 已停用' : '已选择' : descendants.length ? `含 ${descendants.length} 个已选目录` : '',
+    label: ancestor ? `${path} 已随${folderName(ancestor)}一起选择` : selected ? path === '/' ? '取消选择整个来源' : `取消选择 ${path}` : path === '/' ? '选择整个来源及里面的内容' : `选择 ${path} 及里面的内容`,
+    text: ancestor ? `已随${folderName(ancestor)}一起选择` : selected ? disabled ? '已选择 · 当前暂停扫描' : '已选择' : descendants.length ? `含 ${descendants.length} 个已选目录` : '',
     icon: ancestor ? 'folder' : selected ? 'check-circle' : 'plus',
   }
 }
@@ -39,9 +41,11 @@ const entries = computed(() => directory.value.entries.map(entry => ({ ...entry,
 const replacementMessage = computed(() => {
   if (!replacement.value) return ''
   const { path, descendants } = replacement.value
+  const names = descendants.slice(0, 2).map(item => `“${folderName(item)}”`).join('和')
+  const chosen = descendants.length > 2 ? `${names}等 ${descendants.length} 个文件夹` : `${names}${descendants.length === 1 ? '文件夹' : '两个文件夹'}`
   return path === '/'
-    ? `选择根目录后，将递归扫描此来源的全部可见目录，并替换当前 ${descendants.length} 个扫描目录。只修改扫描配置，不删除云端文件。`
-    : `${path} 将递归包含当前已选择的 ${descendants.length} 个下级扫描目录。继续后，这些下级目录将不再单独配置。`
+    ? `你已经单独选择了${chosen}。选择整个来源后，所有可见的文件夹都会一起扫描，就不需要再单独选择它们了。`
+    : `你已经单独选择了其中的${chosen}。选择整个“${folderName(path)}”文件夹后，就不需要再单独选择它们了。`
 })
 function select(path: string) {
   if (directory.value.error) return
@@ -69,14 +73,15 @@ onBeforeUnmount(() => dialog.value?.close())
   <Teleport to="body">
     <dialog ref="dialog" class="media-source-ui directory-dialog" aria-labelledby="directory-title" @cancel.prevent="emit('close')">
       <div class="directory-heading">
-        <div><h2 id="directory-title">管理扫描目录</h2><p class="source-note">每个扫描目录都会递归扫描。选择父目录时，会替换已选的下级扫描目录。保存不会开始扫描。</p></div>
+        <div><h2 id="directory-title">选择影片文件夹</h2><p class="source-note">选择存放影片的文件夹，里面的文件夹也会一起扫描。<br />保存后不会立即开始扫描。</p></div>
         <button class="secondary-action" @click="emit('close')">取消</button>
       </div>
       <div class="directory-toolbar">
         <button class="secondary-action" :disabled="currentPath === '/'" @click="currentPath = currentPath.slice(0, currentPath.lastIndexOf('/')) || '/'">返回上一级</button>
-        <div class="directory-copy"><small>当前目录</small><code aria-label="当前目录路径">{{ currentPath }}</code><small v-if="currentSelection.text">{{ currentSelection.text }}</small></div>
+        <div class="directory-copy"><span class="directory-group-label">{{ currentPath === '/' ? '整个来源' : '当前文件夹' }}</span><code aria-label="当前文件夹路径">{{ currentPath }}</code><small class="directory-scope-hint">{{ currentSelection.selected || currentSelection.ancestor ? '整个文件夹及里面的内容都已选择' : currentPath === '/' ? '选择整个来源及里面的内容' : '选择整个文件夹及里面的内容' }}</small><small v-if="currentSelection.text">{{ currentSelection.text }}</small></div>
         <button class="directory-select" :class="{ 'is-selected': currentSelection.selected }" :disabled="!!currentSelection.ancestor || !!directory.error" :aria-label="currentSelection.label" :aria-pressed="currentSelection.selected" @click="select(currentPath)"><SourceIcon :name="currentSelection.icon" /></button>
       </div>
+      <p class="directory-group-label directory-list-label">里面的文件夹 <small>只想选一部分，就选下面的文件夹</small></p>
       <div class="directory-list">
         <div v-for="entry in entries" :key="entry.path" class="directory-row">
           <button class="directory-open" :disabled="entry.kind !== 'directory'" @click="currentPath = entry.path">
@@ -85,11 +90,11 @@ onBeforeUnmount(() => dialog.value?.close())
           <button v-if="entry.kind === 'directory'" class="directory-select" :class="{ 'is-selected': entry.selection.selected }" :disabled="!!entry.selection.ancestor" :aria-label="entry.selection.label" :aria-pressed="entry.selection.selected" @click="select(entry.path)"><SourceIcon :name="entry.selection.icon" /></button>
         </div>
         <p v-if="directory.error" class="source-note danger" role="alert">{{ directory.error }}</p>
-        <p v-else-if="!entries.length" class="source-note">{{ currentSelection.ancestor ? '没有子目录，当前目录已由上级扫描目录包含。' : currentSelection.selected ? '没有子目录。当前目录已选择。' : '没有子目录。你仍可以选择当前目录。' }}</p>
+        <p v-else-if="!entries.length" class="source-note">{{ currentSelection.ancestor ? '这里没有其他文件夹，当前文件夹已一起选择。' : currentSelection.selected ? '这里没有其他文件夹，当前文件夹已选择。' : '这里没有其他文件夹，你仍可以选择当前文件夹。' }}</p>
       </div>
       <p v-if="error" class="source-note danger" role="alert">{{ error }}</p>
-      <div class="directory-footer"><p class="source-note" role="status">已选择 {{ draftSelectedPaths.length }} 个扫描目录</p><div class="header-actions"><button class="secondary-action" @click="emit('close')">取消</button><button class="primary-action" :disabled="!dirty" @click="save">保存</button></div></div>
+      <div class="directory-footer"><p class="source-note" role="status">已选择 {{ draftSelectedPaths.length }} 个文件夹</p><div class="header-actions"><button class="secondary-action" @click="emit('close')">取消</button><button class="primary-action" :disabled="!dirty" @click="save">保存</button></div></div>
     </dialog>
-    <SourceConfirmDialog v-if="replacement" title="替换下级扫描目录？" :message="replacementMessage" :paths="replacement.descendants" :destructive="false" confirm-label="使用父目录" @close="replacement = undefined" @confirm="confirmReplacement" />
+    <SourceConfirmDialog v-if="replacement" :title="replacement.path === '/' ? '选择整个来源？' : `选择整个“${folderName(replacement.path)}”文件夹？`" :message="replacementMessage" :paths="replacement.descendants" :destructive="false" confirm-label="选择整个文件夹" @close="replacement = undefined" @confirm="confirmReplacement" />
   </Teleport>
 </template>

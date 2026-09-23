@@ -62,7 +62,7 @@ onMounted(async () => { movies.value = await getLibraryMovies() })
             <div class="source-copy"><strong class="source-name" :title="source.name">{{ source.name }}</strong><span class="source-type">{{ source.type }}</span><span class="source-location" :title="source.address">{{ source.address.replace(/^https?:\/\//, '') }}</span></div>
             <span class="source-status"><span v-if="source.status === 'testing'" class="spinner" /><SourceIcon v-else :name="source.status === 'available' ? 'check-circle' : 'x'" />{{ source.status === 'available' ? '已连接' : source.status === 'testing' ? '正在测试' : '连接异常' }}</span>
             <span class="source-config">{{ sourceRoots(source.id).length ? `已配置 ${sourceRoots(source.id).length} 个扫描目录 · ${sourceRoots(source.id).filter(root => root.enabled).length} 个启用` : '未配置扫描目录' }}</span>
-            <RouterLink v-if="!sourceRoots(source.id).length" class="source-config-link" :to="{ name: 'media-source-detail', params: { sourceId: source.id }, hash: '#scan-roots' }">选择扫描目录 →</RouterLink>
+            <RouterLink v-if="!sourceRoots(source.id).length" class="source-config-link" :to="{ name: 'media-source-detail', params: { sourceId: source.id }, hash: '#scan-roots' }">选择影片文件夹 →</RouterLink>
             <span class="source-footer"><span>{{ movieCount(source.id) }} 部电影</span><span>上次扫描 · {{ source.lastScan }}</span></span>
             <button class="source-more" :aria-label="`${source.name}更多操作`" aria-controls="source-menu" :aria-expanded="menuSource?.id === source.id" @click="openMenu(source, $event)"><SourceIcon name="dots-three-bold" /></button>
           </article>

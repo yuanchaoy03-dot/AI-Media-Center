@@ -64,8 +64,8 @@ test('scan guards distinguish unavailable sources, no roots and all roots disabl
   assert.throws(() => s.startScan('source-ready'))
   const byId = id => s.mediaSourceState.sources.find(source => source.id === id)
   assert.equal(s.scanLabel(byId('source-nextcloud')), '检查连接')
-  assert.equal(s.scanLabel(byId('source-new')), '选择扫描目录')
-  assert.equal(s.scanLabel(byId('source-ready')), '启用扫描目录')
+  assert.equal(s.scanLabel(byId('source-new')), '选择影片文件夹')
+  assert.equal(s.scanLabel(byId('source-ready')), '查看暂停的文件夹')
 })
 
 test('one running task per source; snapshot survives disabling/removing roots; completion invents no movies', async t => {
@@ -252,11 +252,13 @@ test('DirectoryBrowser actual draft: disabled roots selected, navigation indepen
   const { setup: ui } = await directorySetup(s)
   assert.equal(ui.dirty.value, false)
   assert.equal(ui.selectionState(root.path).selected, true)
-  assert.equal(ui.selectionState(root.path).text, '已选择 · 已停用')
+  assert.equal(ui.selectionState(root.path).text, '已选择 · 当前暂停扫描')
   assert.equal(ui.selectionState('/Movies').text, '含 3 个已选目录')
   ui.select('/Movies')
   assert.equal(ui.currentPath.value, '/')
   assert.equal(ui.replacement.value.descendants.length, 3)
+  assert.match(ui.replacementMessage.value, /选择整个“Movies”文件夹后，就不需要再单独选择它们了/)
+  assert.doesNotMatch(ui.replacementMessage.value, /递归|扫描目录|父目录|子目录/)
   assert.equal(ui.draftSelectedPaths.value.length, 3)
   ui.replacement.value = undefined // Cancel replacement.
   assert.equal(ui.dirty.value, false)
@@ -264,6 +266,7 @@ test('DirectoryBrowser actual draft: disabled roots selected, navigation indepen
   ui.confirmReplacement()
   assert.deepEqual(ui.draftSelectedPaths.value, ['/Movies'])
   assert.equal(ui.selectionState(root.path).ancestor, '/Movies')
+  assert.equal(ui.selectionState(root.path).text, '已随Movies一起选择')
   ui.currentPath.value = '/Movies/电影' // Covered directory remains browsable.
   ui.select(root.path)
   assert.deepEqual(ui.draftSelectedPaths.value, ['/Movies'])
@@ -282,7 +285,7 @@ test('DirectoryBrowser dirty membership and save; root replacement uses explicit
   assert.equal(ui.currentPath.value, '/')
   assert.equal(ui.dirty.value, true)
   ui.select('/')
-  assert.match(ui.replacementMessage.value, /全部可见目录.*2 个扫描目录/)
+  assert.match(ui.replacementMessage.value, /“电影”和“动画”两个文件夹.*所有可见的文件夹都会一起扫描/)
   assert.equal(ui.draftSelectedPaths.value.length, 2)
   ui.confirmReplacement()
   assert.deepEqual(ui.draftSelectedPaths.value, ['/'])
