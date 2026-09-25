@@ -58,7 +58,7 @@ onMounted(async () => { movies.value = await getLibraryMovies() })
 </script>
 <template>
   <section class="media-source-ui source-page" lang="zh-CN">
-    <header class="page-heading"><div><h1 class="page-title">媒体来源</h1><p class="page-subtitle">管理你的个人影音存储位置，让喜爱的电影汇聚于此。</p></div><button class="primary-action" @click="openDialog()"><SourceIcon name="plus" />添加来源</button></header>
+    <header class="page-heading"><h1 class="page-title">媒体来源</h1><button class="primary-action" @click="openDialog()"><SourceIcon name="plus" />添加来源</button></header>
     <div class="sources-workspace">
       <section class="sources-section" aria-labelledby="connected-title">
         <h2 id="connected-title" class="section-title">我的来源</h2>
