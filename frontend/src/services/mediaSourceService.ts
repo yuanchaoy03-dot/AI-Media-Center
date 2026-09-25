@@ -80,7 +80,7 @@ export function browseDirectory(id: string, path: string): DirectoryEntry[] {
   path = normalizeScanRootPath(path)
   const children = mockDirectories[path]
   if (!Object.hasOwn(mockDirectories, path) || !children) throw new Error('找不到这个文件夹，请返回上一级。')
-  return children.map(name => ({ name, path: `${path === '/' ? '' : path}/${name}`, kind: 'directory' }))
+  return children.map(entry => ({ ...entry, path: `${path === '/' ? '' : path}/${entry.name}` }))
 }
 
 export function addScanRoots(id: string, paths: string[]): void {

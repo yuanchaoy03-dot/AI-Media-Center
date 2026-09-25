@@ -45,9 +45,27 @@ test('saving a connection does not create roots, tasks or returned credentials; 
 test('directory browsing is read-only; save validates the whole selection and rejects duplicates', async () => {
   const s = await fresh()
   const before = JSON.stringify(s.mediaSourceState)
-  assert.equal(s.browseDirectory('source-new', '/').find(entry => entry.name === 'Movies').kind, 'directory')
+  const root = s.browseDirectory('source-new', '/')
+  assert.equal(root.find(entry => entry.name === 'Movies').kind, 'directory')
+  assert.equal(root.find(entry => entry.name === 'Movies').path, '/Movies')
+  assert.deepEqual(s.browseDirectory('source-new', '/Movies/电影').map(entry => [entry.name, entry.kind]), [
+    ['星际穿越', 'directory'], ['README', 'file'],
+  ])
+  const movieFiles = s.browseDirectory('source-new', '/Movies/电影/星际穿越')
+  assert.deepEqual(movieFiles.map(entry => [entry.name, entry.kind]), [
+    ['Interstellar (2014).mkv', 'file'], ['poster.jpg', 'file'],
+    ['backdrop.jpg', 'file'], ['logo.png', 'file'],
+  ])
+  assert.equal(movieFiles.every(entry => entry.path.startsWith('/Movies/电影/星际穿越/')), true)
+  assert.deepEqual(s.browseDirectory('source-new', '/Downloads'), [])
   s.browseDirectory('source-new', '/Movies/纪录片')
   assert.equal(JSON.stringify(s.mediaSourceState), before)
+  const readme = s.browseDirectory('source-new', '/Movies/电影').find(entry => entry.name === 'README')
+  for (const file of [readme, ...movieFiles]) {
+    assert.throws(() => s.browseDirectory('source-new', file.path), /找不到这个文件夹/)
+    assert.throws(() => s.saveScanRootSelection('source-new', [file.path]), /找不到这个文件夹/)
+    assert.equal(JSON.stringify(s.mediaSourceState), before)
+  }
   assert.throws(() => s.addScanRoots('source-new', ['/Movies', '/missing']))
   assert.equal(JSON.stringify(s.mediaSourceState), before)
   assert.throws(() => s.addScanRoots('source-new', ['/Movies', '/Movies', '/TV']))
@@ -278,6 +296,33 @@ test('DirectoryBrowser actual draft: disabled roots selected, navigation indepen
   assert.equal(JSON.stringify(s.mediaSourceState), before) // Discard entire dialog.
 })
 
+test('DirectoryBrowser separates nested folders from read-only files and only marks an empty directory as empty', async () => {
+  const s = await fresh()
+  const { setup: ui, descriptor } = await directorySetup(s)
+  const before = JSON.stringify(s.mediaSourceState)
+  assert.equal(ui.directories.value.some(entry => entry.name === 'Movies'), true)
+  ui.currentPath.value = '/Movies'
+  assert.equal(ui.directories.value.some(entry => entry.name === '电影'), true)
+  ui.currentPath.value = '/Movies/电影'
+  assert.equal(ui.directories.value[0].name, '星际穿越')
+  assert.deepEqual(ui.files.value.map(entry => entry.name), ['README'])
+  ui.currentPath.value = ui.directories.value[0].path
+  assert.deepEqual(ui.directories.value, [])
+  assert.deepEqual(ui.files.value.map(entry => entry.name), ['Interstellar (2014).mkv', 'poster.jpg', 'backdrop.jpg', 'logo.png'])
+  assert.equal(ui.fileIcon(ui.files.value[0].name), 'video')
+  assert.equal(ui.fileIcon('EXAMPLE.MP4'), 'video')
+  assert.equal(ui.fileIcon('poster.jpg'), 'file')
+  assert.equal(ui.currentSelection.value.label, '选择 /Movies/电影/星际穿越 及里面的内容')
+  ui.select(ui.currentPath.value)
+  assert.deepEqual(ui.draftSelectedPaths.value, ['/Movies/电影/星际穿越'])
+  assert.equal(JSON.stringify(s.mediaSourceState), before)
+  ui.currentPath.value = '/Downloads'
+  assert.deepEqual(ui.directories.value, [])
+  assert.deepEqual(ui.files.value, [])
+  assert.match(descriptor.template.content, /!directories\.length && !files\.length/)
+  assert.doesNotMatch(descriptor.template.content, /这里没有其他文件夹/)
+})
+
 test('DirectoryBrowser dirty membership and save; root replacement uses explicit confirmation', async () => {
   const s = await fresh()
   const { setup: ui, events } = await directorySetup(s)
@@ -316,7 +361,7 @@ test('DirectoryBrowser template keeps navigation/toggle separate and accessible,
   const directive = (node, name, arg) => node.props.find(prop => prop.type === 7 && prop.name === name && prop.arg?.content === arg)?.exp?.content
   const open = buttons.find(node => attr(node, 'class') === 'directory-open')
   assert.equal(directive(open, 'on', 'click'), 'currentPath = entry.path')
-  assert.equal(directive(open, 'bind', 'disabled'), "entry.kind !== 'directory'")
+  assert.equal(directive(open, 'bind', 'disabled'), undefined)
   const selections = buttons.filter(node => attr(node, 'class') === 'directory-select')
   assert.equal(selections.length, 2)
   for (const node of selections) {
@@ -326,6 +371,17 @@ test('DirectoryBrowser template keeps navigation/toggle separate and accessible,
   }
   assert.equal(directive(buttons.find(node => directive(node, 'on', 'click') === 'save'), 'bind', 'disabled'), '!dirty')
   for (const node of buttons.filter(node => node.children.some(child => child.content === '取消'))) assert.equal(directive(node, 'on', 'click'), "emit('close')")
+  const fileRow = []
+  function findFileRow(node) {
+    if (node.type === 1 && attr(node, 'class') === 'directory-file') fileRow.push(node)
+    for (const child of node.children ?? []) findFileRow(child)
+  }
+  findFileRow(ast)
+  assert.equal(fileRow.length, 1)
+  assert.equal(fileRow[0].tag, 'div')
+  assert.equal(fileRow[0].children.some(child => child.tag === 'button'), false)
+  assert.match(descriptor.template.content, /v-for="entry in files"/)
+  assert.doesNotMatch(fileRow[0].loc.source, /caret-right|directory-select|@click/)
   assert.doesNotMatch(descriptor.template.content, /selected-director|directory-selection/)
   assert.doesNotMatch(descriptor.scriptSetup.content, /window\.confirm|fetch\(|axios/)
 })

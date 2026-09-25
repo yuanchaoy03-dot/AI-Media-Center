@@ -128,13 +128,16 @@ dialog.media-source-ui::backdrop { background:rgba(0,0,0,.62); }
 .media-source-ui .directory-toolbar code { font-size:13px; min-width:0; }
 .media-source-ui .directory-group-label { color:var(--source-secondary); font-size:12px; font-weight:600; }
 .media-source-ui .directory-scope-hint { color:var(--source-primary); }
-.media-source-ui .directory-list-label { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 12px; margin-top:14px; }
+.media-source-ui .directory-list-label { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 12px; margin:6px 0; }
+.media-source-ui .directory-list-label:not(:first-child) { margin-top:14px; }
 .media-source-ui .directory-list-label small { color:var(--source-tertiary); font-size:12px; font-weight:400; }
 .media-source-ui .directory-list { min-height:64px; max-height:240px; overflow:auto; padding-block:8px; }
-.media-source-ui .directory-list>p { padding:16px; }
+.media-source-ui .directory-list>.source-note { padding:16px; }
 .media-source-ui .directory-row { display:grid; grid-template-columns:minmax(0,1fr) 36px; align-items:center; gap:8px; padding-right:8px; }
 .media-source-ui .directory-open { display:flex; align-items:center; gap:12px; min-width:0; min-height:52px; padding:8px 12px; border:0; border-radius:var(--radius-xs); color:var(--color-text-primary); background:transparent; text-align:left; }
 .media-source-ui .directory-open>svg { width:20px; height:20px; color:var(--source-secondary); }
+.media-source-ui .directory-file { display:flex; align-items:center; gap:12px; min-width:0; min-height:52px; padding:8px 12px; color:var(--source-secondary); }
+.media-source-ui .directory-file>svg { width:20px; height:20px; flex-shrink:0; }
 .media-source-ui .directory-copy { display:grid; gap:3px; min-width:0; flex:1; overflow-wrap:anywhere; }
 .media-source-ui .directory-copy small { font-size:12px; color:var(--source-secondary); }
 .media-source-ui .directory-select { display:grid; place-items:center; width:36px; height:36px; flex-shrink:0; padding:0; border:0; border-radius:var(--radius-xs); background:transparent; color:var(--source-secondary); }

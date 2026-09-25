@@ -1,4 +1,4 @@
-import type { MediaSource, MediaScanRoot, ScanTask } from '../types/mediaSource'
+import type { DirectoryEntry, MediaSource, MediaScanRoot, ScanTask } from '../types/mediaSource'
 
 // 来自 HTML 原型的五个来源。仅演示本人数据，不是新用户默认片库。
 export const mockMediaSources: MediaSource[] = [
@@ -17,10 +17,27 @@ export const mockScanRoots: MediaScanRoot[] = [
   { id: 'root-ready', sourceId: 'source-ready', path: '/Movies/纪录片', enabled: true },
 ]
 
-export const mockDirectories: Record<string, string[]> = {
-  '/': ['Movies', 'TV', 'Downloads', '电影', 'Cinema'],
-  '/Movies': ['电影', '动画', '纪录片'], '/电影': ['4K'], '/TV': ['剧集'],
-  '/Downloads': [], '/Cinema': [], '/Movies/电影': [], '/Movies/动画': [],
+export const mockDirectories: Record<string, Pick<DirectoryEntry, 'name' | 'kind'>[]> = {
+  '/': [
+    { name: 'Movies', kind: 'directory' }, { name: 'TV', kind: 'directory' },
+    { name: 'Downloads', kind: 'directory' }, { name: '电影', kind: 'directory' },
+    { name: 'Cinema', kind: 'directory' },
+  ],
+  '/Movies': [
+    { name: '电影', kind: 'directory' }, { name: '动画', kind: 'directory' },
+    { name: '纪录片', kind: 'directory' },
+  ],
+  '/Movies/电影': [
+    { name: '星际穿越', kind: 'directory' }, { name: 'README', kind: 'file' },
+  ],
+  '/Movies/电影/星际穿越': [
+    { name: 'Interstellar (2014).mkv', kind: 'file' },
+    { name: 'poster.jpg', kind: 'file' }, { name: 'backdrop.jpg', kind: 'file' },
+    { name: 'logo.png', kind: 'file' },
+  ],
+  '/电影': [{ name: '4K', kind: 'directory' }],
+  '/TV': [{ name: '剧集', kind: 'directory' }],
+  '/Downloads': [], '/Cinema': [], '/Movies/动画': [],
   '/Movies/纪录片': [], '/电影/4K': [], '/TV/剧集': [],
 }
 

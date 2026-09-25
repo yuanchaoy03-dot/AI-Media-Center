@@ -37,7 +37,9 @@ function selectionState(path: string) {
   }
 }
 const currentSelection = computed(() => selectionState(currentPath.value))
-const entries = computed(() => directory.value.entries.map(entry => ({ ...entry, selection: selectionState(entry.path) })))
+const directories = computed(() => directory.value.entries.filter(entry => entry.kind === 'directory').map(entry => ({ ...entry, selection: selectionState(entry.path) })))
+const files = computed(() => directory.value.entries.filter(entry => entry.kind === 'file'))
+function fileIcon(name: string) { return /\.(?:mp4|mkv|mov|avi|m4v|wmv|ts|m2ts|webm|mpg|mpeg)$/i.test(name) ? 'video' : 'file' }
 const replacementMessage = computed(() => {
   if (!replacement.value) return ''
   const { path, descendants } = replacement.value
@@ -81,16 +83,20 @@ onBeforeUnmount(() => dialog.value?.close())
         <div class="directory-copy"><span class="directory-group-label">{{ currentPath === '/' ? '整个来源' : '当前文件夹' }}</span><code aria-label="当前文件夹路径">{{ currentPath }}</code><small class="directory-scope-hint">{{ currentSelection.selected || currentSelection.ancestor ? '整个文件夹及里面的内容都已选择' : currentPath === '/' ? '选择整个来源及里面的内容' : '选择整个文件夹及里面的内容' }}</small><small v-if="currentSelection.text">{{ currentSelection.text }}</small></div>
         <button class="directory-select" :class="{ 'is-selected': currentSelection.selected }" :disabled="!!currentSelection.ancestor || !!directory.error" :aria-label="currentSelection.label" :aria-pressed="currentSelection.selected" @click="select(currentPath)"><SourceIcon :name="currentSelection.icon" /></button>
       </div>
-      <p class="directory-group-label directory-list-label">里面的文件夹 <small>只想选一部分，就选下面的文件夹</small></p>
       <div class="directory-list">
-        <div v-for="entry in entries" :key="entry.path" class="directory-row">
-          <button class="directory-open" :disabled="entry.kind !== 'directory'" @click="currentPath = entry.path">
+        <p v-if="directories.length" class="directory-group-label directory-list-label">里面的文件夹 <small>只想选一部分，就选下面的文件夹</small></p>
+        <div v-for="entry in directories" :key="entry.path" class="directory-row">
+          <button class="directory-open" @click="currentPath = entry.path">
             <SourceIcon name="folder" /><span class="directory-copy"><span>{{ entry.name }}</span><small v-if="entry.selection.text">{{ entry.selection.text }}</small></span><SourceIcon name="caret-right" />
           </button>
-          <button v-if="entry.kind === 'directory'" class="directory-select" :class="{ 'is-selected': entry.selection.selected }" :disabled="!!entry.selection.ancestor" :aria-label="entry.selection.label" :aria-pressed="entry.selection.selected" @click="select(entry.path)"><SourceIcon :name="entry.selection.icon" /></button>
+          <button class="directory-select" :class="{ 'is-selected': entry.selection.selected }" :disabled="!!entry.selection.ancestor" :aria-label="entry.selection.label" :aria-pressed="entry.selection.selected" @click="select(entry.path)"><SourceIcon :name="entry.selection.icon" /></button>
+        </div>
+        <p v-if="files.length" class="directory-group-label directory-list-label">文件</p>
+        <div v-for="entry in files" :key="entry.path" class="directory-row">
+          <div class="directory-file"><SourceIcon :name="fileIcon(entry.name)" /><span class="directory-copy">{{ entry.name }}</span></div>
         </div>
         <p v-if="directory.error" class="source-note danger" role="alert">{{ directory.error }}</p>
-        <p v-else-if="!entries.length" class="source-note">{{ currentSelection.ancestor ? '这里没有其他文件夹，当前文件夹已一起选择。' : currentSelection.selected ? '这里没有其他文件夹，当前文件夹已选择。' : '这里没有其他文件夹，你仍可以选择当前文件夹。' }}</p>
+        <p v-else-if="!directories.length && !files.length" class="source-note">这个文件夹是空的。</p>
       </div>
       <p v-if="error" class="source-note danger" role="alert">{{ error }}</p>
       <div class="directory-footer"><p class="source-note" role="status">已选择 {{ draftSelectedPaths.length }} 个文件夹</p><div class="header-actions"><button class="secondary-action" @click="emit('close')">取消</button><button class="primary-action" :disabled="!dirty" @click="save">保存</button></div></div>
