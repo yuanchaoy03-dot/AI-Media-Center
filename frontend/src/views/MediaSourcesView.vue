@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, shallowRef } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
-import { mediaSourceState, removeSource, scanLabel } from '../services/mediaSourceService'
+import { mediaSourceState, removeSource, scanLabel, startScan } from '../services/mediaSourceService'
 import { getLibraryMovies } from '../services/movieService'
 import type { LibraryMovie } from '../types/movie'
 import type { MediaSource } from '../types/mediaSource'
@@ -17,6 +17,8 @@ const movies = ref<LibraryMovie[]>([])
 const sourceList = computed(() => mediaSourceState.sources)
 const scanTasks = computed(() => mediaSourceState.tasks)
 const menuSource = ref<MediaSource>()
+const menuScanLabel = ref('')
+const menuTaskId = ref('')
 const trigger = shallowRef<HTMLButtonElement>()
 const dialogOpen = ref(false)
 const editing = ref<MediaSource>()
@@ -24,6 +26,7 @@ const notice = ref('')
 const removing = ref<MediaSource>()
 const recentMovies = computed(() => movies.value.filter(movie => movie.sourceIds.some(id => sourceList.value.some(source => source.id === id))).sort((a,b) => b.addedAt - a.addedAt).slice(0,6))
 const sourceRoots = (id: string) => mediaSourceState.roots.filter(root => root.sourceId === id)
+const runningTask = (id: string) => mediaSourceState.tasks.find(task => task.sourceId === id && task.status === 'running')
 function folderSummary(id: string) {
   const roots = sourceRoots(id)
   if (!roots.length) return '未选择影片文件夹'
@@ -35,17 +38,42 @@ function openMenu(source: MediaSource, event: MouseEvent) {
   if (!(event.currentTarget instanceof HTMLButtonElement)) return
   if (menuSource.value?.id === source.id) { menuSource.value = undefined; return }
   menuSource.value = source
+  menuScanLabel.value = scanLabel(source)
+  menuTaskId.value = runningTask(source.id)?.id ?? ''
   trigger.value = event.currentTarget
 }
 function openDialog(source?: MediaSource) { editing.value = source; dialogOpen.value = true }
 function menuAction(action: 'detail' | 'scan' | 'edit' | 'remove') {
   const source = menuSource.value
+  const selectedTaskId = menuTaskId.value
   menuSource.value = undefined
   if (!source) return
   if (action === 'edit') openDialog(source)
   else if (action === 'remove') {
     removing.value = source
-  } else void router.push({ name: 'media-source-detail', params: { sourceId: source.id }, query: action === 'scan' ? { action: 'scan' } : {} })
+  } else if (action === 'scan') {
+    const detail = { name: 'media-source-detail', params: { sourceId: source.id } }
+    if (source.status !== 'available') {
+      void router.push({ ...detail, query: { action: 'scan' } })
+      return
+    }
+    const runningId = selectedTaskId || runningTask(source.id)?.id
+    if (runningId) {
+      void router.push({ ...detail, query: { task: runningId }, hash: '#recent-scans' })
+      return
+    }
+    const roots = sourceRoots(source.id)
+    if (!roots.length || !roots.some(root => root.enabled)) {
+      void router.push({ ...detail, hash: '#scan-roots' })
+      return
+    }
+    try {
+      startScan(source.id)
+      notice.value = `${source.name}已开始扫描。`
+    } catch (error) {
+      notice.value = error instanceof Error ? error.message : '扫描未启动。'
+    }
+  } else void router.push({ name: 'media-source-detail', params: { sourceId: source.id } })
 }
 function confirmRemove() {
   if (!removing.value) return
@@ -66,7 +94,7 @@ onMounted(async () => { movies.value = await getLibraryMovies() })
           <article v-for="source in sourceList" :key="source.id" class="source-item">
             <RouterLink class="source-hit" :to="{ name: 'media-source-detail', params: { sourceId: source.id } }" :aria-label="`查看${source.name}详情`" />
             <div class="source-copy"><strong class="source-name" :title="source.name">{{ source.name }}</strong><span class="source-type">{{ source.type }}</span><span class="source-location" :title="source.address">{{ source.address.replace(/^https?:\/\//, '') }}</span></div>
-            <span class="source-status"><span v-if="source.status === 'testing'" class="spinner" /><SourceIcon v-else :name="source.status === 'available' ? 'check-circle' : 'x'" />{{ source.status === 'available' ? '已连接' : source.status === 'testing' ? '正在测试' : '连接异常' }}</span>
+            <span class="source-status"><span v-if="source.status === 'testing' || (source.status === 'available' && runningTask(source.id))" class="spinner" /><SourceIcon v-else :name="source.status === 'available' ? 'check-circle' : 'x'" />{{ source.status === 'available' ? runningTask(source.id) ? '扫描中' : '已连接' : source.status === 'testing' ? '正在测试' : '连接异常' }}</span>
             <span class="source-config">{{ folderSummary(source.id) }}</span>
             <RouterLink v-if="!sourceRoots(source.id).length" class="source-config-link" :to="{ name: 'media-source-detail', params: { sourceId: source.id }, hash: '#scan-roots' }">选择影片文件夹 →</RouterLink>
             <span class="source-footer"><span>{{ movieCount(source.id) }} 部电影</span><span>上次扫描 · {{ source.lastScan }}</span></span>
@@ -81,7 +109,7 @@ onMounted(async () => { movies.value = await getLibraryMovies() })
       </section>
       <p v-if="notice" class="source-note" role="status">{{ notice }}</p>
     </div>
-    <SourceMenu v-if="menuSource && trigger" :trigger="trigger" :scan-label="scanLabel(menuSource)" @close="menuSource = undefined" @action="menuAction" />
+    <SourceMenu v-if="menuSource && trigger" :trigger="trigger" :scan-label="menuScanLabel" @close="menuSource = undefined" @action="menuAction" />
     <SourceDialog v-if="dialogOpen" :source="editing" @close="dialogOpen = false" @saved="saved" />
     <SourceConfirmDialog v-if="removing" title="移除来源？" :message="`移除“${removing.name}”后，此来源已选择的影片文件夹也会移除。云端文件不会删除。`" confirm-label="移除来源" @close="removing = undefined" @confirm="confirmRemove" />
   </section>

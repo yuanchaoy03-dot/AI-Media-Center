@@ -36,6 +36,8 @@ const connectionNotice = computed(() => source.value?.status === 'error' ? sourc
 async function workflow() {
   if (!source.value) return
   if (source.value.status !== 'available') { await testSourceConnection(sourceId.value); return }
+  const running = tasks.value.find(task => task.status === 'running')
+  if (running) { selectedTaskId.value = running.id; await nextTick(); taskSection.value?.scrollIntoView(); return }
   if (!roots.value.length) { browsing.value = true; return }
   if (!roots.value.some(root => root.enabled)) { rootSection.value?.scrollIntoView(); notice.value = '请先为至少一个影片文件夹恢复扫描。'; return }
   try { selectedTaskId.value = startScan(sourceId.value); await nextTick(); taskSection.value?.scrollIntoView() }

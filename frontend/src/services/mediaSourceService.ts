@@ -114,10 +114,10 @@ export function removeScanRoot(sourceId: string, rootId: string): void {
 
 export function scanLabel(source: MediaSource): string {
   if (source.status !== 'available') return '检查连接'
+  if (state.tasks.some(task => task.sourceId === source.id && task.status === 'running')) return '查看扫描'
   const roots = state.roots.filter(root => root.sourceId === source.id)
   if (!roots.length) return '选择影片文件夹'
   if (!roots.some(root => root.enabled)) return '查看暂停扫描的影片文件夹'
-  if (state.tasks.some(task => task.sourceId === source.id && task.status === 'running')) return '查看扫描'
   return '立即扫描'
 }
 
