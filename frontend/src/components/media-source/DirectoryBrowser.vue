@@ -28,12 +28,12 @@ function selectionState(path: string) {
   const selected = draftSelectedPaths.value.includes(path)
   const ancestor = findCoveringAncestor(path, draftSelectedPaths.value)
   const descendants = findContainedDescendants(path, draftSelectedPaths.value)
-  const disabled = selected && roots.value.some(root => normalizeScanRootPath(root.path) === path && !root.enabled)
+  const scanPaused = selected && roots.value.some(root => normalizeScanRootPath(root.path) === path && !root.enabled)
   return {
     selected, ancestor, descendants,
-    label: ancestor ? `${path} 已随${folderName(ancestor)}一起选择` : selected ? path === '/' ? '取消选择整个来源' : `取消选择 ${path}` : path === '/' ? '选择整个来源及里面的内容' : `选择 ${path} 及里面的内容`,
-    text: ancestor ? `已随${folderName(ancestor)}一起选择` : selected ? disabled ? '已选择 · 扫描已暂停' : '已选择' : descendants.length ? `含 ${descendants.length} 个已选文件夹` : '',
-    icon: ancestor ? 'folder' : selected ? 'check-circle' : 'plus',
+    label: ancestor ? '已包含在所选上级文件夹中' : selected ? path === '/' ? '取消选择整个来源' : `取消选择 ${path}` : path === '/' ? '选择整个来源及里面的内容' : `选择 ${path} 及里面的内容`,
+    text: selected && scanPaused ? '扫描已暂停' : !selected && !ancestor && descendants.length ? `已选其中 ${descendants.length} 个` : '',
+    icon: selected || ancestor ? 'check-circle' : 'plus',
   }
 }
 const currentSelection = computed(() => selectionState(currentPath.value))
@@ -75,21 +75,21 @@ onBeforeUnmount(() => dialog.value?.close())
   <Teleport to="body">
     <dialog ref="dialog" class="media-source-ui directory-dialog" aria-labelledby="directory-title" @cancel.prevent="emit('close')">
       <div class="directory-heading">
-        <div><h2 id="directory-title">选择影片文件夹</h2><p class="source-note">选择影片文件夹，里面的文件夹也会一起扫描。<br />保存后不会立即开始扫描。</p></div>
+        <div><h2 id="directory-title">选择影片文件夹</h2><p class="source-note">保存后不会立即扫描。</p></div>
         <button class="secondary-action" @click="emit('close')">取消</button>
       </div>
       <div class="directory-toolbar">
         <button class="secondary-action" :disabled="currentPath === '/'" @click="currentPath = currentPath.slice(0, currentPath.lastIndexOf('/')) || '/'">返回上一级</button>
-        <div class="directory-copy"><span class="directory-group-label">{{ currentPath === '/' ? '整个来源' : '当前文件夹' }}</span><code aria-label="当前文件夹路径">{{ currentPath }}</code><small class="directory-scope-hint">{{ currentSelection.selected || currentSelection.ancestor ? '整个文件夹及里面的内容都已选择' : currentPath === '/' ? '选择整个来源及里面的内容' : '选择整个文件夹及里面的内容' }}</small><small v-if="currentSelection.text">{{ currentSelection.text }}</small></div>
-        <button class="directory-select" :class="{ 'is-selected': currentSelection.selected }" :disabled="!!currentSelection.ancestor || !!directory.error" :aria-label="currentSelection.label" :aria-pressed="currentSelection.selected" @click="select(currentPath)"><SourceIcon :name="currentSelection.icon" /></button>
+        <div class="directory-copy" :title="currentSelection.ancestor ? currentSelection.label : undefined"><span class="directory-group-label">{{ currentPath === '/' ? '整个来源' : '当前文件夹' }}</span><code aria-label="当前文件夹路径">{{ currentPath }}</code><small v-if="currentSelection.text">{{ currentSelection.text }}</small></div>
+        <button class="directory-select" :class="{ 'is-selected': currentSelection.selected, 'is-contained': currentSelection.ancestor }" :disabled="!!currentSelection.ancestor || !!directory.error" :aria-label="currentSelection.label" :aria-pressed="currentSelection.selected || !!currentSelection.ancestor" @click="select(currentPath)"><SourceIcon :name="currentSelection.icon" /></button>
       </div>
       <div class="directory-list">
-        <p v-if="directories.length" class="directory-group-label directory-list-label">里面的文件夹 <small>只想选一部分，就选下面的文件夹</small></p>
-        <div v-for="entry in directories" :key="entry.path" class="directory-row">
+        <p v-if="directories.length" class="directory-group-label directory-list-label">里面的文件夹</p>
+        <div v-for="entry in directories" :key="entry.path" class="directory-row" :title="entry.selection.ancestor ? entry.selection.label : undefined">
           <button class="directory-open" @click="currentPath = entry.path">
             <SourceIcon name="folder" /><span class="directory-copy"><span>{{ entry.name }}</span><small v-if="entry.selection.text">{{ entry.selection.text }}</small></span><SourceIcon name="caret-right" />
           </button>
-          <button class="directory-select" :class="{ 'is-selected': entry.selection.selected }" :disabled="!!entry.selection.ancestor" :aria-label="entry.selection.label" :aria-pressed="entry.selection.selected" @click="select(entry.path)"><SourceIcon :name="entry.selection.icon" /></button>
+          <button class="directory-select" :class="{ 'is-selected': entry.selection.selected, 'is-contained': entry.selection.ancestor }" :disabled="!!entry.selection.ancestor" :aria-label="entry.selection.label" :aria-pressed="entry.selection.selected || !!entry.selection.ancestor" @click="select(entry.path)"><SourceIcon :name="entry.selection.icon" /></button>
         </div>
         <p v-if="files.length" class="directory-group-label directory-list-label">文件</p>
         <div v-for="entry in files" :key="entry.path" class="directory-row">

@@ -127,10 +127,8 @@ dialog.media-source-ui::backdrop { background:rgba(0,0,0,.62); }
 .media-source-ui .directory-toolbar { display:flex; align-items:center; gap:16px; padding-bottom:16px; border-bottom:1px solid var(--source-line); }
 .media-source-ui .directory-toolbar code { font-size:13px; min-width:0; }
 .media-source-ui .directory-group-label { color:var(--source-secondary); font-size:12px; font-weight:600; }
-.media-source-ui .directory-scope-hint { color:var(--source-primary); }
 .media-source-ui .directory-list-label { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 12px; margin:6px 0; }
 .media-source-ui .directory-list-label:not(:first-child) { margin-top:14px; }
-.media-source-ui .directory-list-label small { color:var(--source-tertiary); font-size:12px; font-weight:400; }
 .media-source-ui .directory-list { min-height:64px; max-height:240px; overflow:auto; padding-block:8px; }
 .media-source-ui .directory-list>.source-note { padding:16px; }
 .media-source-ui .directory-row { display:grid; grid-template-columns:minmax(0,1fr) 36px; align-items:center; gap:8px; padding-right:8px; }
@@ -143,6 +141,7 @@ dialog.media-source-ui::backdrop { background:rgba(0,0,0,.62); }
 .media-source-ui .directory-select { display:grid; place-items:center; width:36px; height:36px; flex-shrink:0; padding:0; border:0; border-radius:var(--radius-xs); background:transparent; color:var(--source-secondary); }
 .media-source-ui .directory-select svg { width:20px; height:20px; }
 .media-source-ui .directory-select.is-selected { color:var(--color-focus); }
+.media-source-ui .directory-select.is-contained { color:var(--color-focus); opacity:.5; }
 .media-source-ui .directory-open:hover:not(:disabled), .media-source-ui .directory-select:hover:not(:disabled) { background:var(--color-surface); }
 .media-source-ui .directory-footer { display:flex; align-items:center; justify-content:space-between; gap:16px; border-top:1px solid var(--source-line); padding-top:16px; }
 .media-source-ui .task-detail { display:grid; gap:16px; padding:24px; border:1px solid var(--source-line); border-radius:var(--radius-floating); background:rgba(255,255,255,.025); }
