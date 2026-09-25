@@ -40,8 +40,8 @@
   & :is(.primary-action,.secondary-action):active:not(:disabled) { transform:scale(.98); }
   & .source-list { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr)); gap:20px; }
   & .source-item { position:relative; display:grid; grid-template-columns:minmax(0,1fr) 36px; grid-template-rows:auto auto auto 28px auto; align-content:start; gap:12px; min-height:248px; padding:24px; border:1px solid var(--source-line); border-radius:var(--radius-card); background:var(--color-surface); }
-  & .source-hit { position:absolute; inset:20px 62px auto 20px; height:76px; border-radius:var(--radius-card); }
-  & .source-hit:hover~.source-copy .source-name { color:var(--color-focus); }
+  & .source-item:has(.source-hit:hover) { border-color:var(--source-border); background:var(--color-surface-2); }
+  & .source-hit { position:absolute; inset:0; z-index:1; border-radius:inherit; }
   & .source-copy { display:grid; grid-column:1; grid-row:1; gap:6px; min-width:0; pointer-events:none; }
   & .source-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:18px; line-height:1.25; font-weight:600; margin-bottom:3px; color:var(--source-primary); }
   & .source-type { font-size:13px; line-height:1.35; color:var(--source-secondary); }
@@ -49,11 +49,11 @@
   & .source-status { display:inline-flex; align-items:center; gap:6px; grid-column:1/-1; grid-row:2; font-size:12px; color:var(--source-secondary); }
   & .source-status svg { color:var(--color-focus); }
   & .source-config { grid-column:1/-1; grid-row:3; font-size:13px; color:var(--source-secondary); }
-  & .source-config-link { grid-column:1/-1; grid-row:4; display:flex; align-items:center; justify-self:start; color:var(--color-focus); font-size:13px; text-decoration:none; }
+  & .source-config-link { position:relative; z-index:2; grid-column:1/-1; grid-row:4; display:flex; align-items:center; justify-self:start; color:var(--color-focus); font-size:13px; text-decoration:none; }
   & .source-config-link:hover { text-decoration:underline; }
   & .source-footer { grid-column:1/-1; grid-row:5; display:grid; gap:6px; margin-top:4px; padding-top:12px; border-top:1px solid var(--source-line); font-size:12px; line-height:1.35; color:var(--source-tertiary); }
   & .source-more, & .dialog-icon-button { display:grid; place-items:center; width:36px; height:36px; border:0; border-radius:var(--radius-xs); background:transparent; color:var(--color-icon); }
-  & .source-more { grid-column:2; grid-row:1; }
+  & .source-more { position:relative; z-index:2; grid-column:2; grid-row:1; }
   & .source-more svg, & .dialog-icon-button svg { width:18px; height:18px; }
   & .source-more:hover, & .dialog-icon-button:hover { background:rgba(255,255,255,.075); color:var(--color-text-primary); }
   & .source-empty { display:grid; justify-items:center; padding:56px 24px; border:1px dashed var(--source-border); border-radius:var(--radius-floating); text-align:center; }
