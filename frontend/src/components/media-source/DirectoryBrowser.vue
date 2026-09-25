@@ -84,14 +84,12 @@ onBeforeUnmount(() => dialog.value?.close())
         <button class="directory-select" :class="{ 'is-selected': currentSelection.selected, 'is-contained': currentSelection.ancestor }" :disabled="!!currentSelection.ancestor || !!directory.error" :aria-label="currentSelection.label" :aria-pressed="currentSelection.selected || !!currentSelection.ancestor" @click="select(currentPath)"><SourceIcon :name="currentSelection.icon" /></button>
       </div>
       <div class="directory-list">
-        <p v-if="directories.length" class="directory-group-label directory-list-label">里面的文件夹</p>
         <div v-for="entry in directories" :key="entry.path" class="directory-row" :title="entry.selection.ancestor ? entry.selection.label : undefined">
           <button class="directory-open" @click="currentPath = entry.path">
             <SourceIcon name="folder" /><span class="directory-copy"><span>{{ entry.name }}</span><small v-if="entry.selection.text">{{ entry.selection.text }}</small></span><SourceIcon name="caret-right" />
           </button>
           <button class="directory-select" :class="{ 'is-selected': entry.selection.selected, 'is-contained': entry.selection.ancestor }" :disabled="!!entry.selection.ancestor" :aria-label="entry.selection.label" :aria-pressed="entry.selection.selected || !!entry.selection.ancestor" @click="select(entry.path)"><SourceIcon :name="entry.selection.icon" /></button>
         </div>
-        <p v-if="files.length" class="directory-group-label directory-list-label">文件</p>
         <div v-for="entry in files" :key="entry.path" class="directory-row">
           <div class="directory-file"><SourceIcon :name="fileIcon(entry.name)" /><span class="directory-copy">{{ entry.name }}</span></div>
         </div>

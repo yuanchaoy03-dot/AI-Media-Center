@@ -304,15 +304,16 @@ test('DirectoryBrowser actual draft: disabled roots selected, navigation indepen
   assert.equal(JSON.stringify(s.mediaSourceState), before) // Discard entire dialog.
 })
 
-test('DirectoryBrowser separates nested folders from read-only files and only marks an empty directory as empty', async () => {
+test('DirectoryBrowser keeps folders before read-only files and only marks an empty directory as empty', async () => {
   const s = await fresh()
   const { setup: ui, descriptor } = await directorySetup(s)
   const before = JSON.stringify(s.mediaSourceState)
   assert.equal(ui.directories.value.some(entry => entry.name === 'Movies'), true)
   ui.currentPath.value = '/Movies'
   assert.equal(ui.directories.value.some(entry => entry.name === '电影'), true)
+  assert.deepEqual(ui.files.value, [])
   ui.currentPath.value = '/Movies/电影'
-  assert.equal(ui.directories.value[0].name, '星际穿越')
+  assert.deepEqual(ui.directories.value.map(entry => entry.name), ['星际穿越'])
   assert.deepEqual(ui.files.value.map(entry => entry.name), ['README'])
   ui.currentPath.value = ui.directories.value[0].path
   assert.deepEqual(ui.directories.value, [])
@@ -328,6 +329,7 @@ test('DirectoryBrowser separates nested folders from read-only files and only ma
   assert.deepEqual(ui.directories.value, [])
   assert.deepEqual(ui.files.value, [])
   assert.match(descriptor.template.content, /!directories\.length && !files\.length/)
+  assert.match(descriptor.template.content, /这个文件夹是空的。/)
   assert.doesNotMatch(descriptor.template.content, /这里没有其他文件夹/)
 })
 
@@ -388,7 +390,18 @@ test('DirectoryBrowser template keeps navigation/toggle separate and accessible,
   assert.equal(fileRow.length, 1)
   assert.equal(fileRow[0].tag, 'div')
   assert.equal(fileRow[0].children.some(child => child.tag === 'button'), false)
-  assert.match(descriptor.template.content, /v-for="entry in files"/)
+  const directoryList = []
+  function findDirectoryList(node) {
+    if (node.type === 1 && attr(node, 'class') === 'directory-list') directoryList.push(node)
+    for (const child of node.children ?? []) findDirectoryList(child)
+  }
+  findDirectoryList(ast)
+  assert.equal(directoryList.length, 1)
+  const listItems = directoryList[0].children.filter(node => node.type === 1)
+  assert.deepEqual(listItems.slice(0, 2).map(node => attr(node, 'class')), ['directory-row', 'directory-row'])
+  assert.deepEqual(listItems.slice(0, 2).map(node => directive(node, 'for')), ['entry in directories', 'entry in files'])
+  assert.equal(listItems.some(node => attr(node, 'class')?.includes('directory-list-label')), false)
+  assert.doesNotMatch(directoryList[0].loc.source, />里面的文件夹<|>文件<|>内容</)
   assert.doesNotMatch(fileRow[0].loc.source, /caret-right|directory-select|@click/)
   assert.doesNotMatch(descriptor.template.content, /directory-scope-hint|只想选一部分|整个文件夹及里面的内容都已选择/)
   assert.doesNotMatch(descriptor.scriptSetup.content, /已随.*一起选择|含 .*个已选文件夹/)

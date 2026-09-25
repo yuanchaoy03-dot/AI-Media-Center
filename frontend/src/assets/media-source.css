@@ -127,8 +127,6 @@ dialog.media-source-ui::backdrop { background:rgba(0,0,0,.62); }
 .media-source-ui .directory-toolbar { display:flex; align-items:center; gap:16px; padding-bottom:16px; border-bottom:1px solid var(--source-line); }
 .media-source-ui .directory-toolbar code { font-size:13px; min-width:0; }
 .media-source-ui .directory-group-label { color:var(--source-secondary); font-size:12px; font-weight:600; }
-.media-source-ui .directory-list-label { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 12px; margin:6px 0; }
-.media-source-ui .directory-list-label:not(:first-child) { margin-top:14px; }
 .media-source-ui .directory-list { min-height:64px; max-height:240px; overflow:auto; padding-block:8px; }
 .media-source-ui .directory-list>.source-note { padding:16px; }
 .media-source-ui .directory-row { display:grid; grid-template-columns:minmax(0,1fr) 36px; align-items:center; gap:8px; padding-right:8px; }
