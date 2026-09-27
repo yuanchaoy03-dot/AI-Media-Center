@@ -17,8 +17,8 @@
 
 - 当前阶段：正式需求/架构/工程基线已完成；Spring Boot 工程骨架已创建，Vue 仍使用 Frontend Mock，尚未接入真实后端、FastAPI、登录或播放器。
 - 当前前端切片状态：片库、筛选排序、加载状态、合集详情、全局搜索、电影详情及媒体来源列表/详情已迁移；均使用 Frontend Mock。主页及其他未完整迁移页面仍不能按 HTML 原型完成度计为 Vue 完成。
-- 最近完成：用户在 `backend/` 创建单体 Spring Boot 工程骨架；此前完成媒体来源 Vue Mock 列表/详情及扫描目录主流程迁移。
-- 后端骨架：Java 21、Spring Boot 4.0.8、Maven，包名 `com.shichaoya.aimediacenter`；已包含 Web、Validation、Security、OAuth2 Resource Server、MyBatis、MySQL Driver 和 Lombok。移动到 `backend/` 后，Maven Wrapper 的 `-DskipTests test-compile` 通过，主代码与测试代码均可编译；未运行测试或启动服务。`application.yaml` 目前只有应用名，尚未配置或验证 MySQL 连接，也无业务接口、数据库表或真实认证。
+- 最近完成：本机 MySQL 8.4 已建立空开发库和专用开发账号，Spring Boot 已通过外置环境变量连接并启动；此前完成媒体来源 Vue Mock 列表/详情及扫描目录主流程迁移。
+- 后端骨架：Java 21、Spring Boot 4.0.8、Maven，包名 `com.shichaoya.aimediacenter`；已包含 Web、Validation、Security、OAuth2 Resource Server、MyBatis、MySQL Driver 和 Lombok。`application.yaml` 从 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD` 读取连接配置；本机参数保存在被 Git 忽略的 `backend/.env.local.ps1`。`spring-boot:run` 和 IDEA 启动成功，曾通过 Spring `DataSource` 执行 `SELECT 1` 验证数据库连接；该临时测试文件现已删除。尚无业务接口、数据库表或真实认证。
 - 最近文档维护：API 已确认注册、登录、当前用户三个接口，以及本人媒体来源列表的空列表场景；补齐响应包裹、错误码、JWT 生命周期、账号状态复核与后续验收条件。非空来源 DTO 和其他 WebDAV 接口仍为 draft；后端工程已创建，契约尚未实现。
 - 媒体来源 Vue：列表与 `/media-sources/:sourceId` 已从 HTML 原型迁移，复用现有 Shell；包含 WebDAV 添加/编辑/测试/删除、独立 MediaScanRoot 草稿管理及增删启停、目录逐层浏览、手动 Mock ScanTask 和最近扫描摘要。新连接为 0 个根、不自动扫描；任务保留启动时 rootPaths 快照，不虚构新增影片。会话内跨路由保留状态，刷新恢复 fixture；尚未接 Spring Boot / 真实 WebDAV。
 - 媒体来源验证：内置 Chromium 完成 1366/1440/1600/1920px 与 900×500 的同内容 HTML/Vue 几何对照，检查列表、详情及短窗口弹窗截图；覆盖添加/必填/测试失败与成功/修改失效、0/1/多根、全停用/部分启用、目录取消/保存/移除、扫描运行/完成、删除/空列表、非法 ID/返回及菜单外部/滚动/resize 关闭。服务回归覆盖范围快照、扫描门槛、删除取消任务与连接中断 failed；failed 的浏览器展示及显式减少透明度/减少动效分支仅源码检查，未单独验证 Edge 或系统级 Windows scaling。
@@ -26,8 +26,8 @@
 - 登录 / 注册 UI：已直接用 Vue 实现 `/login`、`/register`，独立无侧栏布局、页面互切、必填/确认密码校验、密码显隐、提交中和服务未接入反馈。只预览 UI，不发送/存储凭据、不创建账号/登录态、不改变现有业务路由访问。真实认证、路由守卫及注册后的空片库闭环尚未实现。
 - 登录 / 注册视觉更新：共用 AuthForm 使用本地开发素材的私人电影收藏背景与深色磨砂认证窗口；Dune横图移至中央两列中段，调整裁切与表面高光，玻璃alpha/blur/saturate及表单不变，参数见 DESIGN 第31节。仍为 UI Preview，尚未接入 Spring Boot Authentication。本轮类型检查与构建通过；Edge检查登录/注册正常玻璃截图、注册480×720窄窗口及900×500低窗口无横向溢出且内容可滚动。按用户确认，认证窗口不再因系统减少透明度偏好自动降级；保留显式减少透明度、无滤镜回退和减少动效，未修改系统偏好。显式减少透明度与无滤镜分支源码保留，未独立模拟；未验证系统级缩放。
 - 登录 / 注册验证：类型检查与构建通过；内置 Chromium 验证必填、密码显隐、注册密码不一致、Enter 提交、Loading 禁用、未接入反馈及页面切换；1366/1440/1920px 与900×500短窗口无横向溢出，已检查页面截图。未单独验证 Edge、系统级 Windows scaling 或真实密码管理器。
-- 下一步：配置本地 MySQL 开发库和外置连接变量，验证 Spring Boot 可连接空库并启动；再按 API 已确认契约实施注册/登录 → CurrentUser → 新用户空来源的垂直联调，验证身份隔离、401/403 与错误不伪装为空列表。随后结合媒体来源 UI draft 确认并接入保存/测试本人 WebDAV → 只读目录浏览 → MediaScanRoot 保存，再接主动扫描；继续 Desktop + Mouse。
-- 已知问题 / 限制：后端只有可编译工程骨架，MySQL 连接与启动尚未验证；当前个人状态仅 Mock 副本，无后端持久化。播放、版本选择与 AI 仍提示未接入。完整原型不代表功能已实现。
+- 下一步：按 API 已确认契约实施注册/登录 → CurrentUser → 新用户空来源的垂直联调，验证身份隔离、401/403 与错误不伪装为空列表。随后结合媒体来源 UI draft 确认并接入保存/测试本人 WebDAV → 只读目录浏览 → MediaScanRoot 保存，再接主动扫描；继续 Desktop + Mouse。
+- 已知问题 / 限制：后端已连通本机空开发库，但尚无业务表、接口或持久化；当前个人状态仅 Mock 副本。播放、版本选择与 AI 仍提示未接入。完整原型不代表功能已实现。
 - 阻塞问题：无。
 
 ## 历史里程碑与验证记录
