@@ -1,4 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { authState, hasToken, logout, restoreSession } from '../services/authService'
+import { mockPreview } from '../services/dataMode'
+import { watch } from 'vue'
+
+const unavailable = () => import('../views/UnavailableView.vue')
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -22,64 +27,84 @@ const router = createRouter({
     {
       path: '/library/movies/:movieId',
       name: 'movie-detail',
-      component: () => import('../views/MovieDetailView.vue'),
+      component: mockPreview ? () => import('../views/MovieDetailView.vue') : unavailable,
     },
     {
       path: '/',
       name: 'home',
-      component: () => import('../views/HomeView.vue'),
+      component: mockPreview ? () => import('../views/HomeView.vue') : unavailable,
     },
     {
       path: '/library',
       name: 'library',
-      component: () => import('../views/LibraryView.vue'),
+      component: mockPreview ? () => import('../views/LibraryView.vue') : unavailable,
     },
     {
       path: '/library/collections/:collectionId',
       name: 'collection-detail',
-      component: () => import('../views/CollectionDetailView.vue'),
+      component: mockPreview ? () => import('../views/CollectionDetailView.vue') : unavailable,
     },
     {
       path: '/ai-discovery',
       name: 'ai-discovery',
-      component: () => import('../views/AiDiscoveryView.vue'),
+      component: mockPreview ? () => import('../views/AiDiscoveryView.vue') : unavailable,
     },
     {
       path: '/media-sources/:sourceId',
       name: 'media-source-detail',
-      component: () => import('../views/MediaSourceDetailView.vue'),
+      component: mockPreview ? () => import('../views/MediaSourceDetailView.vue') : unavailable,
     },
     {
       path: '/media-sources',
       name: 'media-sources',
-      component: () => import('../views/MediaSourcesView.vue'),
+      component: mockPreview ? () => import('../views/MediaSourcesPreviewView.vue') : () => import('../views/MediaSourcesView.vue'),
     },
     {
       path: '/favorites',
       name: 'favorites',
-      component: () => import('../views/FavoritesView.vue'),
+      component: mockPreview ? () => import('../views/FavoritesView.vue') : unavailable,
     },
     {
       path: '/recently-added',
       name: 'recently-added',
-      component: () => import('../views/RecentlyAddedView.vue'),
+      component: mockPreview ? () => import('../views/RecentlyAddedView.vue') : unavailable,
     },
     {
       path: '/unwatched',
       name: 'unwatched',
-      component: () => import('../views/UnwatchedView.vue'),
+      component: mockPreview ? () => import('../views/UnwatchedView.vue') : unavailable,
     },
     {
       path: '/watched',
       name: 'watched',
-      component: () => import('../views/WatchedView.vue'),
+      component: mockPreview ? () => import('../views/WatchedView.vue') : unavailable,
     },
     {
       path: '/settings',
       name: 'settings',
-      component: () => import('../views/SettingsView.vue'),
+      component: mockPreview ? () => import('../views/SettingsView.vue') : unavailable,
     },
   ],
 })
+
+router.beforeEach(async to => {
+  if (mockPreview) return true
+  if (to.meta.layout === 'auth') {
+    if (hasToken() && await restoreSession()) return { name: 'media-sources' }
+    return true
+  }
+  if (!hasToken()) return { name: 'login' }
+  if (!await restoreSession()) return { name: 'login' }
+  return true
+})
+
+watch(() => authState.epoch, () => {
+  if (!mockPreview && !authState.user && !hasToken() && router.currentRoute.value.meta.layout !== 'auth') void router.replace({ name: 'login' })
+})
+
+export function signOut() {
+  logout()
+  void router.replace({ name: 'login' })
+}
 
 export default router

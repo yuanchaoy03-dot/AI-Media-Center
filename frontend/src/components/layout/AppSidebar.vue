@@ -26,19 +26,19 @@ interface SidebarGroup {
   items: SidebarItem[]
 }
 
-// 展示数据可由未来用户状态替换；这里不维护认证状态。
+// 账号展示由 Shell 的可信当前用户状态提供。
 withDefaults(defineProps<{
   userName?: string
   userSubtitle?: string
   userInitial?: string
   searchExpanded?: boolean
 }>(), {
-  userName: '林默',
+  userName: '',
   userSubtitle: '个人电影收藏',
-  userInitial: '林',
+  userInitial: '',
   searchExpanded: false,
 })
-const emit = defineEmits<{ search: []; notice: [message: string] }>()
+const emit = defineEmits<{ search: []; notice: [message: string]; logout: [] }>()
 const route = useRoute()
 const menuOpen = ref(false)
 const accountWrap = ref<HTMLElement | null>(null)
@@ -57,7 +57,8 @@ function onOutsideInteraction(event: Event) {
 
 function showAccountNotice(action: 'profile' | 'logout') {
   closeMenu()
-  emit('notice', action === 'profile' ? '个人资料功能尚未开放。' : '退出登录功能尚未接入，当前账号状态未改变。')
+  if (action === 'logout') emit('logout')
+  else emit('notice', '个人资料功能尚未开放。')
 }
 
 watch(() => route.fullPath, () => closeMenu())

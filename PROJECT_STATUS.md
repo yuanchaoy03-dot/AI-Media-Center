@@ -4,6 +4,7 @@
 
 ## 当前状态
 
+- 注册 → 登录 → CurrentUser → 本人空来源的真实联调已完成。默认 Vue 运行使用 Spring Boot HTTP；下列目录管理、影片及扫描 Mock 记录仅适用于显式开发预览，未接入的正式个人页面显示尚未开放。
 - “选择影片文件夹”弹窗改用 `+` / check-circle / caret-right 表达可选、已选或已包含、可进入；上级包含使用淡化勾选与 title / aria-label，取消常驻重复说明，部分选择简化为“已选其中 N 个”。ScanRoot、enabled、保存及扫描规则未变；Edge 已核对直接/部分选择、上级覆盖后进入、末级文件与父目录替换确认。
 - 媒体来源列表的“立即扫描”现原地启动 Mock 扫描，不先进入来源详情；运行时卡片显示“扫描中”，再次打开菜单显示“查看扫描”，点击后进入详情并定位最近扫描。未选择影片文件夹或全部暂停时，相应菜单入口进入详情并定位影片文件夹区域。
 - 影片文件夹浏览现使用显式 `directory` / `file` Mock 条目，所有文件夹仍可逐层进入；末级可只读显示 Mock 目录中的视频、图片等文件，使用 video / file 图标。文件不能进入、不能选为 ScanRoot，也不参与路径规则；ScanRoot 互斥、enabled、保存 reconciliation 和 ScanTask rootPaths 快照未变，仍无真实 WebDAV / 后端接入。
@@ -15,22 +16,22 @@
 
 仅在恢复任务、判断下一步或核对实现程度时读取。项目范围和工作规则见 [AGENTS.md](AGENTS.md)，契约状态见 [API.md](docs/API.md)；本文件不定义新的产品决策。
 
-- 当前阶段：正式需求/架构/工程基线已完成；Spring Boot 工程骨架、`users` V1 与 `media_source` V2 迁移已完成，两版迁移均已在开发库执行并复检。Vue 仍使用 Frontend Mock，尚未接入真实业务接口、FastAPI、登录或播放器。
-- 当前前端切片状态：片库、筛选排序、加载状态、合集详情、全局搜索、电影详情及媒体来源列表/详情已迁移；均使用 Frontend Mock。主页及其他未完整迁移页面仍不能按 HTML 原型完成度计为 Vue 完成。
-- 最近完成：新增 `V2__create_media_source.sql`，落实最小来源字段、非空用户归属、限制删除外键和非唯一用户索引；独立 MySQL 8.4.8 实测全新库迁移与 V1 升级通过。MySQL84 服务启动后，Spring Boot 已将开发库从 V1 升级至 V2，第二次启动校验通过且无重复迁移；`users` 与 `media_source` 均为 0 行。
-- 后端骨架：Java 21、Spring Boot 4.0.8、Maven，包名 `com.shichaoya.aimediacenter`；已包含 Web、Validation、Security、OAuth2 Resource Server、MyBatis、MySQL Driver、Flyway 和 Lombok。`application.yaml` 从 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD` 读取连接配置；本机参数保存在被 Git 忽略的 `backend/.env.local.ps1`。应用启动时自动校验并执行迁移；尚无业务接口或真实认证。
-- 数据库与契约：03 数据库设计文档的 `users` 字段、主键、规范化用户名唯一约束、角色/状态约束与 `DATETIME(3)` 字段已落实为 V1 迁移；UTC 写入规则待认证持久化实现，尚无账号创建流程。`media_source` 的最小字段、非空用户归属、限制删除外键、本人查询索引及加密连接配置载体已落实为 V2 迁移；密文格式与密钥管理待真实保存/测试切片落实。API 已确认注册、登录、当前用户三个接口，以及本人媒体来源列表的空列表场景；非空来源 DTO 和其他 WebDAV 接口仍为 draft，契约尚未实现。
-- ID 规范：后端新生成的业务 UUID 统一采用 UUIDv7；`users.id` 继续以 `CHAR(36)` 保存小写标准 UUID 文本，V1 schema 无需修改。首个真实实体创建流程再接入统一生成入口；API ID 仍是不透明字符串。
+- 当前阶段：Spring Boot 真实认证与新用户空来源查询已联调；`users` V1、`media_source` V2 已在开发库执行。真实 WebDAV、个人片库、FastAPI 和播放器尚未接入。
+- 当前前端切片状态：登录/注册及媒体来源空列表使用真实 HTTP；片库、筛选排序、合集、搜索、电影详情和完整来源操作保留在显式开发 Mock 预览。默认个人路径不注入 fixture，未接入页面显示尚未开放；主页等未完整迁移页面不能按 HTML 原型完成度计为 Vue 完成。
+- 数据库迁移：`V2__create_media_source.sql` 已落实最小来源字段、非空用户归属、限制删除外键和非唯一用户索引；独立 MySQL 8.4.8 实测全新库迁移与 V1 升级通过。开发库已升级至 V2 并复检，认证联调结束时 `users` 与 `media_source` 仍均为 0 行。
+- 后端实现：Java 21、Spring Boot 4.0.8、MyBatis、MySQL 与 Flyway；已实现四个认证/本人来源接口及统一错误包裹。Spring Security 验证 JWT 后每次读取账号状态与角色，禁用返回 403。新增 `JWT_SECRET` 环境配置，本机安全随机签名密钥保存在被 Git 忽略的 `backend/.env.local.ps1`；未新增依赖。运行和测试方式见 frontend/README.md。
+- 数据库与契约：注册使用 PBKDF2-HMAC-SHA256 完整密码散列，账号时间以 UTC 写入；V1/V2 无需修改。认证三个接口与来源空列表已为 implemented；非空来源暂返回 `501 SOURCE_LIST_NOT_READY`，不伪装空列表。来源保存、密文格式、密钥管理及其他 WebDAV DTO 仍待下一切片落实。
+- ID 规范：注册已接入统一 `BusinessIds.next()` 生成小写标准 UUIDv7，`users.id` 保持 `CHAR(36)`；API ID 仍是不透明字符串。
 - 迁移验证：在 `backend` 目录运行 `.\mvnw.cmd -q package` 通过；Spring Boot 首次启动执行 V1，第二次启动校验通过且无重复迁移。MySQL 8.4 实测默认 `USER` / `ACTIVE`，重复用户名及非法用户名、角色、状态被拒绝；验证插入均已回滚，表仍为空。Flyway 启动时提示当前 MySQL 8.4 高于其已验证的 8.1 版本，但迁移和复检成功。
 - V2 验证：后端 package 通过；独立 MySQL 8.4.8 使用项目依赖中的 Flyway 完成 30 项迁移/约束检查，覆盖全新 V1+V2、已有 V1 升级且保留用户、重复执行无新增迁移、两种路径表结构一致、无默认数据、一用户多来源/同名来源、按用户筛选、外键/删除限制及非法类型/启用值/空配置拒绝。约束测试数据已回滚；这些 SQL 检查不代表 HTTP 身份隔离已实现。现有 Flyway 的 MySQL 版本提示及 `TINYINT(1)` 显示宽度弃用提示不影响本次验证，字段沿用已确定设计。
-- 媒体来源 Vue：列表与 `/media-sources/:sourceId` 已从 HTML 原型迁移，复用现有 Shell；包含 WebDAV 添加/编辑/测试/删除、独立 MediaScanRoot 草稿管理及增删启停、目录逐层浏览、手动 Mock ScanTask 和最近扫描摘要。新连接为 0 个根、不自动扫描；任务保留启动时 rootPaths 快照，不虚构新增影片。会话内跨路由保留状态，刷新恢复 fixture；尚未接 Spring Boot / 真实 WebDAV。
+- 媒体来源 Vue：正式 `/media-sources` 通过可信当前用户加载空列表，区分加载、失败和空状态，最近扫描/入库不回退 Mock；添加来源暂显示未开放。完整原型迁移保留为 `MediaSourcesPreviewView.vue` 与来源详情 Mock，通过开发模式的 `VITE_MOCK_PREVIEW=true` 显式启用，生产不启用预览。
 - 媒体来源验证：内置 Chromium 完成 1366/1440/1600/1920px 与 900×500 的同内容 HTML/Vue 几何对照，检查列表、详情及短窗口弹窗截图；覆盖添加/必填/测试失败与成功/修改失效、0/1/多根、全停用/部分启用、目录取消/保存/移除、扫描运行/完成、删除/空列表、非法 ID/返回及菜单外部/滚动/resize 关闭。服务回归覆盖范围快照、扫描门槛、删除取消任务与连接中断 failed；failed 的浏览器展示及显式减少透明度/减少动效分支仅源码检查，未单独验证 Edge 或系统级 Windows scaling。
 - 媒体来源检查：`npx vue-tsc -b`、`npm run build`、7 项 Node 服务回归和 tracked/untracked diff whitespace 检查通过；未捕获浏览器 error/warn。无新依赖，无独立 lint 脚本。原型 `confirm()` 改为原生 `<dialog>` 二次确认；播放反馈沿用“未接入”，未迁移移动 Action Sheet 或自定义焦点代码。
-- 登录 / 注册 UI：已直接用 Vue 实现 `/login`、`/register`，独立无侧栏布局、页面互切、必填/确认密码校验、密码显隐、提交中和服务未接入反馈。只预览 UI，不发送/存储凭据、不创建账号/登录态、不改变现有业务路由访问。真实认证、路由守卫及注册后的空片库闭环尚未实现。
-- 登录 / 注册视觉更新：共用 AuthForm 使用本地开发素材的私人电影收藏背景与深色磨砂认证窗口；Dune横图移至中央两列中段，调整裁切与表面高光，玻璃alpha/blur/saturate及表单不变，参数见 DESIGN 第31节。仍为 UI Preview，尚未接入 Spring Boot Authentication。本轮类型检查与构建通过；Edge检查登录/注册正常玻璃截图、注册480×720窄窗口及900×500低窗口无横向溢出且内容可滚动。按用户确认，认证窗口不再因系统减少透明度偏好自动降级；保留显式减少透明度、无滤镜回退和减少动效，未修改系统偏好。显式减少透明度与无滤镜分支源码保留，未独立模拟；未验证系统级缩放。
-- 登录 / 注册验证：类型检查与构建通过；内置 Chromium 验证必填、密码显隐、注册密码不一致、Enter 提交、Loading 禁用、未接入反馈及页面切换；1366/1440/1920px 与900×500短窗口无横向溢出，已检查页面截图。未单独验证 Edge、系统级 Windows scaling 或真实密码管理器。
-- 下一步：按 API 已确认契约实施注册/登录 → CurrentUser → 新用户空来源的垂直联调，验证身份隔离、401/403 与错误不伪装为空列表。再结合媒体来源 UI draft 确认并接入保存/测试本人 WebDAV → 只读目录浏览 → MediaScanRoot 保存，再接主动扫描；继续 Desktop + Mouse。
-- 已知问题 / 限制：开发库已处于 V2，`users` 与 `media_source` 表均为空；尚无业务接口或用户持久化流程，当前个人状态仅 Mock 副本。播放、版本选择与 AI 仍提示未接入。完整原型不代表功能已实现。
+- 登录 / 注册：`/login`、`/register` 已接入真实 HTTP。注册成功清空密码并回到登录页；登录后保存当前标签页 Token，验证 me 再加载来源。刷新身份失败可重试；401/账号禁用清理并返回登录；退出和账号切换取消旧请求、卸载个人页面，阻止旧响应回填。密码不持久化，侧栏显示真实用户名。
+- 登录 / 注册视觉：沿用私人电影收藏背景与深色磨砂认证窗口，参数见 DESIGN 第31节；新增注册成功中性提示和身份验证重试入口。沿用显式减少透明度、无滤镜回退和减少动效，不因系统减少透明度自动降级。
+- 认证验证：独立 MySQL 8.4 的两项 HTTP 集成场景通过，覆盖并发重复注册、完整 Unicode 密码、额外输入拒绝、Token 篡改/过期/缺失声明、当前角色复核、禁用账号、本人/他人来源、非空 501 和数据库故障 500。前端 26 项 Node 回归通过（含 7 项认证/请求竞态）；类型检查和构建通过。Edge 完成注册/校验/登录/刷新、来源失败重试、身份恢复重试、禁用跳转、退出及后退检查；1440×900 与 900×500 无横向溢出，截图已检查，无 pageerror。修复了身份清除后旧路由重新挂载覆盖禁用提示的问题。浏览器连接工具启动失败后使用本机 Edge 自动化；未验证系统级 scaling 或真实密码管理器。
+- 下一步：结合媒体来源 UI draft 确认非空来源 DTO，接入保存/测试本人 WebDAV（含连接配置加密）→ 只读目录浏览 → MediaScanRoot 保存，再接主动扫描；继续 Desktop + Mouse。
+- 已知问题 / 限制：仅完成真实认证与空来源闭环；真实来源保存、非空列表、个人片库、播放、版本选择及 AI 尚未接入。开发库未注入测试账号或来源；验收数据使用独立临时 MySQL。公共 Movie 尚未建表，本轮隔离测试未构造公共 Movie 数据。
 - 阻塞问题：无。
 
 ## 历史里程碑与验证记录

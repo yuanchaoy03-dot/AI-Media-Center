@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, reactive, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
+import { authState, hasToken, login, logout, register, restoreSession, takeLoginHint } from '../../services/authService'
+import { ApiError } from '../../services/http'
+import { mockPreview } from '../../services/dataMode'
 import sidebarIcons from '../../assets/sidebar-icons.svg'
 
 // 开发阶段纯装饰素材：不关联影片服务或用户片库，可整体替换为原创认证资产。
@@ -15,43 +18,72 @@ const authBackdropItems = [
 ]
 
 const props = defineProps<{ mode: 'login' | 'register' }>()
+const router = useRouter()
+const hint = takeLoginHint()
 const registering = computed(() => props.mode === 'register')
-const username = ref('')
+const username = ref(hint.username)
 const password = ref('')
 const confirmation = ref('')
 const showPassword = ref(false)
 const pending = ref(false)
-const message = ref('')
+const message = ref(hint.message)
+const successfulHint = ref(!!hint.username)
 const errors = reactive({ username: '', password: '', confirmation: '' })
-let previewTimer: ReturnType<typeof setTimeout> | undefined
+const controller = new AbortController()
+const needsRestore = computed(() => !registering.value && hasToken() && !authState.user)
 
 function clearError(field: keyof typeof errors) {
+  successfulHint.value = false
   errors[field] = ''
   if (field === 'password') errors.confirmation = ''
   message.value = ''
 }
 
-function submit() {
+async function submit() {
   if (pending.value) return
+  if (mockPreview) { message.value = '当前为开发预览，账号服务未启用。'; return }
   message.value = ''
-  errors.username = username.value.trim() ? '' : '请输入用户名。'
-  errors.password = password.value ? '' : '请输入密码。'
+  errors.username = /^[a-zA-Z0-9_]{3,32}$/.test(username.value.trim()) ? '' : '用户名须为 3–32 位英文字母、数字或下划线。'
+  const length = [...password.value].length
+  errors.password = !length || length > 128 || (registering.value && (length < 15 || !password.value.trim()))
+    ? registering.value ? '密码须为 15–128 个字符，且不能全部为空白。' : '请输入不超过 128 个字符的密码。' : ''
   errors.confirmation = registering.value
     ? (!confirmation.value ? '请再次输入密码。' : confirmation.value !== password.value ? '两次输入的密码不一致。' : '')
     : ''
   if (Object.values(errors).some(Boolean)) return
 
-  // UI 阶段只预览提交反馈，不发送、记录或持久化任何凭据，也不创建登录态。
   pending.value = true
-  previewTimer = setTimeout(() => {
+  try {
+    if (registering.value) {
+      await register(username.value, password.value, controller.signal)
+      password.value = ''; confirmation.value = ''
+      if (!controller.signal.aborted) await router.replace({ name: 'login' })
+    } else {
+      const ready = await login(username.value, password.value, controller.signal)
+      password.value = ''
+      if (controller.signal.aborted) return
+      if (ready) await router.replace({ name: 'media-sources' })
+      else message.value = authState.error || authState.notice || '身份验证未完成，请重试。'
+    }
+  } catch (error) {
+    if (controller.signal.aborted) return
+    if (error instanceof ApiError) {
+      errors.username = error.fieldErrors.username ?? ''
+      errors.password = error.fieldErrors.password ?? ''
+    }
+    message.value = registering.value && error instanceof ApiError && error.status === 0
+      ? '注册结果尚未确认，请尝试登录或稍后重试。'
+      : error instanceof Error ? error.message : '请求失败，请重试。'
+  } finally {
     pending.value = false
-    message.value = registering.value
-      ? '注册服务尚未接入，暂时无法创建账号。'
-      : '登录服务尚未接入，请稍后再试。'
-  }, 400)
+  }
 }
-
-onBeforeUnmount(() => clearTimeout(previewTimer))
+async function retryIdentity() {
+  if (await restoreSession()) await router.replace({ name: 'media-sources' })
+  else message.value = authState.error || authState.notice
+}
+function useAnotherAccount() { logout(); message.value = ''; password.value = '' }
+onBeforeUnmount(() => { controller.abort(); password.value = ''; confirmation.value = '' })
 </script>
 
 <template>
@@ -75,7 +107,12 @@ onBeforeUnmount(() => clearTimeout(previewTimer))
         <p class="auth-description">{{ registering ? '从自己的收藏开始，建立属于你的片库。' : '登录，回到你的光影世界。' }}</p>
       </div>
 
-      <form novalidate :aria-busy="pending" @submit.prevent="submit">
+      <div v-if="needsRestore" class="auth-feedback" :class="{ 'auth-feedback-success': !authState.error }" :role="authState.error ? 'alert' : 'status'">
+        <p>{{ authState.error || '正在验证登录身份…' }}</p>
+        <button class="auth-submit" :disabled="authState.verifying" @click="retryIdentity">{{ authState.verifying ? '正在验证…' : '重试身份验证' }}</button>
+        <button class="password-toggle-inline" @click="useAnotherAccount">使用其他账号</button>
+      </div>
+      <form v-else novalidate :aria-busy="pending" @submit.prevent="submit">
         <div class="auth-field">
           <label for="auth-username">用户名</label>
           <input id="auth-username" v-model="username" name="username" autocomplete="username"
@@ -113,7 +150,7 @@ onBeforeUnmount(() => clearTimeout(previewTimer))
           <p v-if="errors.confirmation" id="confirmation-error" class="field-error">{{ errors.confirmation }}</p>
         </div>
 
-        <p v-if="message" class="auth-feedback" role="alert">{{ message }}</p>
+        <p v-if="message" class="auth-feedback" :class="{ 'auth-feedback-success': successfulHint }" :role="successfulHint ? 'status' : 'alert'">{{ message }}</p>
         <button class="auth-submit" type="submit" :disabled="pending">
           <span v-if="pending" class="auth-spinner" aria-hidden="true" />
           {{ pending ? (registering ? '正在创建…' : '正在登录…') : (registering ? '创建账号' : '登录') }}
@@ -172,6 +209,7 @@ button { font: inherit; cursor: pointer; }
 .password-toggle svg { width: 19px; height: 19px; }
 .field-error { margin: 8px 0 0; color: #efa19b; font-size: 12px; line-height: 1.5; }
 .auth-feedback { padding: 12px 14px; border: 1px solid rgb(239 161 155 / 20%); border-radius: var(--radius-nav); background: rgb(239 161 155 / 6%); color: #efa19b; font-size: 13px; line-height: 1.6; }
+.auth-feedback-success { border-color: var(--color-hairline); background: var(--color-hover); color: var(--color-text-secondary); }
 .auth-submit { display: flex; justify-content: center; align-items: center; gap: 9px; width: 100%; min-height: 48px; margin-top: 28px; border: 0; border-radius: var(--radius-nav); background: var(--color-primary); color: var(--color-text-on-primary); font-size: 14px; font-weight: 650; transition: background var(--motion-fast) var(--motion-ease); }
 .auth-submit:disabled { opacity: .65; cursor: wait; }
 .auth-submit:active:not(:disabled) { background: #c9c9ce; }
@@ -184,6 +222,7 @@ button:focus-visible, a:focus-visible { outline: var(--focus-width) solid var(--
 .auth-note span { font-size: 11px; }
 .auth-footer { flex-shrink: 0; text-align: center; color: var(--color-text-secondary); font-size: 11px; letter-spacing: 2px; }
 .auth-status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.password-toggle-inline { margin-top: 12px; border: 0; background: transparent; color: inherit; padding: 8px; }
 .auth-spinner { width: 14px; height: 14px; border: 1.5px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: auth-spin .8s linear infinite; }
 @keyframes auth-spin { to { transform: rotate(360deg); } }
 @keyframes auth-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }

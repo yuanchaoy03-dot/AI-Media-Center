@@ -10,9 +10,9 @@
 
 ### 认证与新用户空来源：首个联调切片
 
-确认日期：2026-09-27。目标链路为注册 → 登录 → 获取当前用户 → 获取本人空来源列表。认证三个接口及共同约定为 `confirmed`；媒体来源列表仅确认空列表场景，非空条目仍为 `draft`。
+确认日期：2026-09-27；实现日期：2026-09-28。注册 → 登录 → 获取当前用户 → 获取本人空来源列表已完成联调。认证三个接口及共同约定为 `implemented`；媒体来源列表仅空列表场景为 `implemented`，非空条目仍为 `draft`。
 
-当前实现仍为 UI Preview / Frontend Mock：`AuthForm.vue` 只做必填及确认密码校验，并模拟 Loading；尚无 HTTP 请求、后端账号、JWT、路由守卫或真实用户隔离。以下均为待实现契约。
+默认 Vue 运行路径调用 Spring Boot，使用真实账号、JWT、路由守卫及本人范围查询。未接入的个人数据页面显示尚未开放，不注入 Mock；开发预览须显式启用，配置见 [frontend/README.md](../frontend/README.md)。这只完成真实空来源闭环，不代表片库、WebDAV 保存或扫描已实现。
 
 #### 共同 HTTP 约定
 
@@ -50,6 +50,7 @@
 | 401 | `UNAUTHENTICATED` | 受保护请求缺失、无效或过期 JWT，或对应账号不存在 |
 | 403 | `ACCOUNT_DISABLED` | JWT 有效，但当前账号已禁用；清理本地登录态并提示账号暂不可用 |
 | 409 | `USERNAME_TAKEN` | 注册时规范化后的用户名已占用，包括并发注册冲突 |
+| 501 | `SOURCE_LIST_NOT_READY` | 当前用户已有来源，但非空来源 DTO 尚未实现；明确失败，不伪装为空数组 |
 | 500 | `INTERNAL_ERROR` | 数据库不可用或其他服务内部失败；统一说明“服务暂时不可用，请稍后重试。” |
 
 Spring Security 的认证失败响应与 Controller 异常响应采用同一包裹；受保护接口的 `401` 响应附带 `WWW-Authenticate: Bearer`。受保护请求先认证，再校验业务输入；缺失身份不因携带无效参数而变成业务成功。网络断开、网关非 JSON 错误等由前端归为请求失败，不伪装成空列表或登录失效。
@@ -57,7 +58,7 @@ Spring Security 的认证失败响应与 Controller 异常响应采用同一包�
 #### 身份与 JWT 生命周期
 
 - 沿用 [开发规范第 7.1 节](开发规范与模块边界.md#71-spring-security-jwt入口规范) 的 Spring Security + JWT Bearer。只有注册、登录两个接口公开；`/api/auth/me` 和 `/api/media-sources` 均要求 `Authorization: Bearer <accessToken>`。Vue 调用公开认证接口不附带旧 Token。
-- 本切片 access token 固定有效 3600 秒，登录响应返回 `expiresIn: 3600`；不签发 refresh token、不滑动续期，过期后重新登录。签发与校验使用后端固定配置的算法、issuer 和 audience，并校验签名、`exp`、`sub`；`sub` 对应稳定 User ID。签名密钥由后端配置注入，不进入前端或仓库。
+- 本切片 access token 固定有效 3600 秒，登录响应返回 `expiresIn: 3600`；不签发 refresh token、不滑动续期，过期后重新登录。使用 HS256，issuer 为 `ai-media-center`、audience 为 `ai-media-center-web`；校验签名、必需的 `iss` / `aud` / `exp` / `sub`，过期校验不配置额外宽限。`sub` 对应稳定 User ID。`JWT_SECRET` 为至少 32 字节随机密钥的 Base64 文本，由后端环境配置注入，不进入前端或仓库。
 - 每次受保护请求在 JWT 验证后读取当前账号，复核允许访问状态，并以当前角色建立可信 CurrentUser；不以 Token 中过时的账号状态或前端提交的 `userId`、`role` 决定权限。普通用户和管理员访问本人来源时均受本人范围限制。
 - Vue 将 Token 保存在当前标签页的 `sessionStorage`，不保存明文密码，不使用 `localStorage` 或 Cookie 建立登录态。刷新后先调用 `/api/auth/me` 验证，再加载个人数据；`expiresIn` 只供前端提示，后端过期校验是最终依据。sessionStorage 可被同源脚本读取，不能替代 XSS 防护；不承诺跨标签页共享登录或退出。
 - 退出登录清除当前标签页 Token、当前用户和所有个人数据缓存，返回 `/login`；切换账号及认证失效同样清理，退出前的未完成请求不得回填旧用户数据。本切片不新增服务端 logout 接口；退出不会撤销已经复制出去的 JWT，其最长剩余有效期为 1 小时，账号禁用仍在下一次受保护请求时生效。
@@ -70,7 +71,7 @@ Spring Security 的认证失败响应与 Controller 异常响应采用同一包�
 | --- | --- |
 | 所属模块 / 页面 | user / `/register` |
 | Method / Path | POST `/api/auth/register` |
-| 认证 / 状态 | 公开 / `confirmed` |
+| 认证 / 状态 | 公开 / `implemented` |
 
 **Request**：仅接受 `username: string`、`password: string`。
 
@@ -96,7 +97,7 @@ Spring Security 的认证失败响应与 Controller 异常响应采用同一包�
 | --- | --- |
 | 所属模块 / 页面 | user / `/login` |
 | Method / Path | POST `/api/auth/login` |
-| 认证 / 状态 | 公开 / `confirmed` |
+| 认证 / 状态 | 公开 / `implemented` |
 
 **Request**：仅接受 `username: string`、`password: string`。用户名使用注册时相同的规范化和格式规则；密码按原样验证，只校验非空及最多 128 个 Unicode 码点，不在登录时重新执行注册密码强度规则。
 
@@ -120,7 +121,7 @@ Spring Security 的认证失败响应与 Controller 异常响应采用同一包�
 | --- | --- |
 | 所属模块 / 用例 | user / 登录完成、页面刷新后的身份恢复 |
 | Method / Path | GET `/api/auth/me` |
-| 认证 / 状态 | Bearer JWT / `confirmed` |
+| 认证 / 状态 | Bearer JWT / `implemented` |
 
 **Request**：无请求体、无查询参数；不接受由前端指定的 `userId`。身份由 Spring Security 建立的 CurrentUser 决定。
 
@@ -135,7 +136,7 @@ Spring Security 的认证失败响应与 Controller 异常响应采用同一包�
 | 所属模块 / 页面 | media / `/media-sources` |
 | Method / Path | GET `/api/media-sources` |
 | 认证 | Bearer JWT |
-| 状态 | `confirmed`：路径、鉴权、响应包裹、空列表和用户范围；非空条目 DTO 仍为 `draft` |
+| 状态 | `implemented`：路径、鉴权、响应包裹、空列表和用户范围；非空条目 DTO 仍为 `draft` |
 
 **Request**：无请求体、无查询参数；不接受 `userId`、分页、筛选或排序参数，未知查询参数返回 `400`。
 
@@ -154,13 +155,15 @@ Spring Security 的认证失败响应与 Controller 异常响应采用同一包�
 
 本切片只验收无来源用户。非空来源条目的连接状态、测试/扫描摘要、扫描根和影片数量等字段，在保存/测试 WebDAV 切片中结合下方 UI 数据需求确认；不得将现有 TypeScript 展示模型直接宣称为已确认的 HTTP DTO，也不得为有来源用户静默返回空数组。
 
+当前实现先按可信用户查询来源 ID；查询结果非空时返回 `501 SOURCE_LIST_NOT_READY`，不返回 ID 列表作为非空 DTO，也不返回密文或连接信息。后续完成非空契约时替换这一临时错误分支。
+
 Vue 接入后区分加载中、请求失败和成功空列表；仅在成功取得 `data: []` 时显示现有“还没有媒体来源”状态。本人来源、最近扫描和最近入库均不得回退到 Mock fixture。其他尚未接入的页面不能据此宣称已完成真实空片库闭环。
 
-**主要错误**：`400 VALIDATION_FAILED`、`401 UNAUTHENTICATED`、`403 ACCOUNT_DISABLED`、`500 INTERNAL_ERROR`。
+**主要错误**：`400 VALIDATION_FAILED`、`401 UNAUTHENTICATED`、`403 ACCOUNT_DISABLED`、`500 INTERNAL_ERROR`、`501 SOURCE_LIST_NOT_READY`。
 
 #### 本切片实现后的验收条件
 
-以下为后续实现验收要求，本次文档确认不代表已经通过：
+以下为验收条件。后端使用独立 MySQL 的真实 HTTP 集成测试覆盖身份、错误与数据库边界；前端覆盖会话竞态并完成 Edge 端到端检查，详细验证和限制见 PROJECT_STATUS。公共 Movie 尚未建表，本轮隔离测试实际构造另一用户的来源，未构造公共 Movie。
 
 1. 合法注册返回 `201` 和 `USER`；重复及并发重复用户名返回 `409`，额外提交角色/身份字段返回 `400`，不创建任何个人媒体数据。
 2. 正确登录返回有效 JWT；错误用户名、错误密码或禁用账号不签发 Token，均返回 `401 INVALID_CREDENTIALS`。
@@ -250,7 +253,7 @@ Response：当前前端复用 `LibraryMovie` 展示字段，搜索行可附带�
 
 ## 已确认的媒体来源接口语义边界
 
-状态：`draft`，仅上文“获取本人媒体来源列表”的空列表场景为 `confirmed`。媒体来源列表与详情已实现 Vue + Frontend Mock，最小 `media_source` 表已有 Flyway 迁移；尚无 HTTP API 或 Spring Boot 业务实现，不属于 implemented 接口。
+状态：`draft`，仅上文“获取本人媒体来源列表”的空列表场景为 `implemented`。默认列表已接入 Spring Boot 本人查询；来源详情、添加/编辑/测试/删除、目录与扫描仍仅有显式开发预览，不属于 implemented 接口。
 
 - MediaSource是当前用户保存的一套WebDAV连接配置，MediaSource ≠ MediaScanRoot；一个来源允许0~N个MediaScanRoot，后者是用户明确选择、允许递归扫描的目录根。
 - 创建MediaSource不自动扫描，也不默认将`/`加入扫描根；需要支持连接测试及来源当前可见完整目录结构的逐层浏览。

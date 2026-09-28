@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { defineAsyncComponent, ref, watch } from 'vue'
 import { RouterView, useRoute, useRouter } from 'vue-router'
 import AppSidebar from './components/layout/AppSidebar.vue'
-import GlobalSearch from './components/layout/GlobalSearch.vue'
+import { authState } from './services/authService'
+import { mockPreview } from './services/dataMode'
+import { signOut } from './router'
 import type { LibraryMovie } from './types/movie'
 
 const searchOpen = ref(false)
+const GlobalSearch = defineAsyncComponent(() => import('./components/layout/GlobalSearch.vue'))
 const route = useRoute()
 const router = useRouter()
 watch(() => route.fullPath, () => { searchOpen.value = false })
@@ -14,6 +17,7 @@ function selectSearchMovie(movie: LibraryMovie) {
   void router.push({ name: 'movie-detail', params: { movieId: movie.id } })
 }
 const notice = ref('')
+watch(() => authState.epoch, () => { searchOpen.value = false; notice.value = '' })
 function showNotice(message: string) {
   notice.value = message
 }
@@ -26,19 +30,21 @@ function dismissNotice() {
   <main v-if="route.meta.layout === 'auth'" class="auth-main">
     <RouterView />
   </main>
-  <div v-else class="app-layout">
+  <div v-else-if="mockPreview || authState.user" class="app-layout">
     <div class="app-sidebar-container">
-      <AppSidebar :search-expanded="searchOpen" @search="searchOpen = true" @notice="showNotice" />
+      <AppSidebar :user-name="mockPreview ? '演示预览' : authState.user?.username ?? ''" :user-initial="mockPreview ? '演' : authState.user?.username.slice(0, 1).toUpperCase() ?? ''"
+        :search-expanded="searchOpen" @search="mockPreview ? searchOpen = true : showNotice('搜索功能尚未开放。')" @notice="showNotice" @logout="mockPreview ? showNotice('当前为开发预览。') : signOut()" />
     </div>
     <main class="app-main">
-      <RouterView />
+      <RouterView :key="authState.epoch" />
     </main>
-    <GlobalSearch :open="searchOpen" @close="searchOpen = false" @select="selectSearchMovie" />
+    <GlobalSearch v-if="mockPreview" :open="searchOpen" @close="searchOpen = false" @select="selectSearchMovie" />
     <div v-if="notice" class="shell-notice">
       <p role="status">{{ notice }}</p>
       <button type="button" @click="dismissNotice">关闭提示</button>
     </div>
   </div>
+  <main v-else class="auth-main"><p role="status">正在验证登录身份…</p></main>
 </template>
 
 <style scoped>
