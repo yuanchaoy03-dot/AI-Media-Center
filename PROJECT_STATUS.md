@@ -1,6 +1,6 @@
 # PROJECT STATUS
 
-- 最后更新时间：2026-09-27
+- 最后更新时间：2026-09-28
 
 ## 当前状态
 
@@ -20,6 +20,7 @@
 - 最近完成：Spring Boot 已接入 Flyway，在本机 MySQL 8.4 开发库执行 `V1__create_users.sql` 并建立空 `users` 表；此前完成专用开发账号、数据库连接与媒体来源 Vue Mock 主流程。
 - 后端骨架：Java 21、Spring Boot 4.0.8、Maven，包名 `com.shichaoya.aimediacenter`；已包含 Web、Validation、Security、OAuth2 Resource Server、MyBatis、MySQL Driver、Flyway 和 Lombok。`application.yaml` 从 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD` 读取连接配置；本机参数保存在被 Git 忽略的 `backend/.env.local.ps1`。应用启动时自动校验并执行迁移；尚无业务接口或真实认证。
 - 数据库与契约：03 数据库设计文档的 `users` 字段、主键、规范化用户名唯一约束、角色/状态约束与 `DATETIME(3)` 字段已落实为 V1 迁移；UTC 写入规则待认证持久化实现，实际表无账号数据。API 已确认注册、登录、当前用户三个接口，以及本人媒体来源列表的空列表场景；非空来源 DTO 和其他 WebDAV 接口仍为 draft，契约尚未实现。
+- ID 规范：后端新生成的业务 UUID 统一采用 UUIDv7；`users.id` 继续以 `CHAR(36)` 保存小写标准 UUID 文本，V1 schema 无需修改。首个真实实体创建流程再接入统一生成入口；API ID 仍是不透明字符串。
 - 迁移验证：在 `backend` 目录运行 `.\mvnw.cmd -q package` 通过；Spring Boot 首次启动执行 V1，第二次启动校验通过且无重复迁移。MySQL 8.4 实测默认 `USER` / `ACTIVE`，重复用户名及非法用户名、角色、状态被拒绝；验证插入均已回滚，表仍为空。Flyway 启动时提示当前 MySQL 8.4 高于其已验证的 8.1 版本，但迁移和复检成功。
 - 媒体来源 Vue：列表与 `/media-sources/:sourceId` 已从 HTML 原型迁移，复用现有 Shell；包含 WebDAV 添加/编辑/测试/删除、独立 MediaScanRoot 草稿管理及增删启停、目录逐层浏览、手动 Mock ScanTask 和最近扫描摘要。新连接为 0 个根、不自动扫描；任务保留启动时 rootPaths 快照，不虚构新增影片。会话内跨路由保留状态，刷新恢复 fixture；尚未接 Spring Boot / 真实 WebDAV。
 - 媒体来源验证：内置 Chromium 完成 1366/1440/1600/1920px 与 900×500 的同内容 HTML/Vue 几何对照，检查列表、详情及短窗口弹窗截图；覆盖添加/必填/测试失败与成功/修改失效、0/1/多根、全停用/部分启用、目录取消/保存/移除、扫描运行/完成、删除/空列表、非法 ID/返回及菜单外部/滚动/resize 关闭。服务回归覆盖范围快照、扫描门槛、删除取消任务与连接中断 failed；failed 的浏览器展示及显式减少透明度/减少动效分支仅源码检查，未单独验证 Edge 或系统级 Windows scaling。
