@@ -250,7 +250,7 @@ Response：当前前端复用 `LibraryMovie` 展示字段，搜索行可附带�
 
 ## 已确认的媒体来源接口语义边界
 
-状态：`draft`，仅上文“获取本人媒体来源列表”的空列表场景为 `confirmed`。媒体来源列表与详情已实现 Vue + Frontend Mock；尚无 HTTP API、数据库或 Spring Boot 能力，不属于 implemented 接口。
+状态：`draft`，仅上文“获取本人媒体来源列表”的空列表场景为 `confirmed`。媒体来源列表与详情已实现 Vue + Frontend Mock，最小 `media_source` 表已有 Flyway 迁移；尚无 HTTP API 或 Spring Boot 业务实现，不属于 implemented 接口。
 
 - MediaSource是当前用户保存的一套WebDAV连接配置，MediaSource ≠ MediaScanRoot；一个来源允许0~N个MediaScanRoot，后者是用户明确选择、允许递归扫描的目录根。
 - 创建MediaSource不自动扫描，也不默认将`/`加入扫描根；需要支持连接测试及来源当前可见完整目录结构的逐层浏览。

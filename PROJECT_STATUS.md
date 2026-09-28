@@ -15,21 +15,22 @@
 
 仅在恢复任务、判断下一步或核对实现程度时读取。项目范围和工作规则见 [AGENTS.md](AGENTS.md)，契约状态见 [API.md](docs/API.md)；本文件不定义新的产品决策。
 
-- 当前阶段：正式需求/架构/工程基线已完成；Spring Boot 工程骨架与首版 `users` 表迁移已完成，Vue 仍使用 Frontend Mock，尚未接入真实业务接口、FastAPI、登录或播放器。
+- 当前阶段：正式需求/架构/工程基线已完成；Spring Boot 工程骨架、`users` V1 与 `media_source` V2 迁移已完成，两版迁移均已在开发库执行并复检。Vue 仍使用 Frontend Mock，尚未接入真实业务接口、FastAPI、登录或播放器。
 - 当前前端切片状态：片库、筛选排序、加载状态、合集详情、全局搜索、电影详情及媒体来源列表/详情已迁移；均使用 Frontend Mock。主页及其他未完整迁移页面仍不能按 HTML 原型完成度计为 Vue 完成。
-- 最近完成：Spring Boot 已接入 Flyway，在本机 MySQL 8.4 开发库执行 `V1__create_users.sql` 并建立空 `users` 表；此前完成专用开发账号、数据库连接与媒体来源 Vue Mock 主流程。
+- 最近完成：新增 `V2__create_media_source.sql`，落实最小来源字段、非空用户归属、限制删除外键和非唯一用户索引；独立 MySQL 8.4.8 实测全新库迁移与 V1 升级通过。MySQL84 服务启动后，Spring Boot 已将开发库从 V1 升级至 V2，第二次启动校验通过且无重复迁移；`users` 与 `media_source` 均为 0 行。
 - 后端骨架：Java 21、Spring Boot 4.0.8、Maven，包名 `com.shichaoya.aimediacenter`；已包含 Web、Validation、Security、OAuth2 Resource Server、MyBatis、MySQL Driver、Flyway 和 Lombok。`application.yaml` 从 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD` 读取连接配置；本机参数保存在被 Git 忽略的 `backend/.env.local.ps1`。应用启动时自动校验并执行迁移；尚无业务接口或真实认证。
-- 数据库与契约：03 数据库设计文档的 `users` 字段、主键、规范化用户名唯一约束、角色/状态约束与 `DATETIME(3)` 字段已落实为 V1 迁移；UTC 写入规则待认证持久化实现，实际表无账号数据。`media_source` 的最小字段、非空用户归属、限制删除外键、本人查询索引及加密连接配置载体已完成设计，尚未建表；密文格式与密钥管理待真实保存/测试切片落实。API 已确认注册、登录、当前用户三个接口，以及本人媒体来源列表的空列表场景；非空来源 DTO 和其他 WebDAV 接口仍为 draft，契约尚未实现。
+- 数据库与契约：03 数据库设计文档的 `users` 字段、主键、规范化用户名唯一约束、角色/状态约束与 `DATETIME(3)` 字段已落实为 V1 迁移；UTC 写入规则待认证持久化实现，尚无账号创建流程。`media_source` 的最小字段、非空用户归属、限制删除外键、本人查询索引及加密连接配置载体已落实为 V2 迁移；密文格式与密钥管理待真实保存/测试切片落实。API 已确认注册、登录、当前用户三个接口，以及本人媒体来源列表的空列表场景；非空来源 DTO 和其他 WebDAV 接口仍为 draft，契约尚未实现。
 - ID 规范：后端新生成的业务 UUID 统一采用 UUIDv7；`users.id` 继续以 `CHAR(36)` 保存小写标准 UUID 文本，V1 schema 无需修改。首个真实实体创建流程再接入统一生成入口；API ID 仍是不透明字符串。
 - 迁移验证：在 `backend` 目录运行 `.\mvnw.cmd -q package` 通过；Spring Boot 首次启动执行 V1，第二次启动校验通过且无重复迁移。MySQL 8.4 实测默认 `USER` / `ACTIVE`，重复用户名及非法用户名、角色、状态被拒绝；验证插入均已回滚，表仍为空。Flyway 启动时提示当前 MySQL 8.4 高于其已验证的 8.1 版本，但迁移和复检成功。
+- V2 验证：后端 package 通过；独立 MySQL 8.4.8 使用项目依赖中的 Flyway 完成 30 项迁移/约束检查，覆盖全新 V1+V2、已有 V1 升级且保留用户、重复执行无新增迁移、两种路径表结构一致、无默认数据、一用户多来源/同名来源、按用户筛选、外键/删除限制及非法类型/启用值/空配置拒绝。约束测试数据已回滚；这些 SQL 检查不代表 HTTP 身份隔离已实现。现有 Flyway 的 MySQL 版本提示及 `TINYINT(1)` 显示宽度弃用提示不影响本次验证，字段沿用已确定设计。
 - 媒体来源 Vue：列表与 `/media-sources/:sourceId` 已从 HTML 原型迁移，复用现有 Shell；包含 WebDAV 添加/编辑/测试/删除、独立 MediaScanRoot 草稿管理及增删启停、目录逐层浏览、手动 Mock ScanTask 和最近扫描摘要。新连接为 0 个根、不自动扫描；任务保留启动时 rootPaths 快照，不虚构新增影片。会话内跨路由保留状态，刷新恢复 fixture；尚未接 Spring Boot / 真实 WebDAV。
 - 媒体来源验证：内置 Chromium 完成 1366/1440/1600/1920px 与 900×500 的同内容 HTML/Vue 几何对照，检查列表、详情及短窗口弹窗截图；覆盖添加/必填/测试失败与成功/修改失效、0/1/多根、全停用/部分启用、目录取消/保存/移除、扫描运行/完成、删除/空列表、非法 ID/返回及菜单外部/滚动/resize 关闭。服务回归覆盖范围快照、扫描门槛、删除取消任务与连接中断 failed；failed 的浏览器展示及显式减少透明度/减少动效分支仅源码检查，未单独验证 Edge 或系统级 Windows scaling。
 - 媒体来源检查：`npx vue-tsc -b`、`npm run build`、7 项 Node 服务回归和 tracked/untracked diff whitespace 检查通过；未捕获浏览器 error/warn。无新依赖，无独立 lint 脚本。原型 `confirm()` 改为原生 `<dialog>` 二次确认；播放反馈沿用“未接入”，未迁移移动 Action Sheet 或自定义焦点代码。
 - 登录 / 注册 UI：已直接用 Vue 实现 `/login`、`/register`，独立无侧栏布局、页面互切、必填/确认密码校验、密码显隐、提交中和服务未接入反馈。只预览 UI，不发送/存储凭据、不创建账号/登录态、不改变现有业务路由访问。真实认证、路由守卫及注册后的空片库闭环尚未实现。
 - 登录 / 注册视觉更新：共用 AuthForm 使用本地开发素材的私人电影收藏背景与深色磨砂认证窗口；Dune横图移至中央两列中段，调整裁切与表面高光，玻璃alpha/blur/saturate及表单不变，参数见 DESIGN 第31节。仍为 UI Preview，尚未接入 Spring Boot Authentication。本轮类型检查与构建通过；Edge检查登录/注册正常玻璃截图、注册480×720窄窗口及900×500低窗口无横向溢出且内容可滚动。按用户确认，认证窗口不再因系统减少透明度偏好自动降级；保留显式减少透明度、无滤镜回退和减少动效，未修改系统偏好。显式减少透明度与无滤镜分支源码保留，未独立模拟；未验证系统级缩放。
 - 登录 / 注册验证：类型检查与构建通过；内置 Chromium 验证必填、密码显隐、注册密码不一致、Enter 提交、Loading 禁用、未接入反馈及页面切换；1366/1440/1920px 与900×500短窗口无横向溢出，已检查页面截图。未单独验证 Edge、系统级 Windows scaling 或真实密码管理器。
-- 下一步：将已确定的最小 `media_source` 表设计落地为 Flyway 迁移，再按 API 已确认契约实施注册/登录 → CurrentUser → 新用户空来源的垂直联调，验证身份隔离、401/403 与错误不伪装为空列表。随后结合媒体来源 UI draft 确认并接入保存/测试本人 WebDAV → 只读目录浏览 → MediaScanRoot 保存，再接主动扫描；继续 Desktop + Mouse。
-- 已知问题 / 限制：开发库现有 `users` 表和 Flyway 版本记录，但尚无账号数据、业务接口或用户持久化流程；当前个人状态仅 Mock 副本。播放、版本选择与 AI 仍提示未接入。完整原型不代表功能已实现。
+- 下一步：按 API 已确认契约实施注册/登录 → CurrentUser → 新用户空来源的垂直联调，验证身份隔离、401/403 与错误不伪装为空列表。再结合媒体来源 UI draft 确认并接入保存/测试本人 WebDAV → 只读目录浏览 → MediaScanRoot 保存，再接主动扫描；继续 Desktop + Mouse。
+- 已知问题 / 限制：开发库已处于 V2，`users` 与 `media_source` 表均为空；尚无业务接口或用户持久化流程，当前个人状态仅 Mock 副本。播放、版本选择与 AI 仍提示未接入。完整原型不代表功能已实现。
 - 阻塞问题：无。
 
 ## 历史里程碑与验证记录
