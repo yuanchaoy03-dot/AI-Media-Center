@@ -19,7 +19,7 @@
 - 当前前端切片状态：片库、筛选排序、加载状态、合集详情、全局搜索、电影详情及媒体来源列表/详情已迁移；均使用 Frontend Mock。主页及其他未完整迁移页面仍不能按 HTML 原型完成度计为 Vue 完成。
 - 最近完成：Spring Boot 已接入 Flyway，在本机 MySQL 8.4 开发库执行 `V1__create_users.sql` 并建立空 `users` 表；此前完成专用开发账号、数据库连接与媒体来源 Vue Mock 主流程。
 - 后端骨架：Java 21、Spring Boot 4.0.8、Maven，包名 `com.shichaoya.aimediacenter`；已包含 Web、Validation、Security、OAuth2 Resource Server、MyBatis、MySQL Driver、Flyway 和 Lombok。`application.yaml` 从 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD` 读取连接配置；本机参数保存在被 Git 忽略的 `backend/.env.local.ps1`。应用启动时自动校验并执行迁移；尚无业务接口或真实认证。
-- 数据库与契约：03 数据库设计文档的 `users` 字段、主键、规范化用户名唯一约束、角色/状态约束与 `DATETIME(3)` 字段已落实为 V1 迁移；UTC 写入规则待认证持久化实现，实际表无账号数据。API 已确认注册、登录、当前用户三个接口，以及本人媒体来源列表的空列表场景；非空来源 DTO 和其他 WebDAV 接口仍为 draft，契约尚未实现。
+- 数据库与契约：03 数据库设计文档的 `users` 字段、主键、规范化用户名唯一约束、角色/状态约束与 `DATETIME(3)` 字段已落实为 V1 迁移；UTC 写入规则待认证持久化实现，实际表无账号数据。`media_source` 的最小字段、非空用户归属、限制删除外键、本人查询索引及加密连接配置载体已完成设计，尚未建表；密文格式与密钥管理待真实保存/测试切片落实。API 已确认注册、登录、当前用户三个接口，以及本人媒体来源列表的空列表场景；非空来源 DTO 和其他 WebDAV 接口仍为 draft，契约尚未实现。
 - ID 规范：后端新生成的业务 UUID 统一采用 UUIDv7；`users.id` 继续以 `CHAR(36)` 保存小写标准 UUID 文本，V1 schema 无需修改。首个真实实体创建流程再接入统一生成入口；API ID 仍是不透明字符串。
 - 迁移验证：在 `backend` 目录运行 `.\mvnw.cmd -q package` 通过；Spring Boot 首次启动执行 V1，第二次启动校验通过且无重复迁移。MySQL 8.4 实测默认 `USER` / `ACTIVE`，重复用户名及非法用户名、角色、状态被拒绝；验证插入均已回滚，表仍为空。Flyway 启动时提示当前 MySQL 8.4 高于其已验证的 8.1 版本，但迁移和复检成功。
 - 媒体来源 Vue：列表与 `/media-sources/:sourceId` 已从 HTML 原型迁移，复用现有 Shell；包含 WebDAV 添加/编辑/测试/删除、独立 MediaScanRoot 草稿管理及增删启停、目录逐层浏览、手动 Mock ScanTask 和最近扫描摘要。新连接为 0 个根、不自动扫描；任务保留启动时 rootPaths 快照，不虚构新增影片。会话内跨路由保留状态，刷新恢复 fixture；尚未接 Spring Boot / 真实 WebDAV。
@@ -28,7 +28,7 @@
 - 登录 / 注册 UI：已直接用 Vue 实现 `/login`、`/register`，独立无侧栏布局、页面互切、必填/确认密码校验、密码显隐、提交中和服务未接入反馈。只预览 UI，不发送/存储凭据、不创建账号/登录态、不改变现有业务路由访问。真实认证、路由守卫及注册后的空片库闭环尚未实现。
 - 登录 / 注册视觉更新：共用 AuthForm 使用本地开发素材的私人电影收藏背景与深色磨砂认证窗口；Dune横图移至中央两列中段，调整裁切与表面高光，玻璃alpha/blur/saturate及表单不变，参数见 DESIGN 第31节。仍为 UI Preview，尚未接入 Spring Boot Authentication。本轮类型检查与构建通过；Edge检查登录/注册正常玻璃截图、注册480×720窄窗口及900×500低窗口无横向溢出且内容可滚动。按用户确认，认证窗口不再因系统减少透明度偏好自动降级；保留显式减少透明度、无滤镜回退和减少动效，未修改系统偏好。显式减少透明度与无滤镜分支源码保留，未独立模拟；未验证系统级缩放。
 - 登录 / 注册验证：类型检查与构建通过；内置 Chromium 验证必填、密码显隐、注册密码不一致、Enter 提交、Loading 禁用、未接入反馈及页面切换；1366/1440/1920px 与900×500短窗口无横向溢出，已检查页面截图。未单独验证 Edge、系统级 Windows scaling 或真实密码管理器。
-- 下一步：设计媒体来源用户归属与本人空列表查询，按 API 已确认契约实施注册/登录 → CurrentUser → 新用户空来源的垂直联调，验证身份隔离、401/403 与错误不伪装为空列表。随后结合媒体来源 UI draft 确认并接入保存/测试本人 WebDAV → 只读目录浏览 → MediaScanRoot 保存，再接主动扫描；继续 Desktop + Mouse。
+- 下一步：将已确定的最小 `media_source` 表设计落地为 Flyway 迁移，再按 API 已确认契约实施注册/登录 → CurrentUser → 新用户空来源的垂直联调，验证身份隔离、401/403 与错误不伪装为空列表。随后结合媒体来源 UI draft 确认并接入保存/测试本人 WebDAV → 只读目录浏览 → MediaScanRoot 保存，再接主动扫描；继续 Desktop + Mouse。
 - 已知问题 / 限制：开发库现有 `users` 表和 Flyway 版本记录，但尚无账号数据、业务接口或用户持久化流程；当前个人状态仅 Mock 副本。播放、版本选择与 AI 仍提示未接入。完整原型不代表功能已实现。
 - 阻塞问题：无。
 
