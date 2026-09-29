@@ -1,9 +1,11 @@
 # PROJECT STATUS
 
-- 最后更新时间：2026-09-28
+- 最后更新时间：2026-09-29
 
 ## 当前状态
 
+- Axios 底层迁移完成：`request<T>` / `authenticatedRequest<T>` 公开调用方式不变，统一 instance 使用 `/api`、15 秒超时和原生 AbortSignal；保留 API 包裹解析、ApiError、按请求传入 Bearer Token、公开认证不带旧 Token、退出/切换账号的 stale 防护。后端源码、Vite 代理、API 契约、数据库 migration 和 Mock 模块均未改动。
+- 本次迁移验证：`npm run build`、36 项前端 Node 测试通过（含真实 Axios HTTP 传输、15 秒超时与取消）；最初无测试环境变量时 Maven test/package 的 2 项集成测试跳过。随后使用本次新建的独立 `axios_20260929_auth_test` MySQL 8.4.8 库运行 `.\mvnw.cmd clean package`，重新编译、打包成功，`AuthHttpIntegrationTest` 2 项实际通过、0 跳过。真实 `request → Axios → Vite /api → Spring Boot → MySQL` 验证注册/登录/me/来源及 201/200/400/401/403/409/500/501；内置 Chromium 完成 Vue 注册、登录、刷新身份恢复、空来源及退出检查，无捕获 error/warn。故障注入仅发生在专用测试库；普通开发库未用于本次验证。未测试生产反向代理或分别复测 Edge/Chrome；现有 Flyway MySQL 版本提示保留。
 - 注册 → 登录 → CurrentUser → 本人空来源的真实联调已完成。默认 Vue 运行使用 Spring Boot HTTP；下列目录管理、影片及扫描 Mock 记录仅适用于显式开发预览，未接入的正式个人页面显示尚未开放。
 - “选择影片文件夹”弹窗改用 `+` / check-circle / caret-right 表达可选、已选或已包含、可进入；上级包含使用淡化勾选与 title / aria-label，取消常驻重复说明，部分选择简化为“已选其中 N 个”。ScanRoot、enabled、保存及扫描规则未变；Edge 已核对直接/部分选择、上级覆盖后进入、末级文件与父目录替换确认。
 - 媒体来源列表的“立即扫描”现原地启动 Mock 扫描，不先进入来源详情；运行时卡片显示“扫描中”，再次打开菜单显示“查看扫描”，点击后进入详情并定位最近扫描。未选择影片文件夹或全部暂停时，相应菜单入口进入详情并定位影片文件夹区域。
