@@ -10,6 +10,10 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
+/**
+ * 认证模块的 web 层：把 HTTP 输入交给 CredentialsRequest 校验，再调用应用层 AuthService。
+ * 注册只返回 CurrentUser；登录才返回 JWT。/me 的身份由 Spring Security 注入，不从请求参数读取用户 ID。
+ */
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
@@ -29,6 +33,7 @@ public class AuthController {
     }
     @GetMapping("/me")
     public Object me(@AuthenticationPrincipal CurrentUser user, HttpServletRequest request) {
+        // SecurityConfiguration 已将数据库复核后的 CurrentUser 放进 Authentication.principal。
         ApiResponses.noQuery(request);
         return ApiResponses.success(request, Map.of("id", user.id(), "username", user.username(), "role", user.role()));
     }

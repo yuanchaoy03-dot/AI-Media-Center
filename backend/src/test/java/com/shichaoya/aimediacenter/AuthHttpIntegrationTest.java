@@ -21,7 +21,11 @@ import java.util.*;
 import java.util.concurrent.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-/** Opt-in integration test. Requires a disposable MySQL database ending in _auth_test. */
+/**
+ * 真实 HTTP + MySQL 的认证/本人来源集成测试，需显式提供独立且可清空的 *_auth_test 数据库。
+ * 覆盖注册、JWT 校验、账号现状复核与来源隔离；未设置 AUTH_TEST_DB_URL 时不会运行，
+ * 因而普通 package 通过不能说明这些集成场景已实际执行。
+ */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @EnabledIfEnvironmentVariable(named = "AUTH_TEST_DB_URL", matches = ".+")
 class AuthHttpIntegrationTest {
@@ -43,6 +47,7 @@ class AuthHttpIntegrationTest {
     final String password = " 中文密码 full input 😀 " + "z".repeat(90);
 
     @BeforeEach void clear() {
+        // 本测试会删除表中数据，先再次核对数据库名称，避免误清理普通开发库。
         assertTrue(db.queryForObject("SELECT DATABASE()", String.class).endsWith("_auth_test"));
         db.update("DELETE FROM media_source"); db.update("DELETE FROM users");
     }
@@ -93,11 +98,13 @@ class AuthHttpIntegrationTest {
         db.update("INSERT INTO media_source(id,user_id,name,connection_config_ciphertext,created_at,updated_at) VALUES(?,?,?,X'010203',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))", BusinessIds.next(), bob.get("id"), "fixture");
         assertEquals(List.of(), check(call("/media-sources", null, token), 200, "OK").get("data"));
         db.update("UPDATE users SET role='ADMIN' WHERE id=?", aliceId);
+        // 不重新签发 Token：同一 Token 的 /me 应读取数据库中的最新角色。
         assertEquals("ADMIN", data(check(call("/auth/me", null, token), 200, "OK")).get("role"));
         assertEquals(List.of(), check(call("/media-sources", null, token), 200, "OK").get("data"));
         String bobToken = (String) data(check(call("/auth/login", Map.of("username", "bob", "password", password), null), 200, "OK")).get("accessToken");
         check(call("/media-sources", null, bobToken), 501, "SOURCE_LIST_NOT_READY");
         db.update("UPDATE users SET status='DISABLED' WHERE id=?", aliceId);
+        // Token 仍在有效期内，但下次受保护请求仍须被当前账号状态拦下。
         check(call("/auth/me", null, token), 403, "ACCOUNT_DISABLED");
         check(call("/media-sources", null, token), 403, "ACCOUNT_DISABLED");
         check(call("/auth/login", Map.of("username", "alice", "password", password), null), 401, "INVALID_CREDENTIALS");

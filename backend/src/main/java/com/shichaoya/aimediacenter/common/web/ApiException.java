@@ -2,6 +2,11 @@ package com.shichaoya.aimediacenter.common.web;
 
 import java.util.Map;
 
+/**
+ * 应用层可主动抛出的 HTTP 错误：status 决定状态码，code 供前端稳定地判断分支，
+ * message 是可展示说明，fieldErrors 只用于字段校验错误。不要把底层异常详情放入这些字段。
+ * 例如缺失/无效身份为 401，JWT 已通过但数据库中账号被禁用为 403。
+ */
 public class ApiException extends RuntimeException {
     private final int status;
     private final String code;
