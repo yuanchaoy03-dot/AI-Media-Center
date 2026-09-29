@@ -45,8 +45,8 @@ async function submit() {
   message.value = ''
   errors.username = /^[a-zA-Z0-9_]{3,32}$/.test(username.value.trim()) ? '' : '用户名须为 3–32 位英文字母、数字或下划线。'
   const length = [...password.value].length
-  errors.password = !length || length > 128 || (registering.value && (length < 15 || !password.value.trim()))
-    ? registering.value ? '密码须为 15–128 个字符，且不能全部为空白。' : '请输入不超过 128 个字符的密码。' : ''
+  errors.password = !length || length > 128 || (registering.value && (length < 12 || !password.value.trim()))
+    ? registering.value ? '密码须为 12–128 个字符，且不能全部为空白。' : '请输入不超过 128 个字符的密码。' : ''
   errors.confirmation = registering.value
     ? (!confirmation.value ? '请再次输入密码。' : confirmation.value !== password.value ? '两次输入的密码不一致。' : '')
     : ''
@@ -123,7 +123,7 @@ onBeforeUnmount(() => { controller.abort(); password.value = ''; confirmation.va
         </div>
 
         <div class="auth-field">
-          <label for="auth-password">密码</label>
+          <label for="auth-password">密码<span v-if="registering" class="password-requirement"> · 12–128 个字符</span></label>
           <div class="password-control">
             <input id="auth-password" v-model="password" name="password" :type="showPassword ? 'text' : 'password'"
               :autocomplete="registering ? 'new-password' : 'current-password'" :placeholder="registering ? '设置你的密码' : '输入你的密码'"
@@ -197,6 +197,7 @@ h1 { margin: 0; font: var(--type-page); letter-spacing: var(--tracking-title); }
 .auth-description { margin: 12px 0 0; color: var(--color-text-secondary); font-size: 14px; line-height: 1.7; }
 .auth-field { margin-bottom: 20px; }
 label { display: block; margin-bottom: 9px; font-size: 13px; font-weight: 500; }
+.password-requirement { color: var(--color-text-secondary); font-size: 12px; font-weight: 400; }
 input { width: 100%; min-height: 48px; border: 1px solid rgb(255 255 255 / 9%); border-radius: var(--radius-nav); background: rgb(255 255 255 / 5.5%); color: var(--color-text-primary); padding: 12px 14px; font: 14px/1.5 var(--font-ui); transition: border-color var(--motion-fast) var(--motion-ease), background var(--motion-fast) var(--motion-ease); }
 input:focus { background: rgb(255 255 255 / 7.5%); border-color: rgb(255 255 255 / 22%); }
 input::placeholder { color: var(--color-text-secondary); opacity: .7; }

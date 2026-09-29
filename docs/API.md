@@ -76,7 +76,7 @@ Spring Security 的认证失败响应与 Controller 异常响应采用同一包�
 **Request**：仅接受 `username: string`、`password: string`。
 
 - 用户名去除首尾空白、ASCII 大写转小写后，须匹配 `^[a-z0-9_]{3,32}$`；存储、唯一性判断、登录查找和响应使用同一规范化值。`Alice` 与 `alice` 为同一账号名；后端保证唯一性，并发重复注册返回 `409`。
-- 密码为 15–128 个 Unicode 码点，允许中文、空格及特殊字符，不强制字符组合；不 trim、不做大小写转换、不静默截断。仅空白的密码无效。该长度选择参考无 MFA 场景的 [OWASP Authentication 指引](https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html#implement-proper-password-strength-controls)；128 的上限为本项目约定，散列实现须支持完整输入。
+- 密码为 12–128 个 Unicode 码点，允许中文、空格及特殊字符，不强制字符组合；不 trim、不做大小写转换、不静默截断。仅空白的密码无效。12 位下限是本项目为个人使用场景作出的易用性选择，低于 [OWASP Authentication 指引](https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html#implement-proper-password-strength-controls)对无 MFA 密码的 15 位建议；128 位上限为本项目约定，散列实现须支持完整输入。
 - 确认密码仅在前端比较，不提交给后端；额外提交 `role`、`userId`、`confirmation` 等未定义字段返回 `400`，不得批量绑定数据库实体。
 
 **Response**：`201 Created`，`data` 为 `CurrentUser`，字段如下。

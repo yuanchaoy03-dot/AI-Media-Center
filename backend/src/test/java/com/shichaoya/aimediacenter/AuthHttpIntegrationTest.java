@@ -53,6 +53,12 @@ class AuthHttpIntegrationTest {
     }
     @AfterEach void cleanup() { clear(); }
 
+    @Test void registrationAcceptsTwelveCharacterPassword() throws Exception {
+        check(call("/auth/register", Map.of("username", "boundary_user", "password", "a".repeat(11)), null), 400, "VALIDATION_FAILED");
+        check(call("/auth/register", Map.of("username", "boundary_user", "password", "a".repeat(12)), null), 201, "OK");
+        check(call("/auth/login", Map.of("username", "boundary_user", "password", "a".repeat(12)), null), 200, "OK");
+    }
+
     @Test void registrationLoginIdentityIsolationAndFailures() throws Exception {
         for (var extra : List.of("role", "userId", "confirmation")) {
             check(call("/auth/register", Map.of("username", "alice", "password", password, extra, "ADMIN"), null), 400, "VALIDATION_FAILED");

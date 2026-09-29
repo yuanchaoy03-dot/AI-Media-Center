@@ -21,8 +21,8 @@ public record CredentialsRequest(String username, String password) {
         String password = body.get("password") instanceof String s ? s : "";
         int length = password.codePointCount(0, password.length());
         if (length == 0 || length > 128 || password.codePoints().anyMatch(c -> c >= 0xd800 && c <= 0xdfff)
-                || (registering && (length < 15 || password.codePoints().allMatch(c -> Character.isWhitespace(c) || Character.isSpaceChar(c) || c == 0xfeff)))) {
-            errors.put("password", registering ? "密码须为 15–128 个字符，且不能全部为空白。" : "请输入不超过 128 个字符的密码。");
+                || (registering && (length < 12 || password.codePoints().allMatch(c -> Character.isWhitespace(c) || Character.isSpaceChar(c) || c == 0xfeff)))) {
+            errors.put("password", registering ? "密码须为 12–128 个字符，且不能全部为空白。" : "请输入不超过 128 个字符的密码。");
         }
         if (!errors.isEmpty()) throw new ApiException(400, "VALIDATION_FAILED", "请检查输入内容。", errors);
         return new CredentialsRequest(name, password);
