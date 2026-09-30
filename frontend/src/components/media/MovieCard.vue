@@ -3,6 +3,8 @@ import { ref, watch } from 'vue'
 import movieIcons from '../../assets/movie-icons.svg?url&no-inline'
 import type { LibraryMovie } from '../../types/movie'
 
+// 父页面通过 props 给卡片数据；withDefaults 为没传的可选属性补默认值。
+// defineEmits 声明卡片向父页面发出的事件，卡片只通知点击意图，由父页面处理跳转或播放。
 const props = withDefaults(defineProps<{ movie: LibraryMovie; moreExpanded?: boolean; menuId?: string }>(), { moreExpanded: false })
 const emit = defineEmits<{
   detail: [movieId: string]
@@ -10,6 +12,7 @@ const emit = defineEmits<{
   more: [payload: { movieId: string; trigger: HTMLButtonElement }]
 }>()
 const imageFailed = ref(false)
+// 卡片换了电影或海报地址时，重新尝试显示图片，不沿用上一张海报的失败状态。
 watch(() => [props.movie.id, props.movie.posterUrl], () => { imageFailed.value = false })
 
 function requestMore(event: MouseEvent) {

@@ -10,6 +10,8 @@ const emit = defineEmits<{ close: []; saved: [] }>()
 const dialog = ref<HTMLDialogElement>()
 const currentPath = ref('/')
 const roots = computed(() => mediaSourceState.roots.filter(root => root.sourceId === props.sourceId))
+// initialSelectedPaths 是打开时的选择，draftSelectedPaths 是当前草稿；点保存才写入共享状态。
+// dirty 比较两份选择是否不同，用来决定是否需要保存。
 const initialSelectedPaths = roots.value.map(root => normalizeScanRootPath(root.path))
 const draftSelectedPaths = ref([...initialSelectedPaths])
 const dirty = computed(() => !sameScanRootSelection(initialSelectedPaths, draftSelectedPaths.value))
@@ -23,6 +25,7 @@ const directory = computed(() => {
 function folderName(path: string) { return path === '/' ? '整个来源' : path.slice(path.lastIndexOf('/') + 1) }
 
 // 当前目录与子目录共用状态；已选择和暂停扫描分别展示。
+// selected 是直接选中，ancestor 表示已被选中的上级覆盖，descendants 是单独选中的下级目录。
 function selectionState(path: string) {
   path = normalizeScanRootPath(path)
   const selected = draftSelectedPaths.value.includes(path)
@@ -49,6 +52,7 @@ const replacementMessage = computed(() => {
     ? `你已经单独选择了${chosen}。选择整个来源后，所有可见的文件夹都会一起扫描，就不需要再单独选择它们了。`
     : `你已经单独选择了其中的${chosen}。选择整个“${folderName(path)}”文件夹后，就不需要再单独选择它们了。`
 })
+// 被上级覆盖时不用再选；若已单独选了下级，先确认是否改为选择整个上级，避免扫描范围重叠。
 function select(path: string) {
   if (directory.value.error) return
   const state = selectionState(path)
@@ -63,6 +67,7 @@ function confirmReplacement() {
   draftSelectedPaths.value = replaceDescendantsWithParent(draftSelectedPaths.value, replacement.value.path)
   replacement.value = undefined
 }
+// 保存交给 service 整批检查，成功后通知父页面；取消关闭时草稿不会写回。
 function save() {
   if (!dirty.value) return
   try { saveScanRootSelection(props.sourceId, draftSelectedPaths.value); emit('saved') }

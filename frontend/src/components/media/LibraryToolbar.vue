@@ -39,6 +39,8 @@ function toggle(panel: 'filter' | 'sort') {
   availableHeight.value = Math.max(0, window.innerHeight - (toolbar.value?.getBoundingClientRect().bottom ?? 0) - 16)
   open.value = open.value === panel ? null : panel
 }
+// 工具栏不直接改父页面的 filters，而是复制后发出 update:filters。
+// 父页面的 v-model:filters 接住这个事件并更新状态，电影列表的 computed 随之重新计算。
 function toggleSelection(key: 'genres' | 'sourceIds', value: string) {
   const selected = props.filters[key]
   emit('update:filters', { ...props.filters,
@@ -56,6 +58,7 @@ function onScroll(event: Event) {
   if (event.target instanceof Node && toolbar.value?.contains(event.target)) return
   close()
 }
+// 挂载时监听外部点击、窗口变化和滚动来关闭面板；卸载时配对移除，避免页面离开后仍触发。
 onMounted(() => {
   document.addEventListener('pointerdown', onOutside)
   window.addEventListener('resize', close)

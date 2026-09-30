@@ -11,12 +11,14 @@ const query = ref('')
 const results = ref<Array<LibraryMovie & { rating?: string }>>([])
 const loading = ref(false)
 const failed = ref(false)
+// 搜索可能连续发起多次；每次给 revision 加一，只接收最新版结果，避免旧关键词的结果覆盖新结果。
 let revision = 0
 watch(() => props.open, async open => {
   await nextTick()
   if (open && props.open && !dialog.value?.open) dialog.value?.showModal()
   else if (!props.open) dialog.value?.close()
 })
+// 监听弹窗是否打开和输入关键词；打开后调用 movieService，结果写进 ref 后列表自动更新。
 watch([() => props.open, query], async ([open, keyword]) => {
   const request = ++revision
   if (!open) return

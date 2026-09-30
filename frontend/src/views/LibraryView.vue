@@ -21,6 +21,7 @@ const sources = ref<LibrarySourceOption[]>([])
 const loading = ref(true)
 // 预留追加请求状态；当前不触发分页或无限滚动。
 const loadingMore = ref(false)
+// 页面挂载后调用 service；Promise.all 同时加载三份互不依赖的数据，全部完成后再结束加载状态。
 onMounted(async () => {
   const [libraryMovies, librarySources, libraryCollections] = await Promise.all([getLibraryMovies(), getLibrarySources(), getLibraryCollections()])
   collections.value = libraryCollections
@@ -46,6 +47,7 @@ const filters = ref<LibraryFilters>(defaultFilters())
 const sort = ref<LibrarySort>('added')
 let routeGenreSelection: string[] | undefined
 // 承接原型首页 genre 链接；忽略未知类型，不修改路由配置。
+// watch 同时观察 URL 类型和加载状态；immediate: true 表示创建监听时也先执行一次。
 watch([() => route.query.genre, () => loading.value], ([value], [previousValue]) => {
   const genre = typeof value === 'string' ? value : ''
   const known = baseGenres.includes(genre) || movies.value.some(movie => movie.genres.includes(genre))
@@ -61,6 +63,8 @@ function matchesYear(year: number, bucket: LibraryYear) {
   if (bucket === 'older') return year < 1990
   return year >= Number(bucket) && year < Number(bucket) + 10
 }
+// computed 根据电影、筛选条件和排序方式算出展示列表，用户修改条件时无需手动重新筛选。
+// filter 先生成新数组，所以后面的 sort 不会改变 movies 的原始顺序。
 const visibleMovies = computed(() => {
   const selected = filters.value
   const result = movies.value.filter(movie =>

@@ -24,6 +24,8 @@ const trigger = shallowRef<HTMLButtonElement | null>(null)
 const menuOpen = ref(false)
 const activeMovie = computed(() => members.value.find(movie => movie.id === activeId.value))
 const announcement = ref('')
+// URL 中的 collectionId 决定加载哪个合集；同时取回本人电影，再算出当前可展示的成员。
+// 切换合集或卸载时标记 cancelled，晚回来的旧结果就不会覆盖当前页面。
 watch(() => route.params.collectionId, async (id, _, onCleanup) => {
   let cancelled = false
   onCleanup(() => { cancelled = true })

@@ -15,6 +15,8 @@ import '../assets/media-source.css'
 
 const route = useRoute()
 const router = useRouter()
+// useRoute 读取当前地址，useRouter 负责跳转；sourceId 来自路由 /media-sources/:sourceId。
+// 用 computed 读取参数，切换到另一个来源时，下面的来源、目录和任务也会重新筛选。
 const sourceId = computed(() => String(route.params.sourceId))
 const source = computed(() => mediaSourceState.sources.find(item => item.id === sourceId.value))
 const roots = computed(() => mediaSourceState.roots.filter(item => item.sourceId === sourceId.value))
@@ -33,6 +35,8 @@ const activeMovie = ref<LibraryMovie>()
 const movieTrigger = shallowRef<HTMLButtonElement | null>(null)
 const statusLabels = { pending: '等待首次扫描', running: '扫描中（演示）', completed: '扫描完成（演示）', failed: '扫描未完成（演示）' }
 const connectionNotice = computed(() => source.value?.status === 'error' ? source.value.connectionError : source.value?.status === 'testing' ? '正在测试连接（演示）…' : notice.value || (route.query.created && !roots.value.length ? '来源已创建。尚未选择影片文件夹，也未开始扫描。' : '连接测试仅验证连通性，不代表已扫描或文件可播放。'))
+// 这个按钮按顺序处理连接、运行中的任务、目录选择和暂停状态，条件满足才启动扫描。
+// nextTick 等 Vue 把新状态显示出来后再滚动，确保能找到刚出现的任务区域。
 async function workflow() {
   if (!source.value) return
   if (source.value.status !== 'available') { await testSourceConnection(sourceId.value); return }
@@ -57,7 +61,9 @@ function moreMovie(payload: { movieId: string; trigger: HTMLButtonElement }) {
   movieTrigger.value = payload.trigger
 }
 function playback() { notice.value = '播放功能尚未接入，当前仅展示 Frontend Mock。' }
+// 同一个详情组件可能被不同 sourceId 复用，参数变化时清掉上一个来源的弹窗和临时选择。
 watch(sourceId, () => { editing.value = false; browsing.value = false; removingRoot.value = undefined; selectedTaskId.value = ''; notice.value = ''; activeMovie.value = undefined })
+// 列表页传来的 query/hash 在这里变成选中任务、滚动位置或一次扫描动作。
 async function syncRoute() {
   selectedTaskId.value = typeof route.query.task === 'string' ? route.query.task : selectedTaskId.value
   await nextTick()

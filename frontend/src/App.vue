@@ -9,6 +9,7 @@ import type { LibraryMovie } from './types/movie'
 
 const searchOpen = ref(false)
 const GlobalSearch = defineAsyncComponent(() => import('./components/layout/GlobalSearch.vue'))
+// App 管外层布局，RouterView 显示当前路由页面；route.meta.layout 决定显示登录布局还是侧栏布局。
 const route = useRoute()
 const router = useRouter()
 watch(() => route.fullPath, () => { searchOpen.value = false })
@@ -17,6 +18,7 @@ function selectSearchMovie(movie: LibraryMovie) {
   void router.push({ name: 'movie-detail', params: { movieId: movie.id } })
 }
 const notice = ref('')
+// 会话切换时关掉旧搜索和提示；模板中 RouterView 的 key 也用 epoch，让页面重新创建。
 watch(() => authState.epoch, () => { searchOpen.value = false; notice.value = '' })
 function showNotice(message: string) {
   notice.value = message

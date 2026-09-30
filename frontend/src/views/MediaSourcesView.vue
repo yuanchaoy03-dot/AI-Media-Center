@@ -5,17 +5,20 @@ import SourceIcon from '../components/media-source/SourceIcon.vue'
 import { getOwnedSources } from '../services/ownedSourceService'
 import '../assets/media-source.css'
 
+// 真实接口页面目前有加载中、失败、空列表三种状态，模板按 status 切换显示内容。
 const status = ref<'loading' | 'error' | 'empty'>('loading')
 const error = ref('')
 const notice = ref('')
 let controller: AbortController | undefined
 async function load() {
+  // 每次重试先取消上一轮请求；只有当前请求未被取消时，才更新成功或失败状态。
   controller?.abort()
   const current = new AbortController()
   controller = current
   status.value = 'loading'
   error.value = ''
   try {
+    // 页面负责显示状态，service 负责取数据；signal 会一直传到 Axios。
     await getOwnedSources(current.signal)
     if (!current.signal.aborted) status.value = 'empty'
   } catch (reason) {
@@ -25,6 +28,7 @@ async function load() {
   }
 }
 function addSource() { notice.value = '添加媒体来源功能尚未开放。' }
+// onMounted 在页面挂载后加载数据；onBeforeUnmount 在离开页面前取消尚未完成的请求。
 onMounted(load)
 onBeforeUnmount(() => controller?.abort())
 </script>

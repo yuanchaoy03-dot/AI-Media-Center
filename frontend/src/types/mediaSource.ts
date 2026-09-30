@@ -1,3 +1,4 @@
+// 来源连接状态和扫描任务状态分开：能连接不等于已经扫描，扫描完成也不保证文件可播放。
 export type ConnectionState = 'available' | 'error' | 'testing'
 export type ScanState = 'pending' | 'running' | 'completed' | 'failed'
 
@@ -10,6 +11,7 @@ export interface MediaSource {
   status: ConnectionState
   lastConnection: string
   lastScan: string
+  // ? 表示字段可省略，没有连接错误时不一定有这条信息。
   connectionError?: string
 }
 

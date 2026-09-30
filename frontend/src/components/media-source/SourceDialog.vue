@@ -3,15 +3,19 @@ import { onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import type { MediaSource } from '../../types/mediaSource'
 import { saveSource, testConnectionInput } from '../../services/mediaSourceService'
 import SourceIcon from './SourceIcon.vue'
+// 父页面传 source 就是编辑，不传就是新增；saved 事件把保存后的 id 交回父页面处理跳转。
 const props = defineProps<{ source?: MediaSource }>()
 const emit = defineEmits<{ close: []; saved: [id: string] }>()
+// 这里的 ref 保存模板中 ref="dialog" 的真实 DOM 元素，挂载前还没有值。
 const dialog = ref<HTMLDialogElement>()
 const form = ref<HTMLFormElement>()
+// input 是弹窗自己的表单草稿，输入时不会直接改父页面的来源对象。
 const input = reactive({ name: props.source?.name ?? '', address: props.source?.address ?? '', username: '', password: '' })
 const testing = ref(false)
 const saving = ref(false)
 const success = ref(false)
 const feedback = ref('')
+// revision 记录表单版本；改输入或关闭弹窗时加一，让旧连接测试结果失效。
 let revision = 0
 function changed() {
   revision++
@@ -27,6 +31,7 @@ async function test() {
   success.value = false
   feedback.value = '正在连接…'
   try {
+    // {...input} 复制本次测试的输入；等待期间即使继续编辑，测试仍使用发起时的内容。
     const passed = await testConnectionInput({ ...input })
     if (revision !== current) return
     success.value = passed
@@ -35,6 +40,7 @@ async function test() {
     if (revision === current) feedback.value = error instanceof Error ? error.message : '连接测试失败，请重试。'
   } finally { if (revision === current) testing.value = false }
 }
+// 只有当前输入通过连接测试才允许保存；这是演示 service，凭据在成功后从表单清除。
 async function save() {
   if (!success.value || saving.value || !form.value?.reportValidity()) return
   const current = ++revision
@@ -53,6 +59,7 @@ function close(event?: Event) {
   input.password = ''; input.username = ''
   emit('close')
 }
+// 挂载后 DOM 才可用，调用原生 dialog 打开弹窗；卸载时关闭它并清掉凭据。
 onMounted(() => dialog.value?.showModal())
 onBeforeUnmount(() => { revision++; input.password = ''; input.username = ''; dialog.value?.close() })
 </script>

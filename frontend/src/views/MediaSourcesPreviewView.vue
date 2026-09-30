@@ -15,11 +15,13 @@ import '../assets/media-source.css'
 
 const router = useRouter()
 const movies = ref<LibraryMovie[]>([])
+// 演示页从 mediaSourceService 读共享状态；其他弹窗修改来源或任务后，这里的 computed 会更新。
 const sourceList = computed(() => mediaSourceState.sources)
 const scanTasks = computed(() => mediaSourceState.tasks)
 const menuSource = ref<MediaSource>()
 const menuScanLabel = ref('')
 const menuTaskId = ref('')
+// shallowRef 只跟踪保存的按钮引用是否换了，不把 DOM 元素内部也变成响应式对象。
 const trigger = shallowRef<HTMLButtonElement>()
 const dialogOpen = ref(false)
 const editing = ref<MediaSource>()
@@ -44,6 +46,8 @@ function openMenu(source: MediaSource, event: MouseEvent) {
   trigger.value = event.currentTarget
 }
 function openDialog(source?: MediaSource) { editing.value = source; dialogOpen.value = true }
+// “扫描”按当前状态决定去哪里：连接异常去检查、已有任务去查看、未选目录去选择，否则启动演示任务。
+// params 带来源 ID，query 带任务或动作，hash 指向详情页内需要滚动到的区域。
 function menuAction(action: 'detail' | 'scan' | 'edit' | 'remove') {
   const source = menuSource.value
   const selectedTaskId = menuTaskId.value

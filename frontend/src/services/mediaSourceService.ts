@@ -4,12 +4,16 @@ import { mockDirectories, mockMediaSources, mockScanRoots, mockScanTasks } from 
 import type { DirectoryEntry, MediaSource, SourceConnectionInput, ScanTask } from '../types/mediaSource'
 
 // 同一应用会话内共享；刷新恢复 fixture。不存储凭据或使用浏览器 storage。
+// 这是开发预览的 service：页面和弹窗调用它来操作内存中的演示数据，不会发 Axios 请求。
+// sources 是来源连接，roots 是选中的扫描目录，tasks 是扫描记录；页面会跟着这些状态更新。
 const state = reactive({
   sources: structuredClone(mockMediaSources),
   roots: structuredClone(mockScanRoots),
   tasks: structuredClone(mockScanTasks),
 })
+// 页面只读这份共享状态；新增、删除、启停等修改统一调用下面的函数。
 export const mediaSourceState = readonly(state)
+// delay 用计时器模拟等待；scanTimers 按来源 ID 保存计时器，移除来源时可以取消它。
 const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms))
 const scanTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
@@ -46,12 +50,14 @@ export async function testSourceConnection(id: string): Promise<void> {
   const address = source.address
   source.status = 'testing'
   await delay(650)
+  // 等待期间可能删除了来源或改了地址，旧测试结果就不再写回去。
   if (!state.sources.includes(source) || source.address !== address) return
   source.status = connectionFails(address) ? 'error' : 'available'
   source.connectionError = source.status === 'error' ? '服务暂时不可达，请检查地址或稍后重试。' : undefined
   source.lastConnection = '刚刚'
 }
 
+// 有 id 就编辑已有来源，没有就创建；表单里的账号密码不会复制进来源展示数据。
 export async function saveSource(input: SourceConnectionInput, id?: string): Promise<string> {
   if (!input.name.trim()) throw new Error('请填写来源名称。')
   const address = validateEndpoint(input.address)
@@ -66,6 +72,7 @@ export async function saveSource(input: SourceConnectionInput, id?: string): Pro
   return id
 }
 
+// 移除来源时，也清理属于它的目录、扫描记录和计时器，避免留下找不到来源的数据。
 export function removeSource(id: string): void {
   requireSource(id)
   clearTimeout(scanTimers.get(id))
@@ -92,6 +99,7 @@ export function saveScanRootSelection(id: string, paths: readonly string[]): voi
   const normalized = validateScanRootPaths(paths)
   // 整批验证成功才写入；启停状态不影响范围互斥。
   for (const path of normalized) browseDirectory(id, path)
+  // 按路径找到旧目录，保留它的 id 和启停状态；新选中的目录才创建新记录。
   const existing = new Map(state.roots.filter(root => root.sourceId === id).map(root => [normalizeScanRootPath(root.path), root]))
   const reconciled = normalized.map(path => {
     const root = existing.get(path)
@@ -112,6 +120,7 @@ export function removeScanRoot(sourceId: string, rootId: string): void {
   state.roots = state.roots.filter(root => root.id !== rootId || root.sourceId !== sourceId)
 }
 
+// 按“连接是否可用 → 是否正在扫描 → 是否选了目录 → 是否全暂停”决定下一步按钮文案。
 export function scanLabel(source: MediaSource): string {
   if (source.status !== 'available') return '检查连接'
   if (state.tasks.some(task => task.sourceId === source.id && task.status === 'running')) return '查看扫描'
@@ -121,6 +130,8 @@ export function scanLabel(source: MediaSource): string {
   return '立即扫描'
 }
 
+// 先检查连接和目录，只扫描 enabled 的范围，同一来源已有运行任务时直接返回它的 id。
+// rootPaths 是启动时的快照：后来修改目录选择不会改变本次任务；计时器只模拟任务结束。
 export function startScan(id: string): string {
   const source = requireSource(id)
   if (source.status !== 'available') throw new Error('请先检查来源连接。')

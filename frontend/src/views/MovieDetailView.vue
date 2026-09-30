@@ -91,6 +91,9 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', closeHero)
   observer?.disconnect()
 })
+// watch 监听动态路由 movieId，进入页面或切换电影时调用 service 加载详情。
+// cleanup 在这次监听失效时设置 cancelled，只忽略旧结果，不会真正中止 service 的操作。
+// immediate: true 让首次打开也加载；否则要等 movieId 改变才触发。
 watch(() => route.params.movieId, async (id, _, cleanup) => {
   let cancelled = false; cleanup(() => { cancelled = true })
   loading.value = true; failed.value = false; detail.value = null

@@ -17,21 +17,34 @@ const authBackdropItems = [
   '/mock/posters/tmdb-poster-1917.jpg',
 ]
 
+// props 是父组件传进来的设置，登录页和注册页用 mode 共用这份表单。
+// 'login' | 'register' 是联合类型：mode 只能是这两个字符串之一。
 const props = defineProps<{ mode: 'login' | 'register' }>()
+// useRouter 拿到路由工具，提交成功后用它切换页面。
 const router = useRouter()
 const hint = takeLoginHint()
+// computed 根据已有状态算出新值；mode 改变时，这里的结果会自动更新。
 const registering = computed(() => props.mode === 'register')
+// ref 创建响应式状态。输入框通过 v-model 修改它，使用它的界面也会跟着更新。
+// 在脚本中用 .value 读写 ref；模板里的 username 则会由 Vue 自动取出值。
 const username = ref(hint.username)
 const password = ref('')
 const confirmation = ref('')
 const showPassword = ref(false)
+// pending 表示正在提交请求，模板用它禁用按钮，这里也用它拦住重复提交。
 const pending = ref(false)
 const message = ref(hint.message)
 const successfulHint = ref(!!hint.username)
+// reactive 适合把几个相关字段放在同一个响应式对象中，读写属性时不需要 .value。
 const errors = reactive({ username: '', password: '', confirmation: '' })
+// controller.signal 是 AbortSignal，传到 Axios 后可以取消请求。
+// 离开表单时会调用 abort，避免请求回来后继续跳转或更新这份表单。
 const controller = new AbortController()
+// 有 Token 但还没拿到当前用户时，先显示身份验证入口，不能只凭 Token 就当作已登录。
 const needsRestore = computed(() => !registering.value && hasToken() && !authState.user)
 
+// 类型里的 typeof errors 取出对象的类型，keyof 再取出它的字段名。
+// 因此 field 只能是 username、password 或 confirmation，拼错会被类型检查发现。
 function clearError(field: keyof typeof errors) {
   successfulHint.value = false
   errors[field] = ''
@@ -40,6 +53,7 @@ function clearError(field: keyof typeof errors) {
 }
 
 async function submit() {
+  // 先在浏览器里检查输入；有错误就停在表单，不发请求。
   if (pending.value) return
   if (mockPreview) { message.value = '当前为开发预览，账号服务未启用。'; return }
   message.value = ''
@@ -53,10 +67,13 @@ async function submit() {
   if (Object.values(errors).some(Boolean)) return
 
   pending.value = true
+  // 开发时的请求链：AuthForm.vue → authService.ts → http.ts → Axios → /api → Vite proxy → Spring Boot。
+  // await 等待 service 完成；成功后切换页面，失败则在 catch 中显示提示，finally 收尾。
   try {
     if (registering.value) {
       await register(username.value, password.value, controller.signal)
       password.value = ''; confirmation.value = ''
+      // replace 替换当前浏览器历史记录，返回时不会回到刚提交的注册表单。
       if (!controller.signal.aborted) await router.replace({ name: 'login' })
     } else {
       const ready = await login(username.value, password.value, controller.signal)
@@ -67,6 +84,7 @@ async function submit() {
     }
   } catch (error) {
     if (controller.signal.aborted) return
+    // ApiError 是 http.ts 统一整理的错误；字段错误放到输入框下，其余提示放到表单上。
     if (error instanceof ApiError) {
       errors.username = error.fieldErrors.username ?? ''
       errors.password = error.fieldErrors.password ?? ''
@@ -78,11 +96,13 @@ async function submit() {
     pending.value = false
   }
 }
+// restoreSession 用已有 Token 向后端确认身份；确认成功才进入媒体来源页。
 async function retryIdentity() {
   if (await restoreSession()) await router.replace({ name: 'media-sources' })
   else message.value = authState.error || authState.notice
 }
 function useAnotherAccount() { logout(); message.value = ''; password.value = '' }
+// 生命周期钩子会在组件即将卸载时执行，用来取消请求并清掉密码。
 onBeforeUnmount(() => { controller.abort(); password.value = ''; confirmation.value = '' })
 </script>
 
