@@ -1,10 +1,14 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { authState, hasToken, logout, restoreSession } from '../services/authService'
+import { useAuthStore } from '../stores/auth'
+import { pinia } from '../stores/index'
 import { mockPreview } from '../services/dataMode'
 import { watch } from 'vue'
 
 // () => import(...) 会在进入对应路由时才加载页面代码。
 const unavailable = () => import('../views/UnavailableView.vue')
+
+// Router 模块可能在 main.ts 注册插件前加载；显式传入同一 Pinia，避免 no active Pinia。
+const auth = useAuthStore(pinia)
 
 // routes 把浏览器地址映射到页面组件；history 让地址使用普通路径形式。
 const router = createRouter({
@@ -96,22 +100,22 @@ const router = createRouter({
 router.beforeEach(async to => {
   if (mockPreview) return true
   if (to.meta.layout === 'auth') {
-    if (hasToken() && await restoreSession()) return { name: 'media-sources' }
+    if (auth.tokenPresent && await auth.restoreSession()) return { name: 'media-sources' }
     return true
   }
-  if (!hasToken()) return { name: 'login' }
-  if (!await restoreSession()) return { name: 'login' }
+  if (!auth.tokenPresent) return { name: 'login' }
+  if (!await auth.restoreSession()) return { name: 'login' }
   return true
 })
 
 // watch 在监听的状态变化时执行回调；会话被清掉后，让仍停在个人页面的用户回到登录页。
-watch(() => authState.epoch, () => {
-  if (!mockPreview && !authState.user && !hasToken() && router.currentRoute.value.meta.layout !== 'auth') void router.replace({ name: 'login' })
+watch(() => auth.epoch, () => {
+  if (!mockPreview && !auth.user && !auth.tokenPresent && router.currentRoute.value.meta.layout !== 'auth') void router.replace({ name: 'login' })
 })
 
 // logout 清理登录数据，replace 替换当前历史记录；void 表示这里不等待跳转的 Promise。
 export function signOut() {
-  logout()
+  auth.logout()
   void router.replace({ name: 'login' })
 }
 

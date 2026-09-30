@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, reactive, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
-import { authState, hasToken, login, logout, register, restoreSession, takeLoginHint } from '../../services/authService'
+import { useAuthStore } from '../../stores/auth'
 import { ApiError } from '../../services/http'
 import { mockPreview } from '../../services/dataMode'
 import sidebarIcons from '../../assets/sidebar-icons.svg'
@@ -22,7 +22,8 @@ const authBackdropItems = [
 const props = defineProps<{ mode: 'login' | 'register' }>()
 // useRouter 拿到路由工具，提交成功后用它切换页面。
 const router = useRouter()
-const hint = takeLoginHint()
+const auth = useAuthStore()
+const hint = auth.takeLoginHint()
 // computed 根据已有状态算出新值；mode 改变时，这里的结果会自动更新。
 const registering = computed(() => props.mode === 'register')
 // ref 创建响应式状态。输入框通过 v-model 修改它，使用它的界面也会跟着更新。
@@ -41,7 +42,7 @@ const errors = reactive({ username: '', password: '', confirmation: '' })
 // 离开表单时会调用 abort，避免请求回来后继续跳转或更新这份表单。
 const controller = new AbortController()
 // 有 Token 但还没拿到当前用户时，先显示身份验证入口，不能只凭 Token 就当作已登录。
-const needsRestore = computed(() => !registering.value && hasToken() && !authState.user)
+const needsRestore = computed(() => !registering.value && auth.tokenPresent && !auth.user)
 
 // 类型里的 typeof errors 取出对象的类型，keyof 再取出它的字段名。
 // 因此 field 只能是 username、password 或 confirmation，拼错会被类型检查发现。
@@ -67,20 +68,20 @@ async function submit() {
   if (Object.values(errors).some(Boolean)) return
 
   pending.value = true
-  // 开发时的请求链：AuthForm.vue → authService.ts → http.ts → Axios → /api → Vite proxy → Spring Boot。
-  // await 等待 service 完成；成功后切换页面，失败则在 catch 中显示提示，finally 收尾。
+  // Store 管会话，authService 管接口；请求仍经 http.ts / Axios / Vite proxy 到 Spring Boot。
+  // await 等待 Action 完成；成功后切换页面，失败则在 catch 中显示提示，finally 收尾。
   try {
     if (registering.value) {
-      await register(username.value, password.value, controller.signal)
+      const created = await auth.register(username.value, password.value, controller.signal)
       password.value = ''; confirmation.value = ''
       // replace 替换当前浏览器历史记录，返回时不会回到刚提交的注册表单。
-      if (!controller.signal.aborted) await router.replace({ name: 'login' })
+      if (created && !controller.signal.aborted) await router.replace({ name: 'login' })
     } else {
-      const ready = await login(username.value, password.value, controller.signal)
+      const ready = await auth.login(username.value, password.value, controller.signal)
       password.value = ''
       if (controller.signal.aborted) return
       if (ready) await router.replace({ name: 'media-sources' })
-      else message.value = authState.error || authState.notice || '身份验证未完成，请重试。'
+      else message.value = auth.error || auth.notice || '身份验证未完成，请重试。'
     }
   } catch (error) {
     if (controller.signal.aborted) return
@@ -98,10 +99,10 @@ async function submit() {
 }
 // restoreSession 用已有 Token 向后端确认身份；确认成功才进入媒体来源页。
 async function retryIdentity() {
-  if (await restoreSession()) await router.replace({ name: 'media-sources' })
-  else message.value = authState.error || authState.notice
+  if (await auth.restoreSession()) await router.replace({ name: 'media-sources' })
+  else message.value = auth.error || auth.notice
 }
-function useAnotherAccount() { logout(); message.value = ''; password.value = '' }
+function useAnotherAccount() { auth.logout(); message.value = ''; password.value = '' }
 // 生命周期钩子会在组件即将卸载时执行，用来取消请求并清掉密码。
 onBeforeUnmount(() => { controller.abort(); password.value = ''; confirmation.value = '' })
 </script>
@@ -127,9 +128,9 @@ onBeforeUnmount(() => { controller.abort(); password.value = ''; confirmation.va
         <p class="auth-description">{{ registering ? '从自己的收藏开始，建立属于你的片库。' : '登录，回到你的光影世界。' }}</p>
       </div>
 
-      <div v-if="needsRestore" class="auth-feedback" :class="{ 'auth-feedback-success': !authState.error }" :role="authState.error ? 'alert' : 'status'">
-        <p>{{ authState.error || '正在验证登录身份…' }}</p>
-        <button class="auth-submit" :disabled="authState.verifying" @click="retryIdentity">{{ authState.verifying ? '正在验证…' : '重试身份验证' }}</button>
+      <div v-if="needsRestore" class="auth-feedback" :class="{ 'auth-feedback-success': !auth.error }" :role="auth.error ? 'alert' : 'status'">
+        <p>{{ auth.error || '正在验证登录身份…' }}</p>
+        <button class="auth-submit" :disabled="auth.verifying" @click="retryIdentity">{{ auth.verifying ? '正在验证…' : '重试身份验证' }}</button>
         <button class="password-toggle-inline" @click="useAnotherAccount">使用其他账号</button>
       </div>
       <form v-else novalidate :aria-busy="pending" @submit.prevent="submit">

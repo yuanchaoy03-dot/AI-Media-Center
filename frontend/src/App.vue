@@ -2,12 +2,14 @@
 import { defineAsyncComponent, ref, watch } from 'vue'
 import { RouterView, useRoute, useRouter } from 'vue-router'
 import AppSidebar from './components/layout/AppSidebar.vue'
-import { authState } from './services/authService'
+import { useAuthStore } from './stores/auth'
 import { mockPreview } from './services/dataMode'
 import { signOut } from './router'
 import type { LibraryMovie } from './types/movie'
 
 const searchOpen = ref(false)
+// 组件 setup 中由 app.use(pinia) 提供实例；直接读 Store 属性可保留响应式。
+const auth = useAuthStore()
 const GlobalSearch = defineAsyncComponent(() => import('./components/layout/GlobalSearch.vue'))
 // App 管外层布局，RouterView 显示当前路由页面；route.meta.layout 决定显示登录布局还是侧栏布局。
 const route = useRoute()
@@ -19,7 +21,7 @@ function selectSearchMovie(movie: LibraryMovie) {
 }
 const notice = ref('')
 // 会话切换时关掉旧搜索和提示；模板中 RouterView 的 key 也用 epoch，让页面重新创建。
-watch(() => authState.epoch, () => { searchOpen.value = false; notice.value = '' })
+watch(() => auth.epoch, () => { searchOpen.value = false; notice.value = '' })
 function showNotice(message: string) {
   notice.value = message
 }
@@ -32,13 +34,13 @@ function dismissNotice() {
   <main v-if="route.meta.layout === 'auth'" class="auth-main">
     <RouterView />
   </main>
-  <div v-else-if="mockPreview || authState.user" class="app-layout">
+  <div v-else-if="mockPreview || auth.user" class="app-layout">
     <div class="app-sidebar-container">
-      <AppSidebar :user-name="mockPreview ? '演示预览' : authState.user?.username ?? ''" :user-initial="mockPreview ? '演' : authState.user?.username.slice(0, 1).toUpperCase() ?? ''"
+      <AppSidebar :user-name="mockPreview ? '演示预览' : auth.user?.username ?? ''" :user-initial="mockPreview ? '演' : auth.user?.username.slice(0, 1).toUpperCase() ?? ''"
         :search-expanded="searchOpen" @search="mockPreview ? searchOpen = true : showNotice('搜索功能尚未开放。')" @notice="showNotice" @logout="mockPreview ? showNotice('当前为开发预览。') : signOut()" />
     </div>
     <main class="app-main">
-      <RouterView :key="authState.epoch" />
+      <RouterView :key="auth.epoch" />
     </main>
     <GlobalSearch v-if="mockPreview" :open="searchOpen" @close="searchOpen = false" @select="selectSearchMovie" />
     <div v-if="notice" class="shell-notice">
