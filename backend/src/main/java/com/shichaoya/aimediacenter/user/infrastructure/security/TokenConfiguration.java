@@ -1,9 +1,12 @@
 package com.shichaoya.aimediacenter.user.infrastructure.security;
 
+import com.password4j.Argon2Function;
+import com.password4j.types.Argon2;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.*;
+import org.springframework.security.crypto.password4j.Argon2Password4jPasswordEncoder;
 import org.springframework.security.oauth2.core.*;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.*;
@@ -21,9 +24,11 @@ import java.util.Map;
 @Configuration
 public class TokenConfiguration {
     @Bean PasswordEncoder passwordEncoder() {
-        // PBKDF2-HMAC-SHA256 处理完整密码输入；DelegatingPasswordEncoder 在散列前加算法标识，供 matches 选用对应算法。
-        var pbkdf2 = new Pbkdf2PasswordEncoder("", 16, 600_000, Pbkdf2PasswordEncoder.SecretKeyFactoryAlgorithm.PBKDF2WithHmacSHA256);
-        return new DelegatingPasswordEncoder("pbkdf2-sha256-600k", Map.of("pbkdf2-sha256-600k", pbkdf2));
+        // Password4j 的 memory 单位为 KiB：65536 KiB（64 MiB），3 次迭代、并行度 4、32 字节输出。
+        // 显式选择 Argon2id；此五参数 API 使用 Argon2 v1.3（PHC v=19），随机盐由编码器生成。
+        var argon2 = new Argon2Password4jPasswordEncoder(Argon2Function.getInstance(65_536, 3, 4, 32, Argon2.ID));
+        // DelegatingPasswordEncoder 保存 {argon2id} 算法标识；当前仅配置 Argon2id。
+        return new DelegatingPasswordEncoder("argon2id", Map.of("argon2id", argon2));
     }
     @Bean SecretKey jwtKey(@Value("${app.jwt.secret}") String secret) {
         // JWT_SECRET 从环境配置注入，Base64 仅是密钥字节的文本表示，不提供保密性；至少要求 32 字节。

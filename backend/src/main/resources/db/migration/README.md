@@ -16,7 +16,7 @@ Migration 是按顺序改变数据库结构的脚本。文件名中的 `V1`、`V
 | --- | --- |
 | `id`、`PRIMARY KEY` | `id` 是主键：每行账号的唯一标识。注册时由后端 `BusinessIds.next()` 生成 UUIDv7，并以标准 36 字符 UUID 文本存入 `CHAR(36)`；`ascii_bin` 让文本按字面值精确比较。 |
 | `username`、`UNIQUE` | 用户名经 Java 层规范化为小写后存储。唯一约束阻止重复用户名，也能兜住并发注册时的冲突；格式 `CHECK` 限定为 3～32 位小写英文字母、数字或下划线。 |
-| `password_hash` | 存储 `PasswordEncoder` 生成的单向密码散列，不存原始 `password`。登录时用 `matches` 比对。 |
+| `password_hash` | 存储 `DelegatingPasswordEncoder` 生成的带算法标识的单向密码散列，不存原始 `password`。当前默认保存 `{argon2id}` 与 Argon2id PHC 字符串，登录时用 `matches` 比对。当前 Argon2id 完整编码为 171 个字符，现有 `VARCHAR(255)` 足够，无需扩容 migration。 |
 | `role` | 当前账号角色取值受 `CHECK` 限定为 `USER` 或 `ADMIN`；当前公开注册只创建 `USER`，表中允许 `ADMIN` 不代表已经实现复杂管理员权限体系。 |
 | `status` | 当前账号状态只能是 `ACTIVE` 或 `DISABLED`。受保护请求会重新读取此值，使已禁用账号在下次请求时被拒绝。 |
 | `created_at`、`updated_at` | 分别记录创建和更新时间；当前注册 SQL 用 `UTC_TIMESTAMP(3)` 写入两者。`DATETIME(3)` 中的 `3` 表示保留到毫秒，`DATETIME` 本身不携带时区，因此本项目按 UTC 写入和理解这些值。 |

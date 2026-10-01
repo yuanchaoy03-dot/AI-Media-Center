@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * 真实 HTTP + MySQL 的认证/本人来源集成测试，需显式提供独立且可清空的 *_auth_test 数据库。
- * 覆盖注册、JWT 校验、账号现状复核与来源隔离；未设置 AUTH_TEST_DB_URL 时不会运行，
+ * 覆盖 Argon2id 注册、JWT 校验、账号现状复核与来源隔离；未设置 AUTH_TEST_DB_URL 时不会运行，
  * 因而普通 package 通过不能说明这些集成场景已实际执行。
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -75,6 +75,7 @@ class AuthHttpIntegrationTest {
         assertEquals(7, UUID.fromString(aliceId).version()); assertEquals(aliceId.toLowerCase(Locale.ROOT), aliceId);
         String hash = db.queryForObject("SELECT password_hash FROM users WHERE id=?", String.class, aliceId);
         assertNotEquals(password, hash); assertTrue(passwords.matches(password, hash));
+        assertTrue(hash.startsWith("{argon2id}$argon2id$"));
         assertFalse(passwords.matches(password.substring(0, 72), hash));
         assertFalse(passwords.matches(password.substring(0, password.length()-1) + "x", hash));
         assertTrue(hash.length() <= 255);

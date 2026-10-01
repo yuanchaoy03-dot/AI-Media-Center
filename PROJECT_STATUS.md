@@ -13,7 +13,7 @@
 | 模块 | 当前具备的能力 |
 |---|---|
 | 前端基础工程 | Vue 路由与 Shell、TypeScript、Pinia auth Store、Axios 传输层；ESLint / Prettier 与 Node 回归检查。运行细节见 [前端 README](frontend/README.md)。 |
-| 注册 / 登录 / JWT | 真实注册、登录、当前用户查询；sessionStorage 保存当前标签页 Token，刷新经 me 恢复可信身份。支持失败重试、禁用 / 失效清理、退出与账号切换请求取消及旧响应隔离。 |
+| 注册 / 登录 / JWT | 真实注册、登录、当前用户查询；密码默认使用 Argon2id。sessionStorage 保存当前标签页 Token，刷新经 me 恢复可信身份。支持失败重试、禁用 / 失效清理、退出与账号切换请求取消及旧响应隔离。 |
 | 本人媒体来源 | 正式来源页按可信当前用户请求空列表，区分加载、失败和成功空状态。后端按用户归属查询；本人已有来源时明确返回 `501 SOURCE_LIST_NOT_READY`，非空 DTO 尚未实现。 |
 | 数据库迁移 | 已有 Flyway V1 `users`、V2 `media_source` 脚本及 MySQL 迁移验证记录。来源表含用户归属、外键及约束；表结构不代表 WebDAV 保存或配置加密已实现。 |
 | 开发 Mock 预览 | 片库筛选排序、合集聚合 / 详情、全局搜索、电影详情；来源模拟连接 / 编辑、目录选择与扫描根管理、模拟扫描。数据仅在内存，刷新恢复 fixture；播放和 AI 仍提示未接入。 |
@@ -47,11 +47,11 @@
 - Mock 连接、目录、收藏和扫描不发送真实业务请求，也不证明 WebDAV / 云端文件访问或用户数据持久化可用；主页等部分预览仍是占位。
 - 来源配置加密与密钥管理尚未落地；公共 Movie 等业务表尚无 migration。现有 HTTP 隔离测试只构造另一用户来源，未构造公共 Movie。
 - 已有浏览器记录不能视为当前所有页面重新验收；系统级 Windows scaling、完整 Edge / Chrome 双浏览器覆盖及生产反向代理未验证。
-- 既有 MySQL 8.4 验证有 Flyway 已验证版本提示及 `TINYINT(1)` 显示宽度弃用提示；本轮未重新连接数据库。
+- 本机 MySQL 8.4.8 验证仍有 Flyway 已验证版本提示及 `TINYINT(1)` 显示宽度弃用提示；迁移与认证测试通过。
 
 ## 当前验证
 
-以下前端结果保留自整理前状态文档最近的 2026-10-01 记录；本轮只整理文档，未重新执行代码检查。
+以下前端结果保留自最近的 2026-10-01 记录；本轮密码算法升级未改动前端，也未重跑前端检查。
 
 | 检查 | 最近记录 |
 |---|---|
@@ -61,9 +61,9 @@
 | `npm run build` | 通过 |
 | `npx vue-tsc -b` | 通过 |
 
-最近可查的本机后端报告为 2026-09-29：3 项 HTTP 集成场景与 1 项密码长度单元测试通过，均为 0 失败 / 0 跳过。本轮未重跑后端测试、迁移或浏览器验收；未配置测试数据库时集成测试会跳过，不能用普通 package 成功替代。测试运行入口见 [前端 README](frontend/README.md#本地后端与集成测试)。
+2026-10-01 后端密码算法验证：`mvn -B -ntp compile`、`mvn -B -ntp test` 通过；共 12 项测试通过（9 项单元测试、3 项真实 HTTP + MySQL 的 `AuthHttpIntegrationTest`），0 失败 / 0 错误 / 0 跳过。覆盖随机盐、完整长密码与 Unicode、登录状态及 dummyHash 路径；真实 HTTP 验证 Argon2id 注册落库、12 码点和 128 个 emoji 的完整密码、登录 / JWT / me、当前角色与禁用状态复核、非法或缺失 Token、本人来源隔离、并发注册及数据库错误响应。测试运行入口见 [前端 README](frontend/README.md#本地后端与集成测试)。
 
-本轮文档验证：`git diff --check` 与前端 README 单文件 Prettier 检查通过；16 份项目 Markdown 的 121 个仓库内路径 / 标题锚点通过，代码围栏成对，旧路径引用已清除；Git 工作区改动均为文档。外部链接未联网核验。
+`mvn dependency:tree` 通过，Spring Security 统一为 7.0.7，Password4j 为唯一的 1.8.4 依赖，未引入 Bouncy Castle。Flyway V1 / V2 已在全新独立 `_auth_test` 数据库首次迁移成功，未改动开发库或 migration；本轮未重跑浏览器验收。
 
 ## 历史说明
 
