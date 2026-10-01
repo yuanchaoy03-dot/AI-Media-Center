@@ -115,13 +115,6 @@ export function browseDirectory(id: string, path: string): DirectoryEntry[] {
   return children.map((entry) => ({ ...entry, path: `${path === '/' ? '' : path}/${entry.name}` }))
 }
 
-export function addScanRoots(id: string, paths: string[]): void {
-  saveScanRootSelection(id, [
-    ...state.roots.filter((root) => root.sourceId === id).map((root) => root.path),
-    ...paths,
-  ])
-}
-
 export function saveScanRootSelection(id: string, paths: readonly string[]): void {
   requireSource(id)
   const normalized = validateScanRootPaths(paths)

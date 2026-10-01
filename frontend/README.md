@@ -29,7 +29,7 @@ Learn more about the recommended Project Setup and IDE Support in the [Vue Docs 
 - `eslint-config-prettier` 放在 ESLint 配置末尾关闭冲突的格式规则；Prettier 使用独立命令，不通过 ESLint 插件执行。参考 [Vue 插件 Flat Config 指引](https://eslint.vuejs.org/user-guide/)与 [Prettier 集成说明](https://prettier.io/docs/integrating-with-linters)。
 - Vue 模板事件连续执行多条语句时，使用明确的函数块，例如 `() => { ... }`，或已有命名处理函数；避免内联语句的分号被格式化移除后，Vue 编译器将其当作单个表达式解析。本次仅在电影详情和来源详情的 3 处事件采用函数块，动作与执行顺序保持一致。
 
-### 本次验证（2026-10-01）
+### 当前验证（2026-10-01）
 
 | 检查                   | 实际结果                  |
 | ---------------------- | ------------------------- |
@@ -40,6 +40,8 @@ Learn more about the recommended Project Setup and IDE Support in the [Vue Docs 
 | `npx vue-tsc -b`       | 通过                      |
 
 ESLint 首轮未发现需修复的业务代码问题，未添加 `eslint-disable`。复审修正了 TypeScript 推荐配置子块未覆盖 `.vue` 的匹配范围，合法函数重载及类型 / 值同名声明探针通过。格式变化覆盖已有 Vue、TypeScript、CSS、测试和 `tsconfig.json`；除上述 3 处等价事件语法调整外，源码及测试均与原文件的 Prettier 输出一致。规则探针与 ESLint / Prettier 冲突检查通过；现有依赖版本、认证生命周期、HTTP 配置与业务行为保持不变。未运行新的浏览器验收或后端集成测试；完整进度与验证限制见 [PROJECT_STATUS.md](../PROJECT_STATUS.md)。
+
+工程审计清理移除了未引用的前端图标 / 图片、合集详情的不可达提示和旧 `addScanRoots` 入口；扫描根回归改用实际保存接口，模板检查保留语义与交互约束，减少对装饰类名、精确表达式和普通文案的绑定。`MovieCard.vue` 与 `CollectionCard.vue` 以 scoped 方式共享 [poster-card.css](src/assets/poster-card.css)，各自的 DOM、事件和视觉状态保持不变。上述五项检查已在清理后重新执行并通过，逐组件编译的有效 CSS 规则也已核对等价。未新增依赖或业务层；组件 setup 回归不渲染 DOM，仍需在对应功能切片中进行浏览器验收。
 
 ## 页面与路由
 

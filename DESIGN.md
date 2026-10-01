@@ -616,6 +616,8 @@ Selected 对普通提交按钮 N/A；收藏按钮用 `aria-pressed`；Checkbox/T
 
 ## 25. Movie Library / Home / Personal Views
 
+Vue 的 `MovieCard.vue` 与 `CollectionCard.vue` 通过 scoped 引入 [poster-card.css](frontend/src/assets/poster-card.css) 共享海报卡片样式；保留各自的电影 / 合集事件与标记类名，共同维护现有视觉状态。
+
 片库全宽 Grid：桌面基准 `repeat(auto-fill, minmax(160px, 1fr))`，横20纵24；大屏可将最小值增到180以维持海报可读，而不是不断放大到广告牌。移动2列，平板按可用宽度3–4列。行内卡片同宽，不为了填最后一行拉伸最后几张。
 
 标题+工具条+网格，不加统计卡片；筛选/排序在统一 Popover，选中条件可清除。改变筛选重置分页；首批加载替内容为 Skeleton，追加加载保留原网格；追加失败提供尾部重试。不能用“全部加载成功”遮蔽请求失败。

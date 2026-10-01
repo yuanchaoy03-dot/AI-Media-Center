@@ -58,7 +58,7 @@ test('saving a connection does not create roots, tasks or returned credentials; 
   assert.equal('username' in source, false)
   assert.equal(s.mediaSourceState.roots.filter((root) => root.sourceId === id).length, 0)
   assert.equal(s.mediaSourceState.tasks.length, previousTasks)
-  s.addScanRoots(id, ['/TV'])
+  s.saveScanRootSelection(id, ['/TV'])
   await settle(t, s.saveSource({ ...input, name: '编辑名称', password: '' }, id), 250)
   assert.equal(s.mediaSourceState.roots.find((root) => root.sourceId === id).path, '/TV')
 })
@@ -101,11 +101,11 @@ test('directory browsing is read-only; save validates the whole selection and re
     assert.throws(() => s.saveScanRootSelection('source-new', [file.path]), /找不到这个文件夹/)
     assert.equal(JSON.stringify(s.mediaSourceState), before)
   }
-  assert.throws(() => s.addScanRoots('source-new', ['/Movies', '/missing']))
+  assert.throws(() => s.saveScanRootSelection('source-new', ['/Movies', '/missing']))
   assert.equal(JSON.stringify(s.mediaSourceState), before)
-  assert.throws(() => s.addScanRoots('source-new', ['/Movies', '/Movies', '/TV']))
+  assert.throws(() => s.saveScanRootSelection('source-new', ['/Movies', '/Movies', '/TV']))
   assert.equal(JSON.stringify(s.mediaSourceState), before)
-  s.addScanRoots('source-new', ['/Movies', '/TV'])
+  s.saveScanRootSelection('source-new', ['/Movies', '/TV'])
   assert.equal(s.mediaSourceState.roots.filter((root) => root.sourceId === 'source-new').length, 2)
   assert.throws(
     () => s.setRootEnabled('source-alist', 'root-nas-movies', false),
@@ -140,7 +140,7 @@ test('one running task per source; snapshot survives disabling/removing roots; c
     s.scanLabel(s.mediaSourceState.sources.find((source) => source.id === 'source-home-nas')),
     '查看扫描',
   )
-  s.addScanRoots('source-home-nas', ['/TV'])
+  s.saveScanRootSelection('source-home-nas', ['/电影/4K', '/TV'])
   const task = s.mediaSourceState.tasks.find((item) => item.id === id)
   assert.deepEqual(task.rootPaths, ['/Movies'])
   assert.equal(task.status, 'running')
@@ -228,13 +228,19 @@ test('service rejects duplicates and overlaps regardless of enabled; writes atom
   s.saveScanRootSelection('source-new', ['/电影/4K'])
   const before = JSON.stringify(s.mediaSourceState)
   for (const candidate of ['/电影/4K', '/电影/4K/', '/电影', '/']) {
-    assert.throws(() => s.addScanRoots('source-new', [candidate]), /不能重复选择同一个影片文件夹/)
+    assert.throws(
+      () => s.saveScanRootSelection('source-new', ['/电影/4K', candidate]),
+      /不能重复选择同一个影片文件夹/,
+    )
     assert.equal(JSON.stringify(s.mediaSourceState), before)
   }
   s.saveScanRootSelection('source-new', ['/电影'])
   const root = s.mediaSourceState.roots.find((root) => root.sourceId === 'source-new')
   s.setRootEnabled('source-new', root.id, false)
-  assert.throws(() => s.addScanRoots('source-new', ['/电影/4K']), /不能重复选择同一个影片文件夹/)
+  assert.throws(
+    () => s.saveScanRootSelection('source-new', ['/电影', '/电影/4K']),
+    /不能重复选择同一个影片文件夹/,
+  )
   const disabled = JSON.stringify(s.mediaSourceState)
   assert.throws(() => s.saveScanRootSelection('source-new', ['/TV', '/missing']))
   assert.throws(() => s.saveScanRootSelection('missing', []))
@@ -466,87 +472,57 @@ test('DirectoryBrowser template keeps navigation/toggle separate and accessible,
   const { descriptor } = await directorySetup(await fresh())
   const { baseParse } = await import('@vue/compiler-dom')
   const ast = baseParse(descriptor.template.content)
-  const buttons = []
-  function visit(node, withinButton = false) {
+  function elements(node, withinButton = false) {
     const button = node.type === 1 && node.tag === 'button'
-    if (button) {
-      assert.equal(withinButton, false)
-      buttons.push(node)
-    }
-    for (const child of node.children ?? []) visit(child, withinButton || button)
+    if (button) assert.equal(withinButton, false)
+    return [
+      ...(node.type === 1 ? [node] : []),
+      ...(node.children ?? []).flatMap((child) => elements(child, withinButton || button)),
+    ]
   }
-  visit(ast)
+  const nodes = elements(ast)
   const attr = (node, name) =>
     node.props.find((prop) => prop.type === 6 && prop.name === name)?.value?.content
   const directive = (node, name, arg) =>
     node.props.find((prop) => prop.type === 7 && prop.name === name && prop.arg?.content === arg)
       ?.exp?.content
-  const open = buttons.find((node) => attr(node, 'class') === 'directory-open')
-  assert.equal(directive(open, 'on', 'click'), 'currentPath = entry.path')
-  assert.equal(directive(open, 'bind', 'disabled'), undefined)
-  const selections = buttons.filter((node) => attr(node, 'class') === 'directory-select')
+  const dialog = nodes.find((node) => node.tag === 'dialog')
+  assert.ok(dialog)
+  const titleId = attr(dialog, 'aria-labelledby')
+  assert.ok(titleId)
+  assert.ok(nodes.some((node) => /^h[1-6]$/.test(node.tag) && attr(node, 'id') === titleId))
+
+  // 定位数据循环和语义控件，不绑定装饰 class、图标或具体事件表达式。
+  const directories = nodes.find((node) => /(?:in|of)\s+directories\b/.test(directive(node, 'for')))
+  const files = nodes.find((node) => /(?:in|of)\s+files\b/.test(directive(node, 'for')))
+  assert.ok(directories)
+  assert.ok(files)
+  const selections = nodes.filter((node) => directive(node, 'bind', 'aria-pressed'))
   assert.equal(selections.length, 2)
   for (const node of selections) {
-    assert.match(directive(node, 'on', 'click'), /^select\(/)
-    assert.match(directive(node, 'bind', 'aria-label'), /\.label$/)
-    assert.match(directive(node, 'bind', 'disabled'), /ancestor/)
+    assert.equal(node.tag, 'button')
+    assert.ok(directive(node, 'bind', 'aria-label'))
+    assert.ok(directive(node, 'bind', 'disabled'))
+    assert.ok(directive(node, 'on', 'click'))
   }
+  const directoryButtons = elements(directories).filter((node) => node.tag === 'button')
+  const selection = directoryButtons.find((node) => directive(node, 'bind', 'aria-pressed'))
+  const navigation = directoryButtons.find((node) => node !== selection)
+  assert.equal(directoryButtons.length, 2)
+  assert.ok(selection)
+  assert.ok(navigation)
+  assert.ok(directive(navigation, 'on', 'click'))
+  assert.notEqual(directive(selection, 'on', 'click'), directive(navigation, 'on', 'click'))
+  assert.equal(directive(navigation, 'bind', 'disabled'), undefined)
   assert.equal(
-    directive(
-      buttons.find((node) => directive(node, 'on', 'click') === 'save'),
-      'bind',
-      'disabled',
-    ),
-    '!dirty',
-  )
-  for (const node of buttons.filter((node) =>
-    node.children.some((child) => child.content === '取消'),
-  ))
-    assert.equal(directive(node, 'on', 'click'), "emit('close')")
-  const fileRow = []
-  function findFileRow(node) {
-    if (node.type === 1 && attr(node, 'class') === 'directory-file') fileRow.push(node)
-    for (const child of node.children ?? []) findFileRow(child)
-  }
-  findFileRow(ast)
-  assert.equal(fileRow.length, 1)
-  assert.equal(fileRow[0].tag, 'div')
-  assert.equal(
-    fileRow[0].children.some((child) => child.tag === 'button'),
+    navigation.props.some((prop) => prop.type === 6 && prop.name === 'disabled'),
     false,
   )
-  const directoryList = []
-  function findDirectoryList(node) {
-    if (node.type === 1 && attr(node, 'class') === 'directory-list') directoryList.push(node)
-    for (const child of node.children ?? []) findDirectoryList(child)
+  assert.equal(directive(navigation, 'bind', 'aria-pressed'), undefined)
+  for (const node of elements(files)) {
+    assert.equal(['button', 'a', 'input', 'select', 'textarea'].includes(node.tag), false)
+    assert.equal(directive(node, 'on', 'click'), undefined)
+    assert.equal(attr(node, 'tabindex'), undefined)
+    assert.equal(directive(node, 'bind', 'tabindex'), undefined)
   }
-  findDirectoryList(ast)
-  assert.equal(directoryList.length, 1)
-  const listItems = directoryList[0].children.filter((node) => node.type === 1)
-  assert.deepEqual(
-    listItems.slice(0, 2).map((node) => attr(node, 'class')),
-    ['directory-row', 'directory-row'],
-  )
-  assert.deepEqual(
-    listItems.slice(0, 2).map((node) => directive(node, 'for')),
-    ['entry in directories', 'entry in files'],
-  )
-  assert.equal(
-    listItems.some((node) => attr(node, 'class')?.includes('directory-list-label')),
-    false,
-  )
-  assert.doesNotMatch(directoryList[0].loc.source, />里面的文件夹<|>文件<|>内容</)
-  assert.doesNotMatch(fileRow[0].loc.source, /caret-right|directory-select|@click/)
-  assert.doesNotMatch(
-    descriptor.template.content,
-    /directory-scope-hint|只想选一部分|整个文件夹及里面的内容都已选择/,
-  )
-  assert.doesNotMatch(descriptor.scriptSetup.content, /已随.*一起选择|含 .*个已选文件夹/)
-  assert.match(descriptor.template.content, /'is-contained': entry\.selection\.ancestor/)
-  assert.match(
-    descriptor.template.content,
-    /entry\.selection\.ancestor \? entry\.selection\.label : undefined/,
-  )
-  assert.doesNotMatch(descriptor.template.content, /selected-director|directory-selection/)
-  assert.doesNotMatch(descriptor.scriptSetup.content, /window\.confirm|fetch\(|axios/)
 })

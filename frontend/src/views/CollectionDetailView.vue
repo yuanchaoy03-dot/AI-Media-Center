@@ -85,12 +85,7 @@ function intent(action: string, id: string) {
     return
   }
   if (import.meta.env.DEV) console.info('[Library Mock intent]', action, id)
-  announcement.value =
-    action === 'detail'
-      ? '电影详情尚未开放。'
-      : action === 'play'
-        ? '播放尚未接入。'
-        : '媒体版本尚未开放。'
+  announcement.value = action === 'play' ? '播放尚未接入。' : '媒体版本尚未开放。'
 }
 </script>
 
