@@ -24,7 +24,7 @@ Learn more about the recommended Project Setup and IDE Support in the [Vue Docs 
 
 ### ESLint 与 Prettier
 
-- [eslint.config.js](eslint.config.js) 是唯一 ESLint 配置，采用 Flat Config。使用 JavaScript / TypeScript 推荐基础规则和 Vue 3 essential 规则，支持 `.ts`、`.vue` 和 `<script setup lang="ts">`；浏览器源码与 Vite / Node 配置、现有 `.mjs` 测试分别使用对应 globals。基于现有 tsconfig 的 `projectService` 额外检查未处理的 Promise、Promise 误用和无效 `await`，不启用整套严格或风格规则。
+- [eslint.config.js](eslint.config.js) 是唯一 ESLint 配置，采用 Flat Config。使用 JavaScript / TypeScript 推荐基础规则和 Vue 3 essential 规则，支持 `.ts`、`.vue` 和 `<script setup lang="ts">`；TypeScript 推荐配置的各子配置统一匹配 `.ts` / `.vue`，避免合法声明被 JavaScript 核心规则误报。浏览器源码与 Vite / Node 配置、现有 `.mjs` 测试分别使用对应 globals。基于现有 tsconfig 的 `projectService` 额外检查未处理的 Promise、Promise 误用和无效 `await`，不启用整套严格或风格规则。
 - [.prettierrc.json](.prettierrc.json) 是唯一 Prettier 配置，保持无分号、单引号和 100 字符目标行宽。[.prettierignore](.prettierignore) 排除 `node_modules`、`dist`、`dist-ssr`、`coverage`、`.vite`、类型构建缓存及自动生成的 `package-lock.json`；根目录文档、后端和 HTML 原型不属于本目录格式化命令的范围。
 - `eslint-config-prettier` 放在 ESLint 配置末尾关闭冲突的格式规则；Prettier 使用独立命令，不通过 ESLint 插件执行。参考 [Vue 插件 Flat Config 指引](https://eslint.vuejs.org/user-guide/)与 [Prettier 集成说明](https://prettier.io/docs/integrating-with-linters)。
 - Vue 模板事件连续执行多条语句时，使用明确的函数块，例如 `() => { ... }`，或已有命名处理函数；避免内联语句的分号被格式化移除后，Vue 编译器将其当作单个表达式解析。本次仅在电影详情和来源详情的 3 处事件采用函数块，动作与执行顺序保持一致。
@@ -39,7 +39,7 @@ Learn more about the recommended Project Setup and IDE Support in the [Vue Docs 
 | `npm run build`        | 类型检查与生产构建通过    |
 | `npx vue-tsc -b`       | 通过                      |
 
-ESLint 首轮未发现需修复的业务代码问题，未添加 `eslint-disable`。格式变化覆盖已有 Vue、TypeScript、CSS、测试和 `tsconfig.json`；除上述 3 处等价事件语法调整外，源码及测试均与原文件的 Prettier 输出一致。规则探针与 ESLint / Prettier 冲突检查通过；现有依赖版本、认证生命周期、HTTP 配置与业务行为保持不变。未运行新的浏览器验收或后端集成测试；完整进度与验证限制见 [PROJECT_STATUS.md](../PROJECT_STATUS.md)。
+ESLint 首轮未发现需修复的业务代码问题，未添加 `eslint-disable`。复审修正了 TypeScript 推荐配置子块未覆盖 `.vue` 的匹配范围，合法函数重载及类型 / 值同名声明探针通过。格式变化覆盖已有 Vue、TypeScript、CSS、测试和 `tsconfig.json`；除上述 3 处等价事件语法调整外，源码及测试均与原文件的 Prettier 输出一致。规则探针与 ESLint / Prettier 冲突检查通过；现有依赖版本、认证生命周期、HTTP 配置与业务行为保持不变。未运行新的浏览器验收或后端集成测试；完整进度与验证限制见 [PROJECT_STATUS.md](../PROJECT_STATUS.md)。
 
 ## 页面与路由
 

@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-- 前端 ESLint / Prettier 已接入：当前基础技术栈为 Vue 3、TypeScript、Vue Router、Pinia、Axios、Vite、ESLint、Prettier 与原生 CSS。唯一配置为 `frontend/eslint.config.js`（Flat Config）、`.prettierrc.json` 与 `.prettierignore`；新增独立 `npm run lint`、`npm run lint:fix`、`npm run format`、`npm run format:check`。ESLint 检查代码质量，Prettier 统一格式，工具仅作为 devDependencies，不改变 Pinia / Service / Axios / Router 业务架构；原有 dev、build、preview、test 脚本及已安装依赖版本保持不变。
+- 前端 ESLint / Prettier 已接入：当前基础技术栈为 Vue 3、TypeScript、Vue Router、Pinia、Axios、Vite、ESLint、Prettier 与原生 CSS。唯一配置为 `frontend/eslint.config.js`（Flat Config）、`.prettierrc.json` 与 `.prettierignore`；新增独立 `npm run lint`、`npm run lint:fix`、`npm run format`、`npm run format:check`。ESLint 检查代码质量，Prettier 统一格式，工具仅作为 devDependencies，不改变 Pinia / Service / Axios / Router 业务架构；原有 dev、build、preview、test 脚本及已安装依赖版本保持不变。复审已统一 TypeScript 推荐配置各子块的 `.ts` / `.vue` 匹配范围，避免合法 Vue TypeScript 重载及类型 / 值同名声明被核心规则误报。
 - 本次代码审查：ESLint 首轮无需修复真实业务问题，未添加 disable；47 个已有源码、测试及类型配置文件只有 Prettier 格式变化和 3 处等价事件语法调整。电影详情与来源详情的多语句内联事件改为明确函数块，解决无分号格式下的 Vue 编译解析问题，已验证动作、顺序和返回值一致。JWT sessionStorage、`/auth/me` 恢复、epoch stale 防护、AbortController、并发恢复、Axios `/api` / 15 秒 timeout、Router 守卫、Mock Preview 与正式来源请求语义保持不变；后端、HTML 原型、API 契约及数据库未修改。
 - 本次最终验证：`npm run lint` 0 错误 / 0 警告，`npm run format:check` 通过，`npm test` 56 项通过 / 0 失败 / 0 跳过，`npm run build` 与 `npx vue-tsc -b` 通过；Vue / TypeScript / Node 规则探针与 ESLint / Prettier 冲突检查通过。相关技术栈、命令和规范文档已同步；本轮未运行浏览器验收或后端集成测试，未执行 Git commit / push。
 - Pinia 认证迁移完成：仅新增 `auth` Setup Store 与应用共享 Pinia instance，认证状态、JWT 生命周期、epoch、取消与并发恢复均归 Store；`authService.ts` 改为无状态认证 API/响应校验。App、认证表单、Router 和本人来源 service 已迁移；组件外显式传入 Pinia，main 先注册 Pinia 再注册 Router。登录/注册也纳入会话取消集合，取消的注册不会触发旧表单跳转；未预建其他业务 Store。

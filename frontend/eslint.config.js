@@ -19,7 +19,11 @@ export default defineConfig(
   },
   {
     files: ['**/*.{ts,vue}'],
-    extends: [tseslint.configs.recommended],
+    // 推荐配置的兼容子块默认只匹配 TS；统一范围，避免 Vue 中合法的 TS 声明被误报。
+    extends: tseslint.configs.recommended.map((config) => ({
+      ...config,
+      files: ['**/*.{ts,vue}'],
+    })),
     languageOptions: {
       parserOptions: {
         projectService: true,
