@@ -10,15 +10,24 @@ import ts from 'typescript'
 
 registerHooks({
   resolve(specifier, context, next) {
-    if (specifier.startsWith('.') && context.parentURL?.includes('/src/') && !/\.[cm]?[jt]s(?:\?|$)/.test(specifier)) return next(`${specifier}.ts`, context)
+    if (
+      specifier.startsWith('.') &&
+      context.parentURL?.includes('/src/') &&
+      !/\.[cm]?[jt]s(?:\?|$)/.test(specifier)
+    )
+      return next(`${specifier}.ts`, context)
     return next(specifier, context)
   },
 })
 const storage = new Map()
-globalThis.sessionStorage = { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) }
+globalThis.sessionStorage = {
+  getItem: (key) => storage.get(key) ?? null,
+  setItem: (key, value) => storage.set(key, value),
+  removeItem: (key) => storage.delete(key),
+}
 let respond
 const originalAdapter = axios.defaults.adapter
-axios.defaults.adapter = async config => {
+axios.defaults.adapter = async (config) => {
   const result = await respond(axios.getUri(config), config)
   const response = { ...result, config, headers: {}, statusText: '' }
   if (!config.validateStatus || config.validateStatus(response.status)) return response
@@ -27,9 +36,18 @@ axios.defaults.adapter = async config => {
 const authModule = await import('../src/stores/auth.ts')
 axios.defaults.adapter = originalAdapter
 const user = { id: 'user-a', username: 'alice', role: 'USER' }
-const ok = data => ({ status: 200, data: JSON.stringify({ code: 'OK', message: '', data }) })
-const failure = (status, code) => ({ status, data: JSON.stringify({ code, message: '测试错误', data: null }) })
-const deferred = () => { let resolve; const promise = new Promise(r => { resolve = r }); return { promise, resolve } }
+const ok = (data) => ({ status: 200, data: JSON.stringify({ code: 'OK', message: '', data }) })
+const failure = (status, code) => ({
+  status,
+  data: JSON.stringify({ code, message: '测试错误', data: null }),
+})
+const deferred = () => {
+  let resolve
+  const promise = new Promise((r) => {
+    resolve = r
+  })
+  return { promise, resolve }
+}
 const routerSource = await readFile(new URL('../src/router/index.ts', import.meta.url), 'utf8')
 const mainSource = await readFile(new URL('../src/main.ts', import.meta.url), 'utf8')
 function compile(source) {
@@ -45,9 +63,10 @@ function loadRouter({ token, preview = false } = {}) {
   const scope = vue.effectScope()
   const module = { exports: {} }
   // 运行真实路由表、守卫和 watch；仅用 memory history / 空页面替代浏览器环境。
-  const require = name => {
+  const require = (name) => {
     if (name === 'vue') return vue
-    if (name === 'vue-router') return { ...vueRouter, createWebHistory: vueRouter.createMemoryHistory }
+    if (name === 'vue-router')
+      return { ...vueRouter, createWebHistory: vueRouter.createMemoryHistory }
     if (name === '../stores/auth') return authModule
     if (name === '../stores/index') return { pinia }
     if (name === '../services/dataMode') return { mockPreview: preview }
@@ -55,7 +74,13 @@ function loadRouter({ token, preview = false } = {}) {
     throw new Error(`Unexpected import: ${name}`)
   }
   setActivePinia(undefined)
-  scope.run(() => new Function('require', 'module', 'exports', compile(routerSource))(require, module, module.exports))
+  scope.run(() =>
+    new Function('require', 'module', 'exports', compile(routerSource))(
+      require,
+      module,
+      module.exports,
+    ),
+  )
   const router = module.exports.default
   const auth = authModule.useAuthStore(pinia)
   routers.push({ router, auth, pinia, scope })
@@ -109,7 +134,9 @@ test('refreshed protected navigation waits for me; auth pages redirect only afte
 })
 
 test('network failure sends navigation to login with token retained, and retry restores protected access', async () => {
-  respond = async () => { throw new AxiosError('Network Error', 'ERR_NETWORK') }
+  respond = async () => {
+    throw new AxiosError('Network Error', 'ERR_NETWORK')
+  }
   const { router, auth } = loadRouter({ token: 'retry-token' })
   await router.push('/media-sources')
   assert.equal(router.currentRoute.value.name, 'login')
@@ -123,7 +150,10 @@ test('network failure sends navigation to login with token retained, and retry r
 })
 
 test('invalid identity on refresh clears token and keeps the backend notice on login', async () => {
-  for (const [status, code] of [[401, 'UNAUTHENTICATED'], [403, 'ACCOUNT_DISABLED']]) {
+  for (const [status, code] of [
+    [401, 'UNAUTHENTICATED'],
+    [403, 'ACCOUNT_DISABLED'],
+  ]) {
     respond = async () => failure(status, code)
     const { router, auth } = loadRouter({ token: 'expired-token' })
     await router.push('/media-sources')
@@ -140,19 +170,25 @@ test('epoch watcher redirects an invalidated protected session and signOut clear
   const { router, auth, signOut } = loadRouter({ token: 'valid-token' })
   await router.push('/media-sources')
   const navigated = deferred()
-  const removeHook = router.afterEach((to, from, failure) => { if (!failure && to.name === 'login') navigated.resolve() })
+  const removeHook = router.afterEach((to, from, failure) => {
+    if (!failure && to.name === 'login') navigated.resolve()
+  })
   respond = async () => failure(403, 'ACCOUNT_DISABLED')
   await assert.rejects(auth.authenticatedRequest('/media-sources'), { code: 'ACCOUNT_DISABLED' })
   await navigated.promise
   removeHook()
   assert.equal(router.currentRoute.value.name, 'login')
   assert.equal(auth.notice, '测试错误')
-  respond = async path => path.endsWith('/login')
-    ? ok({ accessToken: 'new-token', tokenType: 'Bearer', expiresIn: 3600 }) : ok(user)
+  respond = async (path) =>
+    path.endsWith('/login')
+      ? ok({ accessToken: 'new-token', tokenType: 'Bearer', expiresIn: 3600 })
+      : ok(user)
   await auth.login('alice', 'test-only-password', new AbortController().signal)
   await router.push('/media-sources')
   const signedOut = deferred()
-  router.afterEach((to, from, failure) => { if (!failure && to.name === 'login') signedOut.resolve() })
+  router.afterEach((to, from, failure) => {
+    if (!failure && to.name === 'login') signedOut.resolve()
+  })
   signOut()
   await signedOut.promise
   assert.equal(router.currentRoute.value.name, 'login')
@@ -182,9 +218,15 @@ test('main installs the shared Pinia before Router and component setup uses that
   let mounted
   const app = vue.createApp({})
   const realUse = app.use.bind(app)
-  app.use = plugin => { installed.push(plugin); return realUse(plugin) }
-  app.mount = selector => { mounted = selector; return app }
-  const require = name => {
+  app.use = (plugin) => {
+    installed.push(plugin)
+    return realUse(plugin)
+  }
+  app.mount = (selector) => {
+    mounted = selector
+    return app
+  }
+  const require = (name) => {
     if (name === 'vue') return { ...vue, createApp: () => app }
     if (name === './router') return { __esModule: true, default: router }
     if (name === './stores/index') return { pinia }
@@ -196,5 +238,8 @@ test('main installs the shared Pinia before Router and component setup uses that
   new Function('require', 'module', 'exports', compile(mainSource))(require, module, module.exports)
   assert.deepEqual(installed, [pinia, router])
   assert.equal(mounted, '#app')
-  assert.equal(app.runWithContext(() => authModule.useAuthStore()), auth)
+  assert.equal(
+    app.runWithContext(() => authModule.useAuthStore()),
+    auth,
+  )
 })

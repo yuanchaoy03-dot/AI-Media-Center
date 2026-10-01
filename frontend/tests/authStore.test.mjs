@@ -11,23 +11,39 @@ import ts from 'typescript'
 
 registerHooks({
   resolve(specifier, context, next) {
-    if (specifier.startsWith('.') && context.parentURL?.includes('/src/') && !/\.[cm]?[jt]s(?:\?|$)/.test(specifier)) return next(`${specifier}.ts`, context)
+    if (
+      specifier.startsWith('.') &&
+      context.parentURL?.includes('/src/') &&
+      !/\.[cm]?[jt]s(?:\?|$)/.test(specifier)
+    )
+      return next(`${specifier}.ts`, context)
     return next(specifier, context)
   },
 })
 const storage = new Map()
-globalThis.sessionStorage = { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) }
+globalThis.sessionStorage = {
+  getItem: (key) => storage.get(key) ?? null,
+  setItem: (key, value) => storage.set(key, value),
+  removeItem: (key) => storage.delete(key),
+}
 // Install before http.ts creates its instance. Exercise Axios serialization and
 // response transformation; only the transport is replaced, never global fetch.
 let respond
 const originalAdapter = axios.defaults.adapter
-axios.defaults.adapter = async config => {
+axios.defaults.adapter = async (config) => {
   const result = await respond(axios.getUri(config), {
-    ...config, body: config.data,
+    ...config,
+    body: config.data,
   })
   const response = { ...result, config, headers: {}, statusText: '' }
   if (!config.validateStatus || config.validateStatus(response.status)) return response
-  throw new AxiosError('HTTP failure', response.status >= 500 ? 'ERR_BAD_RESPONSE' : 'ERR_BAD_REQUEST', config, undefined, response)
+  throw new AxiosError(
+    'HTTP failure',
+    response.status >= 500 ? 'ERR_BAD_RESPONSE' : 'ERR_BAD_REQUEST',
+    config,
+    undefined,
+    response,
+  )
 }
 const { useAuthStore } = await import('../src/stores/auth.ts')
 const { pinia } = await import('../src/stores/index.ts')
@@ -36,9 +52,21 @@ const { getOwnedSources } = await import('../src/services/ownedSourceService.ts'
 const { request, ApiError } = await import('../src/services/http.ts')
 axios.defaults.adapter = originalAdapter
 const user = { id: 'user-a', username: 'alice', role: 'USER' }
-const ok = (data, status = 200) => ({ data: JSON.stringify({ code: 'OK', message: '', data, requestId: 'test' }), status })
-const failure = (status, code, fieldErrors) => ({ data: JSON.stringify({ code, message: '测试错误', data: null, requestId: 'test', fieldErrors }), status })
-const deferred = () => { let resolve; const promise = new Promise(r => { resolve = r }); return { promise, resolve } }
+const ok = (data, status = 200) => ({
+  data: JSON.stringify({ code: 'OK', message: '', data, requestId: 'test' }),
+  status,
+})
+const failure = (status, code, fieldErrors) => ({
+  data: JSON.stringify({ code, message: '测试错误', data: null, requestId: 'test', fieldErrors }),
+  status,
+})
+const deferred = () => {
+  let resolve
+  const promise = new Promise((r) => {
+    resolve = r
+  })
+  return { promise, resolve }
+}
 const storageKey = 'personal-cinema.access-token'
 const instances = []
 function freshStore(token = 'synthetic-test-token') {
@@ -48,8 +76,14 @@ function freshStore(token = 'synthetic-test-token') {
   return useAuthStore(instance)
 }
 async function signIn(identity = user) {
-  respond = async path => path.endsWith('/login') ? ok({ accessToken: 'synthetic-test-token', tokenType: 'Bearer', expiresIn: 3600 }) : ok(identity)
-  assert.equal(await auth.login(identity.username, 'test-only-password', new AbortController().signal), true)
+  respond = async (path) =>
+    path.endsWith('/login')
+      ? ok({ accessToken: 'synthetic-test-token', tokenType: 'Bearer', expiresIn: 3600 })
+      : ok(identity)
+  assert.equal(
+    await auth.login(identity.username, 'test-only-password', new AbortController().signal),
+    true,
+  )
 }
 test.afterEach(() => {
   auth.logout()
@@ -70,7 +104,10 @@ test('public credentials omit old bearer token; registration stores no password'
   }
   await auth.register('alice', 'test-only-password', new AbortController().signal)
   assert.deepEqual(auth.takeLoginHint(), { username: 'alice', message: '账号已创建，请登录。' })
-  assert.equal([...storage.values()].some(value => value.includes('password')), false)
+  assert.equal(
+    [...storage.values()].some((value) => value.includes('password')),
+    false,
+  )
 })
 
 test('refresh verifies identity and loads a real empty list; malformed/nonempty responses fail', async () => {
@@ -94,9 +131,20 @@ test('refresh verifies identity and loads a real empty list; malformed/nonempty 
 })
 
 test('401 and disabled 403 clear identity; 500 and network failures preserve it', async () => {
-  for (const [status, code] of [[500, 'INTERNAL_ERROR'], [400, 'VALIDATION_FAILED'], [401, 'INVALID_CREDENTIALS'], [403, 'FORBIDDEN'], [0, 'REQUEST_FAILED'], [401, 'UNAUTHENTICATED'], [403, 'ACCOUNT_DISABLED']]) {
+  for (const [status, code] of [
+    [500, 'INTERNAL_ERROR'],
+    [400, 'VALIDATION_FAILED'],
+    [401, 'INVALID_CREDENTIALS'],
+    [403, 'FORBIDDEN'],
+    [0, 'REQUEST_FAILED'],
+    [401, 'UNAUTHENTICATED'],
+    [403, 'ACCOUNT_DISABLED'],
+  ]) {
     await signIn()
-    respond = async () => { if (!status) throw new AxiosError('Network Error', 'ERR_NETWORK'); return failure(status, code) }
+    respond = async () => {
+      if (!status) throw new AxiosError('Network Error', 'ERR_NETWORK')
+      return failure(status, code)
+    }
     await assert.rejects(getOwnedSources(new AbortController().signal), { code })
     assert.equal(auth.tokenPresent, code !== 'UNAUTHENTICATED' && code !== 'ACCOUNT_DISABLED')
     assert.equal(auth.user !== null, code !== 'UNAUTHENTICATED' && code !== 'ACCOUNT_DISABLED')
@@ -119,7 +167,10 @@ test('late data and late unauthorized errors cannot refill or log out a new acco
 })
 
 test('failed identity restoration keeps token for retry and never establishes a user', async () => {
-  respond = async path => path.endsWith('/login') ? ok({ accessToken: 'synthetic', tokenType: 'Bearer', expiresIn: 3600 }) : failure(500, 'INTERNAL_ERROR')
+  respond = async (path) =>
+    path.endsWith('/login')
+      ? ok({ accessToken: 'synthetic', tokenType: 'Bearer', expiresIn: 3600 })
+      : failure(500, 'INTERNAL_ERROR')
   assert.equal(await auth.login('alice', 'test-only-password', new AbortController().signal), false)
   assert.equal(auth.user, null)
   assert.equal(auth.tokenPresent, true)
@@ -141,7 +192,9 @@ test('late login after logout cannot install a token', async () => {
 
 test('invalid login remains a form error', async () => {
   respond = async () => failure(401, 'INVALID_CREDENTIALS')
-  await assert.rejects(auth.login('alice', 'bad', new AbortController().signal), { code: 'INVALID_CREDENTIALS' })
+  await assert.rejects(auth.login('alice', 'bad', new AbortController().signal), {
+    code: 'INVALID_CREDENTIALS',
+  })
   assert.equal(auth.tokenPresent, false)
 })
 
@@ -157,7 +210,10 @@ test('login omits old token, then me uses the newly issued bearer', async () => 
       assert.equal(options.method, 'post')
       assert.equal(options.headers.Authorization, undefined)
       assert.equal(options.headers['Content-Type'], 'application/json')
-      assert.deepEqual(JSON.parse(options.body), { username: 'alice', password: 'test-only-password' })
+      assert.deepEqual(JSON.parse(options.body), {
+        username: 'alice',
+        password: 'test-only-password',
+      })
       return ok({ accessToken: 'new-synthetic-token', tokenType: 'Bearer', expiresIn: 3600 })
     }
     assert.equal(path, '/api/auth/me')
@@ -173,22 +229,34 @@ test('login omits old token, then me uses the newly issued bearer', async () => 
 })
 
 test('malformed login data never installs a token', async () => {
-  for (const data of [null, {}, { accessToken: '', tokenType: 'Bearer', expiresIn: 3600 },
+  for (const data of [
+    null,
+    {},
+    { accessToken: '', tokenType: 'Bearer', expiresIn: 3600 },
     { accessToken: 'synthetic', tokenType: 'Cookie', expiresIn: 3600 },
-    { accessToken: 'synthetic', tokenType: 'Bearer', expiresIn: 60 }]) {
+    { accessToken: 'synthetic', tokenType: 'Bearer', expiresIn: 60 },
+  ]) {
     respond = async () => ok(data)
-    await assert.rejects(auth.login('alice', 'test-only-password', new AbortController().signal), { code: 'REQUEST_FAILED' })
+    await assert.rejects(auth.login('alice', 'test-only-password', new AbortController().signal), {
+      code: 'REQUEST_FAILED',
+    })
     assert.equal(auth.tokenPresent, false)
     assert.equal(storage.size, 0)
   }
 })
 
 test('Axios rejected HTTP responses retain Spring Boot status, code and string field errors', async () => {
-  for (const [status, code] of [[400, 'VALIDATION_FAILED'], [401, 'INVALID_CREDENTIALS'],
-    [401, 'UNAUTHENTICATED'], [403, 'ACCOUNT_DISABLED'], [409, 'USERNAME_TAKEN'],
-    [500, 'INTERNAL_ERROR'], [501, 'SOURCE_LIST_NOT_READY']]) {
+  for (const [status, code] of [
+    [400, 'VALIDATION_FAILED'],
+    [401, 'INVALID_CREDENTIALS'],
+    [401, 'UNAUTHENTICATED'],
+    [403, 'ACCOUNT_DISABLED'],
+    [409, 'USERNAME_TAKEN'],
+    [500, 'INTERNAL_ERROR'],
+    [501, 'SOURCE_LIST_NOT_READY'],
+  ]) {
     respond = async () => failure(status, code, { username: '测试字段错误', ignored: 42 })
-    await assert.rejects(request('/auth/register', { body: {} }), error => {
+    await assert.rejects(request('/auth/register', { body: {} }), (error) => {
       assert.ok(error instanceof ApiError)
       assert.equal(error.status, status)
       assert.equal(error.code, code)
@@ -200,16 +268,27 @@ test('Axios rejected HTTP responses retain Spring Boot status, code and string f
 })
 
 test('invalid envelopes and HTML map to the fixed network message', async () => {
-  for (const data of ['<h1>Bad gateway</h1>', '{', 'null', '[]', '{}',
-    '{"message":"","data":null}', '{"code":"OK","data":null}',
-    '{"code":"OK","message":""}', '{"code":1,"message":"","data":null}',
-    '{"code":"OK","message":1,"data":null}', '{"code":"NOT_OK","message":"","data":null}']) {
+  for (const data of [
+    '<h1>Bad gateway</h1>',
+    '{',
+    'null',
+    '[]',
+    '{}',
+    '{"message":"","data":null}',
+    '{"code":"OK","data":null}',
+    '{"code":"OK","message":""}',
+    '{"code":1,"message":"","data":null}',
+    '{"code":"OK","message":1,"data":null}',
+    '{"code":"NOT_OK","message":"","data":null}',
+  ]) {
     for (const status of [200, 502]) {
       // A valid non-OK envelope on an error status remains a business error.
       if (status === 502 && data.includes('NOT_OK')) continue
       respond = async () => ({ status, data })
       await assert.rejects(request('/auth/me'), {
-        status: 0, code: 'REQUEST_FAILED', message: '请求未完成，请检查网络后重试。',
+        status: 0,
+        code: 'REQUEST_FAILED',
+        message: '请求未完成，请检查网络后重试。',
       })
     }
   }
@@ -223,7 +302,9 @@ test('Axios timeout and network errors preserve the session', async () => {
       throw new AxiosError('Internal English transport detail', code)
     }
     await assert.rejects(getOwnedSources(new AbortController().signal), {
-      status: 0, code: 'REQUEST_FAILED', message: '请求未完成，请检查网络后重试。',
+      status: 0,
+      code: 'REQUEST_FAILED',
+      message: '请求未完成，请检查网络后重试。',
     })
     assert.equal(auth.tokenPresent, true)
   }
@@ -234,10 +315,11 @@ test('external cancellation and logout abort the Axios signal and yield stale re
     await signIn()
     const external = new AbortController()
     let transportSignal
-    respond = (path, { signal }) => new Promise((resolve, reject) => {
-      transportSignal = signal
-      signal.addEventListener('abort', () => reject(new CanceledError()), { once: true })
-    })
+    respond = (path, { signal }) =>
+      new Promise((resolve, reject) => {
+        transportSignal = signal
+        signal.addEventListener('abort', () => reject(new CanceledError()), { once: true })
+      })
     const pending = getOwnedSources(external.signal)
     assert.equal(transportSignal.aborted, false)
     if (cancel === 'external') external.abort()
@@ -254,15 +336,20 @@ test('pre-aborted requests never reach the adapter; direct request keeps ApiErro
   const controller = new AbortController()
   controller.abort()
   await assert.rejects(getOwnedSources(controller.signal), { code: 'STALE_REQUEST' })
-  await assert.rejects(request('/auth/me', { signal: controller.signal }), { status: 0, code: 'REQUEST_FAILED' })
+  await assert.rejects(request('/auth/me', { signal: controller.signal }), {
+    status: 0,
+    code: 'REQUEST_FAILED',
+  })
   assert.equal(auth.tokenPresent, true)
 })
 
 test('Pinia owns all shared auth state and explicit instances work without active Pinia', async () => {
   setActivePinia(undefined)
   assert.equal(useAuthStore(pinia), auth)
-  assert.deepEqual(Object.keys(pinia.state.value.auth).sort(),
-    ['user', 'epoch', 'verifying', 'tokenPresent', 'error', 'notice', 'registeredUsername'].sort())
+  assert.deepEqual(
+    Object.keys(pinia.state.value.auth).sort(),
+    ['user', 'epoch', 'verifying', 'tokenPresent', 'error', 'notice', 'registeredUsername'].sort(),
+  )
   const refs = storeToRefs(auth)
   await signIn()
   assert.equal(refs.user.value.username, 'alice')
@@ -323,9 +410,15 @@ test('concurrent restoration reuses one request and a failed attempt can retry',
 })
 
 test('restoration preserves token on network/protocol errors but clears explicit invalid identity', async () => {
-  for (const response of [failure(500, 'INTERNAL_ERROR'), ok(null), ok({ ...user, role: 'OTHER' }),
-    { data: '<h1>Bad gateway</h1>', status: 502 }, null,
-    failure(401, 'UNAUTHENTICATED'), failure(403, 'ACCOUNT_DISABLED')]) {
+  for (const response of [
+    failure(500, 'INTERNAL_ERROR'),
+    ok(null),
+    ok({ ...user, role: 'OTHER' }),
+    { data: '<h1>Bad gateway</h1>', status: 502 },
+    null,
+    failure(401, 'UNAUTHENTICATED'),
+    failure(403, 'ACCOUNT_DISABLED'),
+  ]) {
     const restored = freshStore()
     const epoch = restored.epoch
     respond = async () => {
@@ -352,18 +445,32 @@ test('logout clears every auth field and cancels all pending protected requests'
   await auth.register('alice', 'test-only-password', new AbortController().signal)
   auth.error = '旧提示'
   const signals = []
-  respond = (path, { signal }) => new Promise((resolve, reject) => {
-    signals.push(signal)
-    signal.addEventListener('abort', () => reject(new CanceledError()), { once: true })
-  })
-  const requests = [getOwnedSources(new AbortController().signal), getOwnedSources(new AbortController().signal)]
+  respond = (path, { signal }) =>
+    new Promise((resolve, reject) => {
+      signals.push(signal)
+      signal.addEventListener('abort', () => reject(new CanceledError()), { once: true })
+    })
+  const requests = [
+    getOwnedSources(new AbortController().signal),
+    getOwnedSources(new AbortController().signal),
+  ]
   const epoch = auth.epoch
   auth.logout()
   assert.equal(signals.length, 2)
-  assert.equal(signals.every(signal => signal.aborted), true)
+  assert.equal(
+    signals.every((signal) => signal.aborted),
+    true,
+  )
   for (const pending of requests) await assert.rejects(pending, { code: 'STALE_REQUEST' })
-  assert.deepEqual(auth.$state, { user: null, epoch: epoch + 1, verifying: false, tokenPresent: false,
-    error: '', notice: '', registeredUsername: '' })
+  assert.deepEqual(auth.$state, {
+    user: null,
+    epoch: epoch + 1,
+    verifying: false,
+    tokenPresent: false,
+    error: '',
+    notice: '',
+    registeredUsername: '',
+  })
   assert.equal(storage.size, 0)
 })
 
@@ -372,11 +479,12 @@ test('login and registration signals cancel on form exit or logout without insta
     for (const cancel of ['external', 'logout']) {
       const external = new AbortController()
       let transportSignal
-      respond = (path, { signal, headers }) => new Promise((resolve, reject) => {
-        assert.equal(headers.Authorization, undefined)
-        transportSignal = signal
-        signal.addEventListener('abort', () => reject(new CanceledError()), { once: true })
-      })
+      respond = (path, { signal, headers }) =>
+        new Promise((resolve, reject) => {
+          assert.equal(headers.Authorization, undefined)
+          transportSignal = signal
+          signal.addEventListener('abort', () => reject(new CanceledError()), { once: true })
+        })
       const pending = auth[action]('alice', 'test-only-password', external.signal)
       assert.equal(transportSignal.aborted, false)
       if (cancel === 'external') external.abort()
@@ -395,7 +503,10 @@ test('login and registration signals cancel on form exit or logout without insta
 test('late registration cannot overwrite a new account or its notice', async () => {
   const delayed = deferred()
   let oldSignal
-  respond = (path, { signal }) => { oldSignal = signal; return delayed.promise }
+  respond = (path, { signal }) => {
+    oldSignal = signal
+    return delayed.promise
+  }
   const old = auth.register('alice', 'test-only-password', new AbortController().signal)
   await signIn({ id: 'user-b', username: 'bob', role: 'USER' })
   assert.equal(oldSignal.aborted, true)
@@ -407,16 +518,24 @@ test('late registration cannot overwrite a new account or its notice', async () 
 })
 
 test('old restoration cannot finish or clear the new account restoration', async () => {
-  for (const late of [ok(user), failure(401, 'UNAUTHENTICATED'), failure(403, 'ACCOUNT_DISABLED')]) {
+  for (const late of [
+    ok(user),
+    failure(401, 'UNAUTHENTICATED'),
+    failure(403, 'ACCOUNT_DISABLED'),
+  ]) {
     const restored = freshStore()
     const delayedOld = deferred()
     let oldSignal
-    respond = (path, { signal }) => { oldSignal = signal; return delayedOld.promise }
+    respond = (path, { signal }) => {
+      oldSignal = signal
+      return delayedOld.promise
+    }
     const old = restored.restoreSession()
     const delayedNew = deferred()
     const meStarted = deferred()
-    respond = async path => {
-      if (path.endsWith('/login')) return ok({ accessToken: 'bob-token', tokenType: 'Bearer', expiresIn: 3600 })
+    respond = async (path) => {
+      if (path.endsWith('/login'))
+        return ok({ accessToken: 'bob-token', tokenType: 'Bearer', expiresIn: 3600 })
       meStarted.resolve()
       return delayedNew.promise
     }
@@ -430,7 +549,10 @@ test('old restoration cannot finish or clear the new account restoration', async
     assert.equal(restored.error, '')
     assert.equal(restored.notice, '')
     let duplicateCalls = 0
-    respond = () => { duplicateCalls++; return ok(user) }
+    respond = () => {
+      duplicateCalls++
+      return ok(user)
+    }
     const reused = restored.restoreSession()
     assert.equal(duplicateCalls, 0)
     delayedNew.resolve(ok({ id: 'user-b', username: 'bob', role: 'USER' }))
@@ -444,7 +566,10 @@ test('old restoration cannot finish or clear the new account restoration', async
 test('a late public login cannot replace the token of a newer login', async () => {
   const delayed = deferred()
   let oldSignal
-  respond = (path, { signal }) => { oldSignal = signal; return delayed.promise }
+  respond = (path, { signal }) => {
+    oldSignal = signal
+    return delayed.promise
+  }
   const old = auth.login('alice', 'test-only-password', new AbortController().signal)
   await signIn({ id: 'user-b', username: 'bob', role: 'USER' })
   assert.equal(oldSignal.aborted, true)
@@ -457,15 +582,27 @@ test('a late public login cannot replace the token of a newer login', async () =
 test('registration creates no session, consumes its hint once, and validates the returned user', async () => {
   auth.logout()
   respond = async () => ok(user, 201)
-  assert.equal(await auth.register('alice', 'test-only-password', new AbortController().signal), true)
+  assert.equal(
+    await auth.register('alice', 'test-only-password', new AbortController().signal),
+    true,
+  )
   assert.equal(auth.user, null)
   assert.equal(auth.tokenPresent, false)
   assert.equal(storage.size, 0)
   assert.deepEqual(auth.takeLoginHint(), { username: 'alice', message: '账号已创建，请登录。' })
   assert.deepEqual(auth.takeLoginHint(), { username: '', message: '' })
-  for (const malformed of [null, {}, { ...user, id: 1 }, { ...user, username: null }, { ...user, role: 'OTHER' }]) {
+  for (const malformed of [
+    null,
+    {},
+    { ...user, id: 1 },
+    { ...user, username: null },
+    { ...user, role: 'OTHER' },
+  ]) {
     respond = async () => ok(malformed, 201)
-    await assert.rejects(auth.register('alice', 'test-only-password', new AbortController().signal), { code: 'REQUEST_FAILED' })
+    await assert.rejects(
+      auth.register('alice', 'test-only-password', new AbortController().signal),
+      { code: 'REQUEST_FAILED' },
+    )
     assert.equal(auth.registeredUsername, '')
     assert.equal(auth.notice, '')
   }
@@ -483,10 +620,29 @@ async function componentSetup(path, props = {}) {
   const routes = []
   const unmounts = []
   let mount
-  const require = name => {
-    if (name === 'vue') return { ...vue, onMounted: callback => { mount = callback }, onBeforeUnmount: callback => unmounts.push(callback) }
-    if (name === 'vue-router') return { RouterView: {}, RouterLink: {}, useRoute: () => vue.reactive({ fullPath: '/media-sources', meta: {} }),
-      useRouter: () => ({ push: async route => { routes.push(route) }, replace: async route => { routes.push(route) } }) }
+  const require = (name) => {
+    if (name === 'vue')
+      return {
+        ...vue,
+        onMounted: (callback) => {
+          mount = callback
+        },
+        onBeforeUnmount: (callback) => unmounts.push(callback),
+      }
+    if (name === 'vue-router')
+      return {
+        RouterView: {},
+        RouterLink: {},
+        useRoute: () => vue.reactive({ fullPath: '/media-sources', meta: {} }),
+        useRouter: () => ({
+          push: async (route) => {
+            routes.push(route)
+          },
+          replace: async (route) => {
+            routes.push(route)
+          },
+        }),
+      }
     if (name.endsWith('/stores/auth')) return { useAuthStore }
     if (name.endsWith('/services/dataMode')) return { mockPreview: false }
     if (name.endsWith('/services/http')) return { ApiError }
@@ -500,8 +656,18 @@ async function componentSetup(path, props = {}) {
   const app = vue.createApp({})
   app.use(pinia)
   const scope = vue.effectScope()
-  const ui = app.runWithContext(() => scope.run(() => module.exports.default.setup(props, { expose() {} })))
-  return { ui, routes, mount, unmount: () => { unmounts.forEach(callback => callback()); scope.stop() } }
+  const ui = app.runWithContext(() =>
+    scope.run(() => module.exports.default.setup(props, { expose() {} })),
+  )
+  return {
+    ui,
+    routes,
+    mount,
+    unmount: () => {
+      unmounts.forEach((callback) => callback())
+      scope.stop()
+    },
+  }
 }
 
 test('App and AuthForm share Pinia identity; epoch clears shell state and retry uses restored user', async () => {
@@ -512,8 +678,10 @@ test('App and AuthForm share Pinia identity; epoch clears shell state and retry 
     assert.equal(form.ui.auth, auth)
     shell.ui.searchOpen.value = true
     shell.ui.showNotice('旧账号消息')
-    respond = async path => path.endsWith('/login')
-      ? ok({ accessToken: 'synthetic', tokenType: 'Bearer', expiresIn: 3600 }) : failure(500, 'INTERNAL_ERROR')
+    respond = async (path) =>
+      path.endsWith('/login')
+        ? ok({ accessToken: 'synthetic', tokenType: 'Bearer', expiresIn: 3600 })
+        : failure(500, 'INTERNAL_ERROR')
     form.ui.username.value = 'alice'
     form.ui.password.value = 'test-only-password'
     await form.ui.submit()
@@ -527,7 +695,10 @@ test('App and AuthForm share Pinia identity; epoch clears shell state and retry 
     assert.equal(form.ui.needsRestore.value, false)
     assert.deepEqual(form.routes, [{ name: 'media-sources' }])
     assert.equal(shell.ui.auth.user.username, 'alice')
-  } finally { shell.unmount(); form.unmount() }
+  } finally {
+    shell.unmount()
+    form.unmount()
+  }
 })
 
 test('canceled registration cannot navigate the old AuthForm', async () => {
@@ -546,7 +717,9 @@ test('canceled registration cannot navigate the old AuthForm', async () => {
     assert.equal(form.ui.password.value, '')
     assert.equal(form.ui.confirmation.value, '')
     assert.equal(auth.notice, '')
-  } finally { form.unmount() }
+  } finally {
+    form.unmount()
+  }
 })
 
 test('real MediaSourcesView keeps loading, error, retry and empty states through Pinia requests', async () => {
@@ -572,12 +745,17 @@ test('real MediaSourcesView keeps loading, error, retry and empty states through
     assert.equal(view.ui.error.value, '')
     let signal
     const old = deferred()
-    respond = (path, config) => { signal = config.signal; return old.promise }
+    respond = (path, config) => {
+      signal = config.signal
+      return old.promise
+    }
     const pending = view.ui.load()
     view.unmount()
     assert.equal(signal.aborted, true)
     old.resolve(ok([]))
     await pending
     assert.equal(view.ui.status.value, 'loading') // 已卸载页面不能由旧响应回填。
-  } finally { view.unmount() }
+  } finally {
+    view.unmount()
+  }
 })

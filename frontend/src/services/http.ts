@@ -19,7 +19,12 @@ export class ApiError extends Error {
   code: string
   // Record<string, string> 是“字符串键 → 字符串值”的对象，比如 { username: '用户名已存在' }。
   fieldErrors: Record<string, string>
-  constructor(status: number, code: string, message: string, fieldErrors: Record<string, string> = {}) {
+  constructor(
+    status: number,
+    code: string,
+    message: string,
+    fieldErrors: Record<string, string> = {},
+  ) {
     super(message)
     this.status = status
     this.code = code
@@ -30,34 +35,48 @@ export class ApiError extends Error {
 // <T> 是类型占位符：调用方用 request<CurrentUser> 指定希望拿到的数据类型。
 // Promise<T> 表示异步完成后得到 T；它只帮助类型检查，不会自动检查后端 JSON 的实际结构。
 // body? 等字段可以不传，signal 是调用方给的取消信号。
-export async function request<T>(path: string, options: { body?: unknown; token?: string; signal?: AbortSignal } = {}): Promise<T> {
+export async function request<T>(
+  path: string,
+  options: { body?: unknown; token?: string; signal?: AbortSignal } = {},
+): Promise<T> {
   try {
     // 当前封装：不传 body 就用 GET 读取数据，传了 body 就用 POST 提交数据。
-    const response = await apiClient.request<unknown>({
-      url: path,
-      method: options.body === undefined ? 'GET' : 'POST',
-      headers: {
-        // Content-Type 说明发出去的正文是 JSON；JWT 就在这里放进 Authorization 请求头。
-        ...(options.body === undefined ? {} : { 'Content-Type': 'application/json' }),
-        ...(options.token ? { Authorization: `Bearer ${options.token}` } : {}),
-      },
-      // 把表单对象转成 JSON 正文；signal 被 abort 时，Axios 会取消这次请求。
-      data: options.body === undefined ? undefined : JSON.stringify(options.body),
-      signal: options.signal,
-    }).catch((error: unknown) => {
-      // Axios 默认拒绝非 2xx；有 HTTP 响应时仍按后端统一包裹解析。
-      if (axios.isAxiosError<unknown>(error) && error.response) return error.response
-      throw error
-    })
+    const response = await apiClient
+      .request<unknown>({
+        url: path,
+        method: options.body === undefined ? 'GET' : 'POST',
+        headers: {
+          // Content-Type 说明发出去的正文是 JSON；JWT 就在这里放进 Authorization 请求头。
+          ...(options.body === undefined ? {} : { 'Content-Type': 'application/json' }),
+          ...(options.token ? { Authorization: `Bearer ${options.token}` } : {}),
+        },
+        // 把表单对象转成 JSON 正文；signal 被 abort 时，Axios 会取消这次请求。
+        data: options.body === undefined ? undefined : JSON.stringify(options.body),
+        signal: options.signal,
+      })
+      .catch((error: unknown) => {
+        // Axios 默认拒绝非 2xx；有 HTTP 响应时仍按后端统一包裹解析。
+        if (axios.isAxiosError<unknown>(error) && error.response) return error.response
+        throw error
+      })
     // response.data 是 Axios 收到的响应正文，此处仍是后端包裹的 { code, data, message }。
     // 先检查这层结构，再把里面的 data 交给 service；HTTP 状态码则在 response.status 中。
     const body: unknown = response.data
-    if (!body || typeof body !== 'object' || !('code' in body) || !('data' in body) || !('message' in body)
-      || typeof body.code !== 'string' || typeof body.message !== 'string') throw new Error('Invalid response')
+    if (
+      !body ||
+      typeof body !== 'object' ||
+      !('code' in body) ||
+      !('data' in body) ||
+      !('message' in body) ||
+      typeof body.code !== 'string' ||
+      typeof body.message !== 'string'
+    )
+      throw new Error('Invalid response')
     if (response.status < 200 || response.status >= 300) {
       const fields: Record<string, string> = {}
       if ('fieldErrors' in body && body.fieldErrors && typeof body.fieldErrors === 'object') {
-        for (const [key, value] of Object.entries(body.fieldErrors)) if (typeof value === 'string') fields[key] = value
+        for (const [key, value] of Object.entries(body.fieldErrors))
+          if (typeof value === 'string') fields[key] = value
       }
       throw new ApiError(response.status, body.code, body.message, fields)
     }

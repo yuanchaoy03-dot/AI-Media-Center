@@ -8,6 +8,7 @@ export async function getOwnedSources(signal: AbortSignal): Promise<[]> {
   // service 在组件外执行，显式使用应用 Pinia，不依赖当前 active Pinia。
   const result = await useAuthStore(pinia).authenticatedRequest<unknown>('/media-sources', signal)
   // 先检查后端实际返回值，避免把尚未支持的非空列表直接当成“没有来源”。
-  if (!Array.isArray(result) || result.length !== 0) throw new ApiError(0, 'REQUEST_FAILED', '来源列表响应异常，请稍后重试。')
+  if (!Array.isArray(result) || result.length !== 0)
+    throw new ApiError(0, 'REQUEST_FAILED', '来源列表响应异常，请稍后重试。')
   return []
 }

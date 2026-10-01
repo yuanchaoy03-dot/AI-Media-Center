@@ -14,16 +14,20 @@ const server = createServer((req, res) => {
     return
   }
   res.writeHead(req.url === '/api/conflict' ? 409 : 200, { 'Content-Type': 'application/json' })
-  res.end(JSON.stringify(req.url === '/api/conflict'
-    ? { code: 'USERNAME_TAKEN', message: '这个用户名已被使用。', data: null, requestId: 'test' }
-    : { code: 'OK', message: '', data: { path: req.url }, requestId: 'test' }))
+  res.end(
+    JSON.stringify(
+      req.url === '/api/conflict'
+        ? { code: 'USERNAME_TAKEN', message: '这个用户名已被使用。', data: null, requestId: 'test' }
+        : { code: 'OK', message: '', data: { path: req.url }, requestId: 'test' },
+    ),
+  )
 })
 server.listen(0, '127.0.0.1')
 await once(server, 'listening')
 const origin = `http://127.0.0.1:${server.address().port}`
 const originalAdapter = axios.defaults.adapter
 const transport = axios.getAdapter('http')
-axios.defaults.adapter = config => {
+axios.defaults.adapter = (config) => {
   assert.equal(config.baseURL, '/api')
   assert.equal(config.timeout, 15000)
   return transport({ ...config, baseURL: `${origin}/api`, proxy: false })
@@ -32,19 +36,23 @@ const { request, ApiError } = await import('../src/services/http.ts')
 axios.defaults.adapter = originalAdapter
 test.after(async () => {
   server.closeAllConnections()
-  await new Promise(resolve => server.close(resolve))
+  await new Promise((resolve) => server.close(resolve))
 })
 
 test('real Axios HTTP preserves URL, unwraps data and maps rejected business/HTML responses', async () => {
   assert.deepEqual(await request('/identity'), { path: '/api/identity' })
-  await assert.rejects(request('/conflict'), error => error instanceof ApiError
-    && error.status === 409 && error.code === 'USERNAME_TAKEN')
+  await assert.rejects(
+    request('/conflict'),
+    (error) => error instanceof ApiError && error.status === 409 && error.code === 'USERNAME_TAKEN',
+  )
   await assert.rejects(request('/html'), { status: 0, code: 'REQUEST_FAILED' })
 })
 
 test('real Axios 15000ms timeout becomes REQUEST_FAILED', { timeout: 25000 }, async () => {
   await assert.rejects(request('/timeout'), {
-    status: 0, code: 'REQUEST_FAILED', message: '请求未完成，请检查网络后重试。',
+    status: 0,
+    code: 'REQUEST_FAILED',
+    message: '请求未完成，请检查网络后重试。',
   })
 })
 

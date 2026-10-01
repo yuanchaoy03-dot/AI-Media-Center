@@ -6,7 +6,11 @@ import test from 'node:test'
 // No browser hooks, added dependency, or emitted test build is needed.
 registerHooks({
   resolve(specifier, context, nextResolve) {
-    if (specifier.startsWith('.') && context.parentURL?.includes('/src/') && !/\.[cm]?[jt]s(?:\?|$)/.test(specifier)) {
+    if (
+      specifier.startsWith('.') &&
+      context.parentURL?.includes('/src/') &&
+      !/\.[cm]?[jt]s(?:\?|$)/.test(specifier)
+    ) {
       return nextResolve(`${specifier}.ts`, context)
     }
     return nextResolve(specifier, context)
@@ -14,53 +18,84 @@ registerHooks({
 })
 let caseId = 0
 const fresh = () => import(`../src/services/mediaSourceService.ts?case=${caseId++}`)
-const input = { name: '测试连接', address: 'https://fixture.example.com/dav', username: 'fictional', password: 'fictional-only' }
-const settle = async (t, promise, ms) => { t.mock.timers.tick(ms); return promise }
+const input = {
+  name: '测试连接',
+  address: 'https://fixture.example.com/dav',
+  username: 'fictional',
+  password: 'fictional-only',
+}
+const settle = async (t, promise, ms) => {
+  t.mock.timers.tick(ms)
+  return promise
+}
 
 test('reject credential-bearing or non-HTTP endpoints without echoing secrets', async () => {
   const service = await fresh()
-  for (const address of ['file:///tmp', 'https://name:secret@example.com/', 'https://example.com/?token=secret', 'https://example.com/#secret', 'invalid']) {
-    assert.throws(() => service.validateEndpoint(address), error => !error.message.includes('secret'))
+  for (const address of [
+    'file:///tmp',
+    'https://name:secret@example.com/',
+    'https://example.com/?token=secret',
+    'https://example.com/#secret',
+    'invalid',
+  ]) {
+    assert.throws(
+      () => service.validateEndpoint(address),
+      (error) => !error.message.includes('secret'),
+    )
   }
   assert.equal(service.validateEndpoint(input.address), input.address)
 })
 
-test('saving a connection does not create roots, tasks or returned credentials; editing preserves roots', async t => {
+test('saving a connection does not create roots, tasks or returned credentials; editing preserves roots', async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] })
   const s = await fresh()
   const previousTasks = s.mediaSourceState.tasks.length
   const id = await settle(t, s.saveSource(input), 250)
-  const source = s.mediaSourceState.sources.find(item => item.id === id)
+  const source = s.mediaSourceState.sources.find((item) => item.id === id)
   assert.equal(source.type, 'WebDAV')
   assert.equal(source.lastScan, '尚未扫描')
   assert.equal('password' in source, false)
   assert.equal('username' in source, false)
-  assert.equal(s.mediaSourceState.roots.filter(root => root.sourceId === id).length, 0)
+  assert.equal(s.mediaSourceState.roots.filter((root) => root.sourceId === id).length, 0)
   assert.equal(s.mediaSourceState.tasks.length, previousTasks)
   s.addScanRoots(id, ['/TV'])
   await settle(t, s.saveSource({ ...input, name: '编辑名称', password: '' }, id), 250)
-  assert.equal(s.mediaSourceState.roots.find(root => root.sourceId === id).path, '/TV')
+  assert.equal(s.mediaSourceState.roots.find((root) => root.sourceId === id).path, '/TV')
 })
 
 test('directory browsing is read-only; save validates the whole selection and rejects duplicates', async () => {
   const s = await fresh()
   const before = JSON.stringify(s.mediaSourceState)
   const root = s.browseDirectory('source-new', '/')
-  assert.equal(root.find(entry => entry.name === 'Movies').kind, 'directory')
-  assert.equal(root.find(entry => entry.name === 'Movies').path, '/Movies')
-  assert.deepEqual(s.browseDirectory('source-new', '/Movies/电影').map(entry => [entry.name, entry.kind]), [
-    ['星际穿越', 'directory'], ['README', 'file'],
-  ])
+  assert.equal(root.find((entry) => entry.name === 'Movies').kind, 'directory')
+  assert.equal(root.find((entry) => entry.name === 'Movies').path, '/Movies')
+  assert.deepEqual(
+    s.browseDirectory('source-new', '/Movies/电影').map((entry) => [entry.name, entry.kind]),
+    [
+      ['星际穿越', 'directory'],
+      ['README', 'file'],
+    ],
+  )
   const movieFiles = s.browseDirectory('source-new', '/Movies/电影/星际穿越')
-  assert.deepEqual(movieFiles.map(entry => [entry.name, entry.kind]), [
-    ['Interstellar (2014).mkv', 'file'], ['poster.jpg', 'file'],
-    ['backdrop.jpg', 'file'], ['logo.png', 'file'],
-  ])
-  assert.equal(movieFiles.every(entry => entry.path.startsWith('/Movies/电影/星际穿越/')), true)
+  assert.deepEqual(
+    movieFiles.map((entry) => [entry.name, entry.kind]),
+    [
+      ['Interstellar (2014).mkv', 'file'],
+      ['poster.jpg', 'file'],
+      ['backdrop.jpg', 'file'],
+      ['logo.png', 'file'],
+    ],
+  )
+  assert.equal(
+    movieFiles.every((entry) => entry.path.startsWith('/Movies/电影/星际穿越/')),
+    true,
+  )
   assert.deepEqual(s.browseDirectory('source-new', '/Downloads'), [])
   s.browseDirectory('source-new', '/Movies/纪录片')
   assert.equal(JSON.stringify(s.mediaSourceState), before)
-  const readme = s.browseDirectory('source-new', '/Movies/电影').find(entry => entry.name === 'README')
+  const readme = s
+    .browseDirectory('source-new', '/Movies/电影')
+    .find((entry) => entry.name === 'README')
   for (const file of [readme, ...movieFiles]) {
     assert.throws(() => s.browseDirectory('source-new', file.path), /找不到这个文件夹/)
     assert.throws(() => s.saveScanRootSelection('source-new', [file.path]), /找不到这个文件夹/)
@@ -71,8 +106,11 @@ test('directory browsing is read-only; save validates the whole selection and re
   assert.throws(() => s.addScanRoots('source-new', ['/Movies', '/Movies', '/TV']))
   assert.equal(JSON.stringify(s.mediaSourceState), before)
   s.addScanRoots('source-new', ['/Movies', '/TV'])
-  assert.equal(s.mediaSourceState.roots.filter(root => root.sourceId === 'source-new').length, 2)
-  assert.throws(() => s.setRootEnabled('source-alist', 'root-nas-movies', false), /这个影片文件夹已被移除/)
+  assert.equal(s.mediaSourceState.roots.filter((root) => root.sourceId === 'source-new').length, 2)
+  assert.throws(
+    () => s.setRootEnabled('source-alist', 'root-nas-movies', false),
+    /这个影片文件夹已被移除/,
+  )
 })
 
 test('scan guards distinguish unavailable sources, no roots and all roots disabled', async () => {
@@ -81,23 +119,29 @@ test('scan guards distinguish unavailable sources, no roots and all roots disabl
   assert.throws(() => s.startScan('source-new'), /请先选择至少一个未暂停的影片文件夹/)
   s.setRootEnabled('source-ready', 'root-ready', false)
   assert.throws(() => s.startScan('source-ready'), /请先选择至少一个未暂停的影片文件夹/)
-  const byId = id => s.mediaSourceState.sources.find(source => source.id === id)
+  const byId = (id) => s.mediaSourceState.sources.find((source) => source.id === id)
   assert.equal(s.scanLabel(byId('source-nextcloud')), '检查连接')
   assert.equal(s.scanLabel(byId('source-new')), '选择影片文件夹')
   assert.equal(s.scanLabel(byId('source-ready')), '查看暂停扫描的影片文件夹')
 })
 
-test('one running task per source; snapshot survives disabling/removing roots; completion invents no movies', async t => {
+test('one running task per source; snapshot survives disabling/removing roots; completion invents no movies', async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] })
   const s = await fresh()
   s.setRootEnabled('source-home-nas', 'root-nas-4k', false)
   const id = s.startScan('source-home-nas')
   assert.equal(s.startScan('source-home-nas'), id)
-  assert.equal(s.scanLabel(s.mediaSourceState.sources.find(source => source.id === 'source-home-nas')), '查看扫描')
+  assert.equal(
+    s.scanLabel(s.mediaSourceState.sources.find((source) => source.id === 'source-home-nas')),
+    '查看扫描',
+  )
   s.removeScanRoot('source-home-nas', 'root-nas-movies')
-  assert.equal(s.scanLabel(s.mediaSourceState.sources.find(source => source.id === 'source-home-nas')), '查看扫描')
+  assert.equal(
+    s.scanLabel(s.mediaSourceState.sources.find((source) => source.id === 'source-home-nas')),
+    '查看扫描',
+  )
   s.addScanRoots('source-home-nas', ['/TV'])
-  const task = s.mediaSourceState.tasks.find(item => item.id === id)
+  const task = s.mediaSourceState.tasks.find((item) => item.id === id)
   assert.deepEqual(task.rootPaths, ['/Movies'])
   assert.equal(task.status, 'running')
   t.mock.timers.tick(4000)
@@ -106,21 +150,25 @@ test('one running task per source; snapshot survives disabling/removing roots; c
   assert.deepEqual(task.rootPaths, ['/Movies'])
 })
 
-test('removing a source cancels its running task and removes only its configuration', async t => {
+test('removing a source cancels its running task and removes only its configuration', async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] })
   const s = await fresh()
   s.startScan('source-home-nas')
   s.removeSource('source-home-nas')
   t.mock.timers.tick(4000)
-  for (const collection of [s.mediaSourceState.roots, s.mediaSourceState.tasks]) assert.equal(collection.some(item => item.sourceId === 'source-home-nas'), false)
+  for (const collection of [s.mediaSourceState.roots, s.mediaSourceState.tasks])
+    assert.equal(
+      collection.some((item) => item.sourceId === 'source-home-nas'),
+      false,
+    )
   assert.equal(s.mediaSourceState.sources.length, 4)
 })
 
-test('connection loss during execution produces failed state without losing its snapshot', async t => {
+test('connection loss during execution produces failed state without losing its snapshot', async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] })
   // A connected fixture becoming unreachable models a remote outage, without a real request.
   const fixtures = await import('../src/mocks/mediaSources.ts')
-  const source = fixtures.mockMediaSources.find(item => item.id === 'source-nextcloud')
+  const source = fixtures.mockMediaSources.find((item) => item.id === 'source-nextcloud')
   const previous = source.status
   source.status = 'available'
   const s = await fresh()
@@ -128,7 +176,7 @@ test('connection loss during execution produces failed state without losing its 
   const id = s.startScan('source-nextcloud')
   await settle(t, s.testSourceConnection('source-nextcloud'), 650)
   t.mock.timers.tick(3350)
-  const task = s.mediaSourceState.tasks.find(item => item.id === id)
+  const task = s.mediaSourceState.tasks.find((item) => item.id === id)
   assert.equal(task.status, 'failed')
   assert.deepEqual(task.rootPaths, ['/Cinema'])
   assert.ok(task.error)
@@ -138,15 +186,21 @@ const paths = await import('../src/services/scanRootPaths.ts')
 
 test('path relations respect normalization, directory boundaries and root', () => {
   const cases = [
-    ['/电影/4K', '/电影/4K', 'same'], ['/电影/', '/电影', 'same'],
-    ['/电影', '/电影/4K/Remux', 'ancestor'], ['/电影/4K', '/电影', 'descendant'],
-    ['/电影/4K', '/电影/1080P', 'none'], ['/电影', '/电影2', 'none'],
-    ['/Movies', '/Movies-old', 'none'], ['/', '/电影', 'ancestor'],
-    ['/电影', '/', 'descendant'], ['/', '/', 'same'],
+    ['/电影/4K', '/电影/4K', 'same'],
+    ['/电影/', '/电影', 'same'],
+    ['/电影', '/电影/4K/Remux', 'ancestor'],
+    ['/电影/4K', '/电影', 'descendant'],
+    ['/电影/4K', '/电影/1080P', 'none'],
+    ['/电影', '/电影2', 'none'],
+    ['/Movies', '/Movies-old', 'none'],
+    ['/', '/电影', 'ancestor'],
+    ['/电影', '/', 'descendant'],
+    ['/', '/', 'same'],
   ]
   for (const [a, b, relation] of cases) assert.equal(paths.getScanRootRelation(a, b), relation)
   assert.equal(paths.normalizeScanRootPath('/电影//4K/'), '/电影/4K')
-  for (const path of ['', '  ', '电影', '/电影/../TV', '/./TV']) assert.throws(() => paths.normalizeScanRootPath(path))
+  for (const path of ['', '  ', '电影', '/电影/../TV', '/./TV'])
+    assert.throws(() => paths.normalizeScanRootPath(path))
   assert.throws(() => paths.validateScanRootPaths(['/电影/', '/电影']))
   assert.equal(paths.sameScanRootSelection(['/TV', '/电影/'], ['/电影', '/TV']), true)
 })
@@ -162,7 +216,10 @@ test('draft parent replacement includes every descendant and never restores remo
   assert.deepEqual(replaced, ['/Movies', '/电影'])
   assert.equal(paths.findCoveringAncestor('/电影/4K', replaced), '/电影')
   assert.throws(() => paths.replaceDescendantsWithParent(replaced, '/电影/4K'))
-  assert.deepEqual(replaced.filter(path => path !== '/电影'), ['/Movies'])
+  assert.deepEqual(
+    replaced.filter((path) => path !== '/电影'),
+    ['/Movies'],
+  )
   assert.deepEqual(paths.replaceDescendantsWithParent(original, '/'), ['/'])
 })
 
@@ -175,7 +232,7 @@ test('service rejects duplicates and overlaps regardless of enabled; writes atom
     assert.equal(JSON.stringify(s.mediaSourceState), before)
   }
   s.saveScanRootSelection('source-new', ['/电影'])
-  const root = s.mediaSourceState.roots.find(root => root.sourceId === 'source-new')
+  const root = s.mediaSourceState.roots.find((root) => root.sourceId === 'source-new')
   s.setRootEnabled('source-new', root.id, false)
   assert.throws(() => s.addScanRoots('source-new', ['/电影/4K']), /不能重复选择同一个影片文件夹/)
   const disabled = JSON.stringify(s.mediaSourceState)
@@ -188,51 +245,69 @@ test('selection reconciliation retains id/enabled, removes membership, creates e
   const s = await fresh()
   const id = 'source-new'
   s.saveScanRootSelection(id, ['/Movies/电影', '/Movies/动画'])
-  const roots = () => s.mediaSourceState.roots.filter(root => root.sourceId === id)
+  const roots = () => s.mediaSourceState.roots.filter((root) => root.sourceId === id)
   const [first, second] = roots()
   s.setRootEnabled(id, first.id, false)
   const before = JSON.stringify(s.mediaSourceState)
   // Opening and discarding a detached draft cannot write to persisted state.
-  const draft = roots().map(root => paths.normalizeScanRootPath(root.path))
+  const draft = roots().map((root) => paths.normalizeScanRootPath(root.path))
   assert.ok(draft.includes(first.path))
   draft.splice(0, draft.length, '/Movies')
   assert.equal(JSON.stringify(s.mediaSourceState), before)
   s.saveScanRootSelection(id, [second.path, first.path + '/'])
-  assert.equal(roots().find(root => root.path === first.path).id, first.id)
-  assert.equal(roots().find(root => root.path === first.path).enabled, false)
+  assert.equal(roots().find((root) => root.path === first.path).id, first.id)
+  assert.equal(roots().find((root) => root.path === first.path).enabled, false)
   const tasks = JSON.stringify(s.mediaSourceState.tasks)
-  const others = JSON.stringify(s.mediaSourceState.roots.filter(root => root.sourceId !== id))
+  const others = JSON.stringify(s.mediaSourceState.roots.filter((root) => root.sourceId !== id))
   s.saveScanRootSelection(id, [first.path, '/Movies/纪录片'])
-  assert.equal(roots().some(root => root.id === second.id), false)
-  const added = roots().find(root => root.path === '/Movies/纪录片')
+  assert.equal(
+    roots().some((root) => root.id === second.id),
+    false,
+  )
+  const added = roots().find((root) => root.path === '/Movies/纪录片')
   assert.ok(added.id && added.id !== first.id && added.id !== second.id)
   assert.equal(added.enabled, true)
   assert.equal(JSON.stringify(s.mediaSourceState.tasks), tasks)
-  assert.equal(JSON.stringify(s.mediaSourceState.roots.filter(root => root.sourceId !== id)), others)
+  assert.equal(
+    JSON.stringify(s.mediaSourceState.roots.filter((root) => root.sourceId !== id)),
+    others,
+  )
   s.saveScanRootSelection(id, [])
   assert.deepEqual(roots(), [])
 })
 
 test('fixtures are disjoint; corrupted overlap rejects task creation even with a disabled root', async () => {
   const fixtures = await import('../src/mocks/mediaSources.ts')
-  for (const source of fixtures.mockMediaSources) paths.validateScanRootPaths(fixtures.mockScanRoots.filter(root => root.sourceId === source.id).map(root => root.path))
+  for (const source of fixtures.mockMediaSources)
+    paths.validateScanRootPaths(
+      fixtures.mockScanRoots.filter((root) => root.sourceId === source.id).map((root) => root.path),
+    )
   for (const enabled of [true, false]) {
-    fixtures.mockScanRoots.push({ id: 'corrupt', sourceId: 'source-alist', path: '/Movies/动画', enabled })
+    fixtures.mockScanRoots.push({
+      id: 'corrupt',
+      sourceId: 'source-alist',
+      path: '/Movies/动画',
+      enabled,
+    })
     let s
-    try { s = await fresh() } finally { fixtures.mockScanRoots.pop() }
+    try {
+      s = await fresh()
+    } finally {
+      fixtures.mockScanRoots.pop()
+    }
     const before = JSON.stringify(s.mediaSourceState)
     assert.throws(() => s.startScan('source-alist'), /不能重复选择同一个影片文件夹/)
     assert.equal(JSON.stringify(s.mediaSourceState), before)
   }
 })
 
-test('legal siblings produce a frozen snapshot unaffected by selection reconciliation', async t => {
+test('legal siblings produce a frozen snapshot unaffected by selection reconciliation', async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] })
   const s = await fresh()
   const siblings = ['/Movies/电影', '/Movies/动画', '/Movies/纪录片']
   s.saveScanRootSelection('source-new', siblings)
   const id = s.startScan('source-new')
-  const task = s.mediaSourceState.tasks.find(task => task.id === id)
+  const task = s.mediaSourceState.tasks.find((task) => task.id === id)
   assert.deepEqual(task.rootPaths, siblings)
   assert.equal(Object.isFrozen(task.rootPaths), true)
   s.saveScanRootSelection('source-new', ['/Movies'])
@@ -246,12 +321,17 @@ async function directorySetup(service) {
   const { parse, compileScript } = await import('@vue/compiler-sfc')
   const ts = await import('typescript')
   const vue = await import('vue')
-  const source = await readFile(new URL('../src/components/media-source/DirectoryBrowser.vue', import.meta.url), 'utf8')
+  const source = await readFile(
+    new URL('../src/components/media-source/DirectoryBrowser.vue', import.meta.url),
+    'utf8',
+  )
   const { descriptor } = parse(source)
   const script = compileScript(descriptor, { id: 'directory-regression' })
-  const code = ts.transpileModule(script.content, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText
+  const code = ts.transpileModule(script.content, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+  }).outputText
   const module = { exports: {} }
-  const require = name => {
+  const require = (name) => {
     if (name === 'vue') return { ...vue, onMounted() {}, onBeforeUnmount() {} }
     if (name.endsWith('/mediaSourceService')) return service
     if (name.endsWith('/scanRootPaths')) return paths
@@ -260,14 +340,17 @@ async function directorySetup(service) {
   }
   new Function('require', 'module', 'exports', code)(require, module, module.exports)
   const events = []
-  const setup = module.exports.default.setup({ sourceId: 'source-new' }, { expose() {}, emit: event => events.push(event) })
+  const setup = module.exports.default.setup(
+    { sourceId: 'source-new' },
+    { expose() {}, emit: (event) => events.push(event) },
+  )
   return { setup, events, descriptor }
 }
 
 test('DirectoryBrowser actual draft: disabled roots selected, navigation independent, confirmation before replacement', async () => {
   const s = await fresh()
   s.saveScanRootSelection('source-new', ['/Movies/电影', '/Movies/动画', '/Movies/纪录片'])
-  const root = s.mediaSourceState.roots.find(root => root.sourceId === 'source-new')
+  const root = s.mediaSourceState.roots.find((root) => root.sourceId === 'source-new')
   s.setRootEnabled('source-new', root.id, false)
   const before = JSON.stringify(s.mediaSourceState)
   const { setup: ui } = await directorySetup(s)
@@ -308,16 +391,31 @@ test('DirectoryBrowser keeps folders before read-only files and only marks an em
   const s = await fresh()
   const { setup: ui, descriptor } = await directorySetup(s)
   const before = JSON.stringify(s.mediaSourceState)
-  assert.equal(ui.directories.value.some(entry => entry.name === 'Movies'), true)
+  assert.equal(
+    ui.directories.value.some((entry) => entry.name === 'Movies'),
+    true,
+  )
   ui.currentPath.value = '/Movies'
-  assert.equal(ui.directories.value.some(entry => entry.name === '电影'), true)
+  assert.equal(
+    ui.directories.value.some((entry) => entry.name === '电影'),
+    true,
+  )
   assert.deepEqual(ui.files.value, [])
   ui.currentPath.value = '/Movies/电影'
-  assert.deepEqual(ui.directories.value.map(entry => entry.name), ['星际穿越'])
-  assert.deepEqual(ui.files.value.map(entry => entry.name), ['README'])
+  assert.deepEqual(
+    ui.directories.value.map((entry) => entry.name),
+    ['星际穿越'],
+  )
+  assert.deepEqual(
+    ui.files.value.map((entry) => entry.name),
+    ['README'],
+  )
   ui.currentPath.value = ui.directories.value[0].path
   assert.deepEqual(ui.directories.value, [])
-  assert.deepEqual(ui.files.value.map(entry => entry.name), ['Interstellar (2014).mkv', 'poster.jpg', 'backdrop.jpg', 'logo.png'])
+  assert.deepEqual(
+    ui.files.value.map((entry) => entry.name),
+    ['Interstellar (2014).mkv', 'poster.jpg', 'backdrop.jpg', 'logo.png'],
+  )
   assert.equal(ui.fileIcon(ui.files.value[0].name), 'video')
   assert.equal(ui.fileIcon('EXAMPLE.MP4'), 'video')
   assert.equal(ui.fileIcon('poster.jpg'), 'file')
@@ -343,13 +441,21 @@ test('DirectoryBrowser dirty membership and save; root replacement uses explicit
   assert.equal(ui.currentPath.value, '/')
   assert.equal(ui.dirty.value, true)
   ui.select('/')
-  assert.match(ui.replacementMessage.value, /“电影”和“动画”两个文件夹.*所有可见的文件夹都会一起扫描/)
+  assert.match(
+    ui.replacementMessage.value,
+    /“电影”和“动画”两个文件夹.*所有可见的文件夹都会一起扫描/,
+  )
   assert.equal(ui.draftSelectedPaths.value.length, 2)
   ui.confirmReplacement()
   assert.deepEqual(ui.draftSelectedPaths.value, ['/'])
   ui.save()
   assert.deepEqual(events, ['saved'])
-  assert.deepEqual(s.mediaSourceState.roots.filter(root => root.sourceId === 'source-new').map(root => root.path), ['/'])
+  assert.deepEqual(
+    s.mediaSourceState.roots
+      .filter((root) => root.sourceId === 'source-new')
+      .map((root) => root.path),
+    ['/'],
+  )
   const { setup: reopened } = await directorySetup(s)
   reopened.select('/')
   reopened.select('/')
@@ -363,24 +469,40 @@ test('DirectoryBrowser template keeps navigation/toggle separate and accessible,
   const buttons = []
   function visit(node, withinButton = false) {
     const button = node.type === 1 && node.tag === 'button'
-    if (button) { assert.equal(withinButton, false); buttons.push(node) }
+    if (button) {
+      assert.equal(withinButton, false)
+      buttons.push(node)
+    }
     for (const child of node.children ?? []) visit(child, withinButton || button)
   }
   visit(ast)
-  const attr = (node, name) => node.props.find(prop => prop.type === 6 && prop.name === name)?.value?.content
-  const directive = (node, name, arg) => node.props.find(prop => prop.type === 7 && prop.name === name && prop.arg?.content === arg)?.exp?.content
-  const open = buttons.find(node => attr(node, 'class') === 'directory-open')
+  const attr = (node, name) =>
+    node.props.find((prop) => prop.type === 6 && prop.name === name)?.value?.content
+  const directive = (node, name, arg) =>
+    node.props.find((prop) => prop.type === 7 && prop.name === name && prop.arg?.content === arg)
+      ?.exp?.content
+  const open = buttons.find((node) => attr(node, 'class') === 'directory-open')
   assert.equal(directive(open, 'on', 'click'), 'currentPath = entry.path')
   assert.equal(directive(open, 'bind', 'disabled'), undefined)
-  const selections = buttons.filter(node => attr(node, 'class') === 'directory-select')
+  const selections = buttons.filter((node) => attr(node, 'class') === 'directory-select')
   assert.equal(selections.length, 2)
   for (const node of selections) {
     assert.match(directive(node, 'on', 'click'), /^select\(/)
     assert.match(directive(node, 'bind', 'aria-label'), /\.label$/)
     assert.match(directive(node, 'bind', 'disabled'), /ancestor/)
   }
-  assert.equal(directive(buttons.find(node => directive(node, 'on', 'click') === 'save'), 'bind', 'disabled'), '!dirty')
-  for (const node of buttons.filter(node => node.children.some(child => child.content === '取消'))) assert.equal(directive(node, 'on', 'click'), "emit('close')")
+  assert.equal(
+    directive(
+      buttons.find((node) => directive(node, 'on', 'click') === 'save'),
+      'bind',
+      'disabled',
+    ),
+    '!dirty',
+  )
+  for (const node of buttons.filter((node) =>
+    node.children.some((child) => child.content === '取消'),
+  ))
+    assert.equal(directive(node, 'on', 'click'), "emit('close')")
   const fileRow = []
   function findFileRow(node) {
     if (node.type === 1 && attr(node, 'class') === 'directory-file') fileRow.push(node)
@@ -389,7 +511,10 @@ test('DirectoryBrowser template keeps navigation/toggle separate and accessible,
   findFileRow(ast)
   assert.equal(fileRow.length, 1)
   assert.equal(fileRow[0].tag, 'div')
-  assert.equal(fileRow[0].children.some(child => child.tag === 'button'), false)
+  assert.equal(
+    fileRow[0].children.some((child) => child.tag === 'button'),
+    false,
+  )
   const directoryList = []
   function findDirectoryList(node) {
     if (node.type === 1 && attr(node, 'class') === 'directory-list') directoryList.push(node)
@@ -397,16 +522,31 @@ test('DirectoryBrowser template keeps navigation/toggle separate and accessible,
   }
   findDirectoryList(ast)
   assert.equal(directoryList.length, 1)
-  const listItems = directoryList[0].children.filter(node => node.type === 1)
-  assert.deepEqual(listItems.slice(0, 2).map(node => attr(node, 'class')), ['directory-row', 'directory-row'])
-  assert.deepEqual(listItems.slice(0, 2).map(node => directive(node, 'for')), ['entry in directories', 'entry in files'])
-  assert.equal(listItems.some(node => attr(node, 'class')?.includes('directory-list-label')), false)
+  const listItems = directoryList[0].children.filter((node) => node.type === 1)
+  assert.deepEqual(
+    listItems.slice(0, 2).map((node) => attr(node, 'class')),
+    ['directory-row', 'directory-row'],
+  )
+  assert.deepEqual(
+    listItems.slice(0, 2).map((node) => directive(node, 'for')),
+    ['entry in directories', 'entry in files'],
+  )
+  assert.equal(
+    listItems.some((node) => attr(node, 'class')?.includes('directory-list-label')),
+    false,
+  )
   assert.doesNotMatch(directoryList[0].loc.source, />里面的文件夹<|>文件<|>内容</)
   assert.doesNotMatch(fileRow[0].loc.source, /caret-right|directory-select|@click/)
-  assert.doesNotMatch(descriptor.template.content, /directory-scope-hint|只想选一部分|整个文件夹及里面的内容都已选择/)
+  assert.doesNotMatch(
+    descriptor.template.content,
+    /directory-scope-hint|只想选一部分|整个文件夹及里面的内容都已选择/,
+  )
   assert.doesNotMatch(descriptor.scriptSetup.content, /已随.*一起选择|含 .*个已选文件夹/)
   assert.match(descriptor.template.content, /'is-contained': entry\.selection\.ancestor/)
-  assert.match(descriptor.template.content, /entry\.selection\.ancestor \? entry\.selection\.label : undefined/)
+  assert.match(
+    descriptor.template.content,
+    /entry\.selection\.ancestor \? entry\.selection\.label : undefined/,
+  )
   assert.doesNotMatch(descriptor.template.content, /selected-director|directory-selection/)
   assert.doesNotMatch(descriptor.scriptSetup.content, /window\.confirm|fetch\(|axios/)
 })

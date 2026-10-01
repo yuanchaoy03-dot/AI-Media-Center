@@ -14,14 +14,25 @@ const GlobalSearch = defineAsyncComponent(() => import('./components/layout/Glob
 // App 管外层布局，RouterView 显示当前路由页面；route.meta.layout 决定显示登录布局还是侧栏布局。
 const route = useRoute()
 const router = useRouter()
-watch(() => route.fullPath, () => { searchOpen.value = false })
+watch(
+  () => route.fullPath,
+  () => {
+    searchOpen.value = false
+  },
+)
 function selectSearchMovie(movie: LibraryMovie) {
   searchOpen.value = false
   void router.push({ name: 'movie-detail', params: { movieId: movie.id } })
 }
 const notice = ref('')
 // 会话切换时关掉旧搜索和提示；模板中 RouterView 的 key 也用 epoch，让页面重新创建。
-watch(() => auth.epoch, () => { searchOpen.value = false; notice.value = '' })
+watch(
+  () => auth.epoch,
+  () => {
+    searchOpen.value = false
+    notice.value = ''
+  },
+)
 function showNotice(message: string) {
   notice.value = message
 }
@@ -36,13 +47,24 @@ function dismissNotice() {
   </main>
   <div v-else-if="mockPreview || auth.user" class="app-layout">
     <div class="app-sidebar-container">
-      <AppSidebar :user-name="mockPreview ? '演示预览' : auth.user?.username ?? ''" :user-initial="mockPreview ? '演' : auth.user?.username.slice(0, 1).toUpperCase() ?? ''"
-        :search-expanded="searchOpen" @search="mockPreview ? searchOpen = true : showNotice('搜索功能尚未开放。')" @notice="showNotice" @logout="mockPreview ? showNotice('当前为开发预览。') : signOut()" />
+      <AppSidebar
+        :user-name="mockPreview ? '演示预览' : (auth.user?.username ?? '')"
+        :user-initial="mockPreview ? '演' : (auth.user?.username.slice(0, 1).toUpperCase() ?? '')"
+        :search-expanded="searchOpen"
+        @search="mockPreview ? (searchOpen = true) : showNotice('搜索功能尚未开放。')"
+        @notice="showNotice"
+        @logout="mockPreview ? showNotice('当前为开发预览。') : signOut()"
+      />
     </div>
     <main class="app-main">
       <RouterView :key="auth.epoch" />
     </main>
-    <GlobalSearch v-if="mockPreview" :open="searchOpen" @close="searchOpen = false" @select="selectSearchMovie" />
+    <GlobalSearch
+      v-if="mockPreview"
+      :open="searchOpen"
+      @close="searchOpen = false"
+      @select="selectSearchMovie"
+    />
     <div v-if="notice" class="shell-notice">
       <p role="status">{{ notice }}</p>
       <button type="button" @click="dismissNotice">关闭提示</button>
@@ -52,7 +74,6 @@ function dismissNotice() {
 </template>
 
 <style scoped>
-
 .app-sidebar-container {
   position: fixed;
   z-index: var(--z-navigation);
@@ -77,10 +98,12 @@ function dismissNotice() {
   border-radius: var(--radius-floating);
   background: var(--material-floating-fallback);
   box-shadow: var(--shadow-floating);
-  font-size: .8125rem;
+  font-size: 0.8125rem;
   line-height: 1.5;
 }
-.shell-notice p { margin: 0 0 var(--space-2); }
+.shell-notice p {
+  margin: 0 0 var(--space-2);
+}
 .shell-notice button {
   min-height: var(--control-height);
   padding: 0 var(--space-2);
@@ -91,16 +114,28 @@ function dismissNotice() {
   font: inherit;
   cursor: pointer;
 }
-.shell-notice button:active { background: var(--color-pressed); }
+.shell-notice button:active {
+  background: var(--color-pressed);
+}
 .shell-notice button:focus-visible {
   outline: var(--focus-width) solid var(--color-focus);
   outline-offset: var(--focus-offset);
 }
 @media (hover: hover) and (pointer: fine) {
-  .shell-notice button:hover { background: var(--color-hover); }
+  .shell-notice button:hover {
+    background: var(--color-hover);
+  }
 }
 @media (max-width: 900px) {
-  .app-sidebar-container { position: sticky; inset: auto; top: 0; width: 100%; }
-  .app-main { margin-left: 0; min-height: calc(100dvh - 70px); }
+  .app-sidebar-container {
+    position: sticky;
+    inset: auto;
+    top: 0;
+    width: 100%;
+  }
+  .app-main {
+    margin-left: 0;
+    min-height: calc(100dvh - 70px);
+  }
 }
 </style>

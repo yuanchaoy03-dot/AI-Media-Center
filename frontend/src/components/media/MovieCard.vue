@@ -5,7 +5,10 @@ import type { LibraryMovie } from '../../types/movie'
 
 // 父页面通过 props 给卡片数据；withDefaults 为没传的可选属性补默认值。
 // defineEmits 声明卡片向父页面发出的事件，卡片只通知点击意图，由父页面处理跳转或播放。
-const props = withDefaults(defineProps<{ movie: LibraryMovie; moreExpanded?: boolean; menuId?: string }>(), { moreExpanded: false })
+const props = withDefaults(
+  defineProps<{ movie: LibraryMovie; moreExpanded?: boolean; menuId?: string }>(),
+  { moreExpanded: false },
+)
 const emit = defineEmits<{
   detail: [movieId: string]
   play: [movieId: string]
@@ -13,7 +16,12 @@ const emit = defineEmits<{
 }>()
 const imageFailed = ref(false)
 // 卡片换了电影或海报地址时，重新尝试显示图片，不沿用上一张海报的失败状态。
-watch(() => [props.movie.id, props.movie.posterUrl], () => { imageFailed.value = false })
+watch(
+  () => [props.movie.id, props.movie.posterUrl],
+  () => {
+    imageFailed.value = false
+  },
+)
 
 function requestMore(event: MouseEvent) {
   if (event.currentTarget instanceof HTMLButtonElement) {
@@ -25,16 +33,40 @@ function requestMore(event: MouseEvent) {
 <template>
   <article class="movie-card">
     <div class="poster-art" :data-fallback="movie.title">
-      <img v-if="movie.posterUrl && !imageFailed" :key="movie.posterUrl" :src="movie.posterUrl"
-        :alt="`${movie.title}电影海报`" @error="imageFailed = true" />
-      <button class="poster-detail-hit" type="button" :aria-label="`查看${movie.title}详情`"
-        @click="emit('detail', movie.id)" />
-      <button class="play-mark" type="button" :aria-label="`播放${movie.title}`" @click="emit('play', movie.id)">
-        <svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><use :href="`${movieIcons}#ph-play-fill`" /></svg>
+      <img
+        v-if="movie.posterUrl && !imageFailed"
+        :key="movie.posterUrl"
+        :src="movie.posterUrl"
+        :alt="`${movie.title}电影海报`"
+        @error="imageFailed = true"
+      />
+      <button
+        class="poster-detail-hit"
+        type="button"
+        :aria-label="`查看${movie.title}详情`"
+        @click="emit('detail', movie.id)"
+      />
+      <button
+        class="play-mark"
+        type="button"
+        :aria-label="`播放${movie.title}`"
+        @click="emit('play', movie.id)"
+      >
+        <svg viewBox="0 0 256 256" aria-hidden="true" focusable="false">
+          <use :href="`${movieIcons}#ph-play-fill`" />
+        </svg>
       </button>
-      <button class="poster-more-mark" type="button" :aria-label="`${movie.title}更多操作`"
-        :aria-expanded="moreExpanded" :aria-controls="menuId" @click="requestMore">
-        <svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><use :href="`${movieIcons}#ph-dots-three-bold`" /></svg>
+      <button
+        class="poster-more-mark"
+        type="button"
+        :aria-label="`${movie.title}更多操作`"
+        :aria-expanded="moreExpanded"
+        :aria-controls="menuId"
+        @click="requestMore"
+      >
+        <svg viewBox="0 0 256 256" aria-hidden="true" focusable="false">
+          <use :href="`${movieIcons}#ph-dots-three-bold`" />
+        </svg>
       </button>
     </div>
     <div class="poster-copy">
@@ -46,8 +78,8 @@ function requestMore(event: MouseEvent) {
 
 <style scoped>
 .movie-card {
-  --poster-text-primary: rgba(255, 255, 255, .92);
-  --poster-text-secondary: rgba(255, 255, 255, .62);
+  --poster-text-primary: rgba(255, 255, 255, 0.92);
+  --poster-text-secondary: rgba(255, 255, 255, 0.62);
   min-width: 0;
 }
 .poster-art {
@@ -58,59 +90,183 @@ function requestMore(event: MouseEvent) {
   background: #1c1c1e;
   box-shadow: 0 8px 22px color-mix(in oklch, #0a0a0b 46%, transparent);
 }
-.poster-art > img { display: block; width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
+.poster-art > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+}
 .poster-art::after {
-  content: ''; position: absolute; inset: 0; z-index: 2; border-radius: inherit;
-  background: rgba(0, 0, 0, .38); opacity: 0; pointer-events: none;
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  background: rgba(0, 0, 0, 0.38);
+  opacity: 0;
+  pointer-events: none;
   transition: opacity var(--motion-fast) var(--motion-ease);
 }
 .poster-art:not(:has(img))::before {
-  content: attr(data-fallback); position: absolute; inset: 0; display: grid;
-  place-items: center; padding: 12px; color: var(--poster-text-secondary);
-  text-align: center; font-size: 13px; overflow-wrap: anywhere;
+  content: attr(data-fallback);
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  color: var(--poster-text-secondary);
+  text-align: center;
+  font-size: 13px;
+  overflow-wrap: anywhere;
 }
-button { padding: 0; font: inherit; cursor: pointer; }
-button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
-.poster-detail-hit { position: absolute; inset: 0; z-index: 1; width: 100%; border: 0; border-radius: inherit; background: transparent; }
-.poster-detail-hit:focus-visible { outline-offset: -3px; }
-.poster-copy { display: grid; grid-template-rows: 16px 15px; gap: 2px; height: 41px; padding-top: 8px; }
-.poster-title, .poster-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.poster-title { color: var(--poster-text-primary); font-size: 13px; font-weight: 500; line-height: 16px; }
-.poster-meta { color: var(--poster-text-secondary); font-size: 12px; font-weight: 400; line-height: 15px; }
-.play-mark, .poster-more-mark {
-  position: absolute; z-index: 5; display: grid; place-items: center;
-  width: 30px; height: 30px; bottom: 12px; border: 1px solid rgba(255, 255, 255, .16);
-  border-radius: 50%; opacity: 0;
-  box-shadow: 0 5px 16px rgba(0, 0, 0, .22), inset 0 1px 0 rgba(255, 255, 255, .1);
-  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
-  transition: opacity var(--motion-fast) var(--motion-ease), background-color var(--motion-fast) var(--motion-ease), color var(--motion-fast) var(--motion-ease);
+button {
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
 }
-.play-mark { left: 10px; background: rgba(246, 246, 246, .74); color: #111113; }
-.poster-more-mark { right: 10px; background: rgba(246, 246, 246, .20); color: rgba(245, 245, 247, .94); }
-svg { display: block; max-width: 100%; fill: currentColor; }
-.play-mark svg { width: 13px; height: 13px; }
-.poster-more-mark svg { width: 15px; height: 15px; }
+button:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+.poster-detail-hit {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+}
+.poster-detail-hit:focus-visible {
+  outline-offset: -3px;
+}
+.poster-copy {
+  display: grid;
+  grid-template-rows: 16px 15px;
+  gap: 2px;
+  height: 41px;
+  padding-top: 8px;
+}
+.poster-title,
+.poster-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.poster-title {
+  color: var(--poster-text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 16px;
+}
+.poster-meta {
+  color: var(--poster-text-secondary);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 15px;
+}
+.play-mark,
+.poster-more-mark {
+  position: absolute;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  bottom: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 50%;
+  opacity: 0;
+  box-shadow:
+    0 5px 16px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  transition:
+    opacity var(--motion-fast) var(--motion-ease),
+    background-color var(--motion-fast) var(--motion-ease),
+    color var(--motion-fast) var(--motion-ease);
+}
+.play-mark {
+  left: 10px;
+  background: rgba(246, 246, 246, 0.74);
+  color: #111113;
+}
+.poster-more-mark {
+  right: 10px;
+  background: rgba(246, 246, 246, 0.2);
+  color: rgba(245, 245, 247, 0.94);
+}
+svg {
+  display: block;
+  max-width: 100%;
+  fill: currentColor;
+}
+.play-mark svg {
+  width: 13px;
+  height: 13px;
+}
+.poster-more-mark svg {
+  width: 15px;
+  height: 15px;
+}
 @media (hover: hover) {
-  .movie-card:hover .poster-art::after { opacity: 1; }
-  .movie-card:hover .play-mark { opacity: 1; background: rgba(245, 245, 247, .9); }
-  .movie-card:hover .poster-more-mark { opacity: 1; background: rgba(245, 245, 247, .24); }
+  .movie-card:hover .poster-art::after {
+    opacity: 1;
+  }
+  .movie-card:hover .play-mark {
+    opacity: 1;
+    background: rgba(245, 245, 247, 0.9);
+  }
+  .movie-card:hover .poster-more-mark {
+    opacity: 1;
+    background: rgba(245, 245, 247, 0.24);
+  }
 }
 /* 键盘聚焦任一入口时一起显示控制，避免不可见焦点。 */
-.movie-card:has(:focus-visible) .poster-art::after { opacity: 1; }
-.movie-card:has(:focus-visible) .play-mark { opacity: 1; background: rgba(245, 245, 247, .9); }
-.movie-card:has(:focus-visible) .poster-more-mark { opacity: 1; background: rgba(245, 245, 247, .24); }
+.movie-card:has(:focus-visible) .poster-art::after {
+  opacity: 1;
+}
+.movie-card:has(:focus-visible) .play-mark {
+  opacity: 1;
+  background: rgba(245, 245, 247, 0.9);
+}
+.movie-card:has(:focus-visible) .poster-more-mark {
+  opacity: 1;
+  background: rgba(245, 245, 247, 0.24);
+}
 /* 原型已有的菜单打开态；不改变卡片其他视觉。 */
-.movie-card .poster-more-mark[aria-expanded="true"] { opacity: 1; background: rgba(245, 245, 247, .28); }
+.movie-card .poster-more-mark[aria-expanded='true'] {
+  opacity: 1;
+  background: rgba(245, 245, 247, 0.28);
+}
 @media (prefers-reduced-motion: reduce) {
-  .poster-art::after, .play-mark, .poster-more-mark { transition: none; }
+  .poster-art::after,
+  .play-mark,
+  .poster-more-mark {
+    transition: none;
+  }
 }
 /* 材质由页面显式偏好控制，不跟随系统透明度设置。 */
-:global(html[data-transparency='reduced'] .poster-more-mark) { background: var(--color-surface-2); -webkit-backdrop-filter: none; backdrop-filter: none; }
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .poster-more-mark { background: var(--color-surface-2); }
+:global(html[data-transparency='reduced'] .poster-more-mark) {
+  background: var(--color-surface-2);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
-:global(html[data-transparency='reduced'] .play-mark) { background: #f6f6f6; -webkit-backdrop-filter: none; backdrop-filter: none; }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .play-mark { background: #f6f6f6; }
+  .poster-more-mark {
+    background: var(--color-surface-2);
+  }
+}
+:global(html[data-transparency='reduced'] .play-mark) {
+  background: #f6f6f6;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .play-mark {
+    background: #f6f6f6;
+  }
 }
 </style>

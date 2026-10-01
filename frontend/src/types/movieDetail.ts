@@ -5,8 +5,22 @@ export interface MediaSummaryResource {
   quality?: string
   sizeBytes?: number
   container?: string
-  video?: { codec?: string; width?: number; height?: number; bitDepth?: number; hdrFormats?: string[]; bitrate?: number; frameRate?: number }
-  audioTracks?: Array<{ codec: string; channels?: string; atmos?: boolean; isDefault?: boolean; language?: string }>
+  video?: {
+    codec?: string
+    width?: number
+    height?: number
+    bitDepth?: number
+    hdrFormats?: string[]
+    bitrate?: number
+    frameRate?: number
+  }
+  audioTracks?: Array<{
+    codec: string
+    channels?: string
+    atmos?: boolean
+    isDefault?: boolean
+    language?: string
+  }>
   subtitleTracks?: Array<{ codec: string; language?: string }>
 }
 export interface MovieDetailMetadata {

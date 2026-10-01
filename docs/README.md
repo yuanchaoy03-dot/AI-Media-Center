@@ -12,7 +12,7 @@
 | [API.md](API.md) | 接口契约及 draft/confirmed/implemented 状态 | 接口设计、修改或联调 |
 | [DESIGN.md](../DESIGN.md) | 项目 Token、视觉语言、组件与动效规范 | UI 对应主题；已有页面视觉终点查 HTML |
 | [HTML 原型](../html/) / [Vue 源码](../frontend/src/) | 页面视觉事实 / 当前实现 | 页面迁移、视觉对照或源码问题 |
-| [frontend/README.md](../frontend/README.md) | 前端启动、路由与部署说明 | 本地运行或部署前端 |
+| [frontend/README.md](../frontend/README.md) | 前端技术栈、开发命令、ESLint / Prettier、测试与类型检查、路由与部署说明 | 本地开发、验证或部署前端 |
 | [PROJECT_STATUS.md](../PROJECT_STATUS.md) | 当前进度、下一步、已知限制与历史记录 | 继续任务、核对完成度或更新进度 |
 | [Apple Design Skill](../.agents/skills/apple-design/SKILL.md) | Apple 通用交互领域知识及 reference 路由 | Apple 风格交互/动效/材质/排版精修或 review |
 | [skills-lock.json](../skills-lock.json) | Skill 上游安装来源记录 | 追溯安装来源；本地适配说明见 Skill |

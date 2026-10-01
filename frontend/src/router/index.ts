@@ -65,7 +65,9 @@ const router = createRouter({
       path: '/media-sources',
       name: 'media-sources',
       // 开发预览用演示页面；正常模式用向 Spring Boot 请求本人来源的页面。
-      component: mockPreview ? () => import('../views/MediaSourcesPreviewView.vue') : () => import('../views/MediaSourcesView.vue'),
+      component: mockPreview
+        ? () => import('../views/MediaSourcesPreviewView.vue')
+        : () => import('../views/MediaSourcesView.vue'),
     },
     {
       path: '/favorites',
@@ -97,21 +99,30 @@ const router = createRouter({
 
 // 路由守卫在每次进入页面前检查身份，to 是准备前往的路由。
 // 返回 true 就放行，返回 { name: 'login' } 就改去登录页；有 Token 也要先恢复并验证用户。
-router.beforeEach(async to => {
+router.beforeEach(async (to) => {
   if (mockPreview) return true
   if (to.meta.layout === 'auth') {
-    if (auth.tokenPresent && await auth.restoreSession()) return { name: 'media-sources' }
+    if (auth.tokenPresent && (await auth.restoreSession())) return { name: 'media-sources' }
     return true
   }
   if (!auth.tokenPresent) return { name: 'login' }
-  if (!await auth.restoreSession()) return { name: 'login' }
+  if (!(await auth.restoreSession())) return { name: 'login' }
   return true
 })
 
 // watch 在监听的状态变化时执行回调；会话被清掉后，让仍停在个人页面的用户回到登录页。
-watch(() => auth.epoch, () => {
-  if (!mockPreview && !auth.user && !auth.tokenPresent && router.currentRoute.value.meta.layout !== 'auth') void router.replace({ name: 'login' })
-})
+watch(
+  () => auth.epoch,
+  () => {
+    if (
+      !mockPreview &&
+      !auth.user &&
+      !auth.tokenPresent &&
+      router.currentRoute.value.meta.layout !== 'auth'
+    )
+      void router.replace({ name: 'login' })
+  },
+)
 
 // logout 清理登录数据，replace 替换当前历史记录；void 表示这里不等待跳转的 Promise。
 export function signOut() {

@@ -2,6 +2,8 @@
 
 > 目标：不是把 Vue 3 的 71 节课程全部学完，而是**优先补齐当前 AI-Media-Center 前端代码真正用到的知识**，做到“能看懂项目、能跟着代码走、知道每一层在干什么”。
 
+当前前端基础技术栈为 Vue 3、TypeScript、Vue Router、Pinia、Axios、Vite、ESLint、Prettier 和原生 CSS。ESLint 检查代码质量，Prettier 统一格式；两者是开发辅助工具，不改变现有 Pinia / Service / Axios / Router 分工。具体命令与实际验证结果见 [frontend/README.md](frontend/README.md)，当前进度见 [PROJECT_STATUS.md](PROJECT_STATUS.md)。
+
 ---
 
 ## 一、当前前端需要掌握的知识范围
@@ -18,13 +20,14 @@
 - `props`
 - Vue 生命周期
 - Vue Router
+- Pinia Setup Store、State 与 Action
 - Axios
 - HTTP 请求与响应
 - Service 层封装
 - JWT 请求头
 - 基础错误处理
 
-当前项目**没有使用 Pinia**，所以 Pinia 暂时不用学。
+当前认证状态已经由 Pinia 的 `auth` Store 管理，理解登录流程时需要一并学习 Store；表单输入等局部状态仍留在组件中。
 
 ---
 
@@ -211,29 +214,27 @@ Vue Router
 
 ---
 
-# 六、Pinia 当前全部跳过
+# 六、Pinia：先学当前认证 Store 用到的内容
 
-当前 AI-Media-Center 没有使用 Pinia，因此：
+按顺序学习：
 
 - 043. 对 Pinia 的理解
-- 044. 准备一个效果
 - 045. 搭建 Pinia 环境
 - 046. 存储 + 读取数据
 - 047. 修改数据（三种方式）
-- 048. storeToRefs
-- 049. getters 的使用
-- 050. $subscribe 的使用
 - 051. store 组合式写法
 
-**第一阶段全部不看。**
+回到 `frontend/src/stores/auth.ts`，理解 `defineStore('auth', () => { ... })`：返回的 `ref` 是 State，函数是 Action。先追登录、恢复会话与退出，不要求一次掌握全部 Pinia API。
 
-不要因为课程里有，就强迫自己现在学。
+`src/stores/index.ts` 创建应用唯一的 Pinia instance；`main.ts` 先注册 Pinia，再注册 Router。组件 setup 中使用 `useAuthStore()`，Router 和业务 Service 在组件外显式传入同一个 Pinia instance。Store 管理认证生命周期，`authService.ts` 负责认证 API 与响应校验，`http.ts` 负责 Axios 传输与统一错误，Router 负责导航与守卫。
+
+044、048、049、050 可按后续阅读需要补充；当前无需引入持久化插件，JWT 继续保存在 `sessionStorage`。
 
 ---
 
-# 七、高级 Vue 内容目前不用学
+# 七、高级 Vue 内容可以稍后按需补充
 
-暂时跳过：
+第一轮暂缓：
 
 - 053～060 各种组件通信方式
 - 061～063 插槽
@@ -246,7 +247,7 @@ Vue Router
 - 070. 全局 API 转移到应用对象
 - 071. Vue3 的非兼容性改变
 
-这些属于“以后需要时再学”的内容。
+这些是学习优先级安排，不代表项目没有使用；阅读到 `shallowRef`、`readonly` 或 `Teleport` 等实际代码时，再补对应内容。
 
 ---
 
@@ -363,6 +364,17 @@ const apiClient = axios.create(...)
 request<T>()
 ```
 
+## 日常开发工具
+
+在 `frontend` 目录按需执行：
+
+- `npm run lint`：ESLint 代码质量检查。
+- `npm run lint:fix`：ESLint 自动修复，完成后审查 diff。
+- `npm run format`：Prettier 格式化。
+- `npm run format:check`：Prettier 只检查格式。
+
+这四个命令独立运行。现有 `npm test` 负责回归测试，`npm run build` 负责类型检查与生产构建，`npx vue-tsc -b` 可单独检查类型。配置与最终验证记录统一维护在 [前端 README](frontend/README.md)，不用新增一套规则或把所有检查串成一个命令。
+
 ---
 
 # 十、最终学习路线
@@ -425,9 +437,15 @@ Vue Router
 JavaScript / TypeScript 补缺
 
 第六阶段
-Axios
+Pinia 认证 Store
 
 第七阶段
+Axios
+
+第八阶段
+ESLint / Prettier 日常命令
+
+第九阶段
 回到自己的项目逐文件阅读
 ```
 
@@ -448,6 +466,8 @@ LoginView.vue
         ↓
 AuthForm.vue
         ↓
+stores/auth.ts（login Action）
+        ↓
 authService.ts
         ↓
 http.ts
@@ -456,6 +476,8 @@ Axios
         ↓
 POST /api/auth/login
 ```
+
+登录拿到 JWT 后，Store 写入 `sessionStorage` 并通过 `/auth/me` 恢复可信用户；登录成功后的跳转由 Router 负责。启动时 Pinia 的注册顺序与共享实例可接着阅读 `main.ts` 和 `stores/index.ts`。
 
 第一轮只追：
 
@@ -538,6 +560,6 @@ v-model
 
 ## 一句话总结
 
-**先补 Vue 核心 → 再补组件和生命周期 → 再学 Router → 再补 JS/TS → 最后学 Axios → 然后沿着登录请求链阅读自己的真实项目。**
+**先补 Vue 核心 → 再补组件和生命周期 → 再学 Router → 再补 JS/TS → 再学 Pinia 与 Axios → 掌握 ESLint / Prettier 命令 → 沿着登录请求链阅读自己的真实项目。**
 
 不要追求“课程全部学完”，优先追求“项目代码逐渐能看懂”。

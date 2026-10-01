@@ -46,7 +46,11 @@ export const useAuthStore = defineStore('auth', () => {
 
   // 统一管理本会话的认证/业务请求，页面离开和会话清除都能取消同一次请求。
   // send 仍交给 service / http.ts 发 HTTP；这里不复制 Axios 配置或错误解析。
-  async function sessionRequest<T>(send: (signal: AbortSignal) => Promise<T>, signal?: AbortSignal, protectedRequest = false): Promise<T> {
+  async function sessionRequest<T>(
+    send: (signal: AbortSignal) => Promise<T>,
+    signal?: AbortSignal,
+    protectedRequest = false,
+  ): Promise<T> {
     const requestEpoch = epoch.value
     const controller = new AbortController()
     const abort = () => controller.abort()
@@ -62,9 +66,13 @@ export const useAuthStore = defineStore('auth', () => {
     } catch (reason) {
       if (stale()) throw new ApiError(0, 'STALE_REQUEST', '请求已取消。')
       // 只有受保护请求明确返回身份失效/账号禁用才清会话；普通网络失败保留 Token。
-      if (protectedRequest && reason instanceof ApiError
-        && ((reason.status === 401 && reason.code === 'UNAUTHENTICATED')
-          || (reason.status === 403 && reason.code === 'ACCOUNT_DISABLED'))) logout(reason.message)
+      if (
+        protectedRequest &&
+        reason instanceof ApiError &&
+        ((reason.status === 401 && reason.code === 'UNAUTHENTICATED') ||
+          (reason.status === 403 && reason.code === 'ACCOUNT_DISABLED'))
+      )
+        logout(reason.message)
       throw reason
     } finally {
       pending.delete(controller)
@@ -74,7 +82,11 @@ export const useAuthStore = defineStore('auth', () => {
 
   // 真实业务 service 使用此 Action 携带当前 Token，并获得同样的取消/失效/竞态保护。
   function authenticatedRequest<T>(path: string, signal?: AbortSignal): Promise<T> {
-    return sessionRequest(currentSignal => request<T>(path, { token: token ?? undefined, signal: currentSignal }), signal, true)
+    return sessionRequest(
+      (currentSignal) => request<T>(path, { token: token ?? undefined, signal: currentSignal }),
+      signal,
+      true,
+    )
   }
 
   // 刷新后只恢复 Token 存在标记；必须通过 /auth/me 才能恢复可信 user。
@@ -88,15 +100,23 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = ''
     restorePromise = (async () => {
       try {
-        const currentUser = await sessionRequest(currentSignal => getCurrentUser(token!, currentSignal), undefined, true)
+        const currentUser = await sessionRequest(
+          (currentSignal) => getCurrentUser(token!, currentSignal),
+          undefined,
+          true,
+        )
         if (requestEpoch !== epoch.value) return false
         user.value = currentUser
         return true
       } catch (reason) {
-        if (requestEpoch === epoch.value) error.value = reason instanceof Error ? reason.message : '身份验证失败，请重试。'
+        if (requestEpoch === epoch.value)
+          error.value = reason instanceof Error ? reason.message : '身份验证失败，请重试。'
         return false
       } finally {
-        if (requestEpoch === epoch.value) { verifying.value = false; restorePromise = undefined }
+        if (requestEpoch === epoch.value) {
+          verifying.value = false
+          restorePromise = undefined
+        }
       }
     })()
     return restorePromise
@@ -107,7 +127,10 @@ export const useAuthStore = defineStore('auth', () => {
     clearSession()
     const requestEpoch = epoch.value
     try {
-      const result = await sessionRequest(currentSignal => loginUser(username, password, currentSignal), signal)
+      const result = await sessionRequest(
+        (currentSignal) => loginUser(username, password, currentSignal),
+        signal,
+      )
       if (requestEpoch !== epoch.value || signal.aborted) return false
       sessionStorage.setItem(storageKey, result.accessToken)
       token = result.accessToken
@@ -123,7 +146,10 @@ export const useAuthStore = defineStore('auth', () => {
   async function register(username: string, password: string, signal: AbortSignal) {
     const requestEpoch = epoch.value
     try {
-      const registered = await sessionRequest(currentSignal => registerUser(username, password, currentSignal), signal)
+      const registered = await sessionRequest(
+        (currentSignal) => registerUser(username, password, currentSignal),
+        signal,
+      )
       if (requestEpoch !== epoch.value || signal.aborted) return false
       registeredUsername.value = registered.username
       notice.value = '账号已创建，请登录。'
@@ -141,6 +167,19 @@ export const useAuthStore = defineStore('auth', () => {
     return hint
   }
 
-  return { user, epoch, verifying, tokenPresent, error, notice, registeredUsername,
-    logout, authenticatedRequest, restoreSession, login, register, takeLoginHint }
+  return {
+    user,
+    epoch,
+    verifying,
+    tokenPresent,
+    error,
+    notice,
+    registeredUsername,
+    logout,
+    authenticatedRequest,
+    restoreSession,
+    login,
+    register,
+    takeLoginHint,
+  }
 })

@@ -1,7 +1,17 @@
 import { normalizeScanRootPath, validateScanRootPaths } from './scanRootPaths'
 import { reactive, readonly } from 'vue'
-import { mockDirectories, mockMediaSources, mockScanRoots, mockScanTasks } from '../mocks/mediaSources'
-import type { DirectoryEntry, MediaSource, SourceConnectionInput, ScanTask } from '../types/mediaSource'
+import {
+  mockDirectories,
+  mockMediaSources,
+  mockScanRoots,
+  mockScanTasks,
+} from '../mocks/mediaSources'
+import type {
+  DirectoryEntry,
+  MediaSource,
+  SourceConnectionInput,
+  ScanTask,
+} from '../types/mediaSource'
 
 // 同一应用会话内共享；刷新恢复 fixture。不存储凭据或使用浏览器 storage。
 // 这是开发预览的 service：页面和弹窗调用它来操作内存中的演示数据，不会发 Axios 请求。
@@ -14,11 +24,11 @@ const state = reactive({
 // 页面只读这份共享状态；新增、删除、启停等修改统一调用下面的函数。
 export const mediaSourceState = readonly(state)
 // delay 用计时器模拟等待；scanTimers 按来源 ID 保存计时器，移除来源时可以取消它。
-const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms))
+const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 const scanTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
 function requireSource(id: string) {
-  const source = state.sources.find(item => item.id === id)
+  const source = state.sources.find((item) => item.id === id)
   if (!source) throw new Error('未找到这个媒体来源。')
   return source
 }
@@ -26,7 +36,14 @@ function requireSource(id: string) {
 export function validateEndpoint(address: string): string {
   try {
     const url = new URL(address)
-    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) throw new Error()
+    if (
+      !['http:', 'https:'].includes(url.protocol) ||
+      url.username ||
+      url.password ||
+      url.search ||
+      url.hash
+    )
+      throw new Error()
     return url.href
   } catch {
     throw new Error('请输入 HTTP(S) WebDAV 地址；凭据请填在独立字段，不要放入地址。')
@@ -53,7 +70,8 @@ export async function testSourceConnection(id: string): Promise<void> {
   // 等待期间可能删除了来源或改了地址，旧测试结果就不再写回去。
   if (!state.sources.includes(source) || source.address !== address) return
   source.status = connectionFails(address) ? 'error' : 'available'
-  source.connectionError = source.status === 'error' ? '服务暂时不可达，请检查地址或稍后重试。' : undefined
+  source.connectionError =
+    source.status === 'error' ? '服务暂时不可达，请检查地址或稍后重试。' : undefined
   source.lastConnection = '刚刚'
 }
 
@@ -63,7 +81,13 @@ export async function saveSource(input: SourceConnectionInput, id?: string): Pro
   const address = validateEndpoint(input.address)
   if (connectionFails(address)) throw new Error('连接失败（演示）：请检查地址后重试。')
   await delay(250)
-  const values = { name: input.name.trim(), address, status: 'available' as const, lastConnection: '刚刚', connectionError: undefined }
+  const values = {
+    name: input.name.trim(),
+    address,
+    status: 'available' as const,
+    lastConnection: '刚刚',
+    connectionError: undefined,
+  }
   if (id) Object.assign(requireSource(id), values)
   else {
     id = `source-${crypto.randomUUID()}`
@@ -77,21 +101,25 @@ export function removeSource(id: string): void {
   requireSource(id)
   clearTimeout(scanTimers.get(id))
   scanTimers.delete(id)
-  state.sources = state.sources.filter(source => source.id !== id)
-  state.roots = state.roots.filter(root => root.sourceId !== id)
-  state.tasks = state.tasks.filter(task => task.sourceId !== id)
+  state.sources = state.sources.filter((source) => source.id !== id)
+  state.roots = state.roots.filter((root) => root.sourceId !== id)
+  state.tasks = state.tasks.filter((task) => task.sourceId !== id)
 }
 
 export function browseDirectory(id: string, path: string): DirectoryEntry[] {
   if (requireSource(id).status !== 'available') throw new Error('请先检查来源连接。')
   path = normalizeScanRootPath(path)
   const children = mockDirectories[path]
-  if (!Object.hasOwn(mockDirectories, path) || !children) throw new Error('找不到这个文件夹，请返回上一级。')
-  return children.map(entry => ({ ...entry, path: `${path === '/' ? '' : path}/${entry.name}` }))
+  if (!Object.hasOwn(mockDirectories, path) || !children)
+    throw new Error('找不到这个文件夹，请返回上一级。')
+  return children.map((entry) => ({ ...entry, path: `${path === '/' ? '' : path}/${entry.name}` }))
 }
 
 export function addScanRoots(id: string, paths: string[]): void {
-  saveScanRootSelection(id, [...state.roots.filter(root => root.sourceId === id).map(root => root.path), ...paths])
+  saveScanRootSelection(id, [
+    ...state.roots.filter((root) => root.sourceId === id).map((root) => root.path),
+    ...paths,
+  ])
 }
 
 export function saveScanRootSelection(id: string, paths: readonly string[]): void {
@@ -100,33 +128,40 @@ export function saveScanRootSelection(id: string, paths: readonly string[]): voi
   // 整批验证成功才写入；启停状态不影响范围互斥。
   for (const path of normalized) browseDirectory(id, path)
   // 按路径找到旧目录，保留它的 id 和启停状态；新选中的目录才创建新记录。
-  const existing = new Map(state.roots.filter(root => root.sourceId === id).map(root => [normalizeScanRootPath(root.path), root]))
-  const reconciled = normalized.map(path => {
+  const existing = new Map(
+    state.roots
+      .filter((root) => root.sourceId === id)
+      .map((root) => [normalizeScanRootPath(root.path), root]),
+  )
+  const reconciled = normalized.map((path) => {
     const root = existing.get(path)
-    return root ? { ...root, path } : { id: `root-${crypto.randomUUID()}`, sourceId: id, path, enabled: true }
+    return root
+      ? { ...root, path }
+      : { id: `root-${crypto.randomUUID()}`, sourceId: id, path, enabled: true }
   })
-  state.roots = [...state.roots.filter(root => root.sourceId !== id), ...reconciled]
+  state.roots = [...state.roots.filter((root) => root.sourceId !== id), ...reconciled]
 }
 
 export function setRootEnabled(sourceId: string, rootId: string, enabled: boolean): void {
   requireSource(sourceId)
-  const root = state.roots.find(item => item.id === rootId && item.sourceId === sourceId)
+  const root = state.roots.find((item) => item.id === rootId && item.sourceId === sourceId)
   if (!root) throw new Error('这个影片文件夹已被移除。')
   root.enabled = enabled
 }
 
 export function removeScanRoot(sourceId: string, rootId: string): void {
   requireSource(sourceId)
-  state.roots = state.roots.filter(root => root.id !== rootId || root.sourceId !== sourceId)
+  state.roots = state.roots.filter((root) => root.id !== rootId || root.sourceId !== sourceId)
 }
 
 // 按“连接是否可用 → 是否正在扫描 → 是否选了目录 → 是否全暂停”决定下一步按钮文案。
 export function scanLabel(source: MediaSource): string {
   if (source.status !== 'available') return '检查连接'
-  if (state.tasks.some(task => task.sourceId === source.id && task.status === 'running')) return '查看扫描'
-  const roots = state.roots.filter(root => root.sourceId === source.id)
+  if (state.tasks.some((task) => task.sourceId === source.id && task.status === 'running'))
+    return '查看扫描'
+  const roots = state.roots.filter((root) => root.sourceId === source.id)
   if (!roots.length) return '选择影片文件夹'
-  if (!roots.some(root => root.enabled)) return '查看暂停扫描的影片文件夹'
+  if (!roots.some((root) => root.enabled)) return '查看暂停扫描的影片文件夹'
   return '立即扫描'
 }
 
@@ -135,23 +170,37 @@ export function scanLabel(source: MediaSource): string {
 export function startScan(id: string): string {
   const source = requireSource(id)
   if (source.status !== 'available') throw new Error('请先检查来源连接。')
-  const roots = state.roots.filter(root => root.sourceId === id)
-  validateScanRootPaths(roots.map(root => root.path))
-  const rootPaths = validateScanRootPaths(roots.filter(root => root.enabled).map(root => root.path))
+  const roots = state.roots.filter((root) => root.sourceId === id)
+  validateScanRootPaths(roots.map((root) => root.path))
+  const rootPaths = validateScanRootPaths(
+    roots.filter((root) => root.enabled).map((root) => root.path),
+  )
   if (!rootPaths.length) throw new Error('请先选择至少一个未暂停的影片文件夹。')
-  const running = state.tasks.find(task => task.sourceId === id && task.status === 'running')
+  const running = state.tasks.find((task) => task.sourceId === id && task.status === 'running')
   if (running) return running.id
-  const task: ScanTask = { id: `scan-${crypto.randomUUID()}`, sourceId: id, rootPaths: Object.freeze(rootPaths), status: 'running', time: '刚刚', recognizedMovieIds: [], pendingCount: 0, attentionCount: 0 }
+  const task: ScanTask = {
+    id: `scan-${crypto.randomUUID()}`,
+    sourceId: id,
+    rootPaths: Object.freeze(rootPaths),
+    status: 'running',
+    time: '刚刚',
+    recognizedMovieIds: [],
+    pendingCount: 0,
+    attentionCount: 0,
+  }
   state.tasks.unshift(task)
   source.lastScan = '扫描中'
-  scanTimers.set(id, setTimeout(() => {
-    const current = state.tasks.find(item => item.id === task.id)
-    if (!current) return
-    // 示例执行只验证所选范围；不伪造发现文件或入库结果。
-    current.status = source.status === 'error' ? 'failed' : 'completed'
-    current.error = current.status === 'failed' ? '来源连接中断，本次扫描未完成。' : undefined
-    source.lastScan = current.status === 'failed' ? '扫描未完成' : '刚刚'
-    scanTimers.delete(id)
-  }, 4000))
+  scanTimers.set(
+    id,
+    setTimeout(() => {
+      const current = state.tasks.find((item) => item.id === task.id)
+      if (!current) return
+      // 示例执行只验证所选范围；不伪造发现文件或入库结果。
+      current.status = source.status === 'error' ? 'failed' : 'completed'
+      current.error = current.status === 'failed' ? '来源连接中断，本次扫描未完成。' : undefined
+      source.lastScan = current.status === 'failed' ? '扫描未完成' : '刚刚'
+      scanTimers.delete(id)
+    }, 4000),
+  )
   return task.id
 }

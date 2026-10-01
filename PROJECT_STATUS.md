@@ -1,12 +1,15 @@
 # PROJECT STATUS
 
-- 最后更新时间：2026-09-30
+- 最后更新时间：2026-10-01
 
 ## 当前状态
 
+- 前端 ESLint / Prettier 已接入：当前基础技术栈为 Vue 3、TypeScript、Vue Router、Pinia、Axios、Vite、ESLint、Prettier 与原生 CSS。唯一配置为 `frontend/eslint.config.js`（Flat Config）、`.prettierrc.json` 与 `.prettierignore`；新增独立 `npm run lint`、`npm run lint:fix`、`npm run format`、`npm run format:check`。ESLint 检查代码质量，Prettier 统一格式，工具仅作为 devDependencies，不改变 Pinia / Service / Axios / Router 业务架构；原有 dev、build、preview、test 脚本及已安装依赖版本保持不变。
+- 本次代码审查：ESLint 首轮无需修复真实业务问题，未添加 disable；47 个已有源码、测试及类型配置文件只有 Prettier 格式变化和 3 处等价事件语法调整。电影详情与来源详情的多语句内联事件改为明确函数块，解决无分号格式下的 Vue 编译解析问题，已验证动作、顺序和返回值一致。JWT sessionStorage、`/auth/me` 恢复、epoch stale 防护、AbortController、并发恢复、Axios `/api` / 15 秒 timeout、Router 守卫、Mock Preview 与正式来源请求语义保持不变；后端、HTML 原型、API 契约及数据库未修改。
+- 本次最终验证：`npm run lint` 0 错误 / 0 警告，`npm run format:check` 通过，`npm test` 56 项通过 / 0 失败 / 0 跳过，`npm run build` 与 `npx vue-tsc -b` 通过；Vue / TypeScript / Node 规则探针与 ESLint / Prettier 冲突检查通过。相关技术栈、命令和规范文档已同步；本轮未运行浏览器验收或后端集成测试，未执行 Git commit / push。
 - Pinia 认证迁移完成：仅新增 `auth` Setup Store 与应用共享 Pinia instance，认证状态、JWT 生命周期、epoch、取消与并发恢复均归 Store；`authService.ts` 改为无状态认证 API/响应校验。App、认证表单、Router 和本人来源 service 已迁移；组件外显式传入 Pinia，main 先注册 Pinia 再注册 Router。登录/注册也纳入会话取消集合，取消的注册不会触发旧表单跳转；未预建其他业务 Store。
-- Pinia 迁移验证：`npm test` 56 项通过、0 跳过，`npm run build` 与 `npx vue-tsc -b` 通过。保留全部原有回归，新增 Store 状态归属、并发恢复、Token 保留/失效、账号切换与旧请求取消/竞态，以及真实组件 setup、路由守卫、首次插件注册和 Mock Preview 回归。静态依赖及遗留认证状态检查通过；本轮未运行后端集成测试或浏览器实测，HTTP 配置、Vite 代理、API/数据库与后端实现未改。
-- Axios 传输层保持现有契约：`request<T>` 使用统一 instance 的 `/api`、15 秒超时和原生 AbortSignal；保留 API 包裹解析、ApiError、按请求传入 Bearer Token。受保护请求现经 auth Store 的 `authenticatedRequest<T>`，公开认证不带旧 Token，退出/切换账号保留 stale 防护。后端源码、Vite 代理、API 契约、数据库 migration 和 Mock 模块均未改动。
+- Pinia 迁移验证（上一轮）：`npm test` 56 项通过、0 跳过，`npm run build` 与 `npx vue-tsc -b` 通过。保留全部原有回归，新增 Store 状态归属、并发恢复、Token 保留/失效、账号切换与旧请求取消/竞态，以及真实组件 setup、路由守卫、首次插件注册和 Mock Preview 回归。静态依赖及遗留认证状态检查通过；该轮未运行后端集成测试或浏览器实测，HTTP 配置、Vite 代理、API/数据库与后端实现未改。
+- Axios 传输层保持现有契约：`request<T>` 使用统一 instance 的 `/api`、15 秒超时和原生 AbortSignal；保留 API 包裹解析、ApiError、按请求传入 Bearer Token。受保护请求现经 auth Store 的 `authenticatedRequest<T>`，公开认证不带旧 Token，退出/切换账号保留 stale 防护。后端源码、Vite 代理、API 契约与数据库 migration 均未改动；Mock 模块仅统一格式，数据与行为保持不变。
 - Axios 迁移验证（上一轮）：`npm run build`、36 项前端 Node 测试通过（含真实 Axios HTTP 传输、15 秒超时与取消）；最初无测试环境变量时 Maven test/package 的 2 项集成测试跳过。随后使用本次新建的独立 `axios_20260929_auth_test` MySQL 8.4.8 库运行 `.\mvnw.cmd clean package`，重新编译、打包成功，`AuthHttpIntegrationTest` 2 项实际通过、0 跳过。真实 `request → Axios → Vite /api → Spring Boot → MySQL` 验证注册/登录/me/来源及 201/200/400/401/403/409/500/501；内置 Chromium 完成 Vue 注册、登录、刷新身份恢复、空来源及退出检查，无捕获 error/warn。故障注入仅发生在专用测试库；普通开发库未用于本次验证。未测试生产反向代理或分别复测 Edge/Chrome；现有 Flyway MySQL 版本提示保留。
 - 注册 → 登录 → CurrentUser → 本人空来源的真实联调已完成。默认 Vue 运行使用 Spring Boot HTTP；下列目录管理、影片及扫描 Mock 记录仅适用于显式开发预览，未接入的正式个人页面显示尚未开放。
 - “选择影片文件夹”弹窗改用 `+` / check-circle / caret-right 表达可选、已选或已包含、可进入；上级包含使用淡化勾选与 title / aria-label，取消常驻重复说明，部分选择简化为“已选其中 N 个”。ScanRoot、enabled、保存及扫描规则未变；Edge 已核对直接/部分选择、上级覆盖后进入、末级文件与父目录替换确认。
@@ -30,7 +33,7 @@
 - V2 验证：后端 package 通过；独立 MySQL 8.4.8 使用项目依赖中的 Flyway 完成 30 项迁移/约束检查，覆盖全新 V1+V2、已有 V1 升级且保留用户、重复执行无新增迁移、两种路径表结构一致、无默认数据、一用户多来源/同名来源、按用户筛选、外键/删除限制及非法类型/启用值/空配置拒绝。约束测试数据已回滚；这些 SQL 检查不代表 HTTP 身份隔离已实现。现有 Flyway 的 MySQL 版本提示及 `TINYINT(1)` 显示宽度弃用提示不影响本次验证，字段沿用已确定设计。
 - 媒体来源 Vue：正式 `/media-sources` 通过可信当前用户加载空列表，区分加载、失败和空状态，最近扫描/入库不回退 Mock；添加来源暂显示未开放。完整原型迁移保留为 `MediaSourcesPreviewView.vue` 与来源详情 Mock，通过开发模式的 `VITE_MOCK_PREVIEW=true` 显式启用，生产不启用预览。
 - 媒体来源验证：内置 Chromium 完成 1366/1440/1600/1920px 与 900×500 的同内容 HTML/Vue 几何对照，检查列表、详情及短窗口弹窗截图；覆盖添加/必填/测试失败与成功/修改失效、0/1/多根、全停用/部分启用、目录取消/保存/移除、扫描运行/完成、删除/空列表、非法 ID/返回及菜单外部/滚动/resize 关闭。服务回归覆盖范围快照、扫描门槛、删除取消任务与连接中断 failed；failed 的浏览器展示及显式减少透明度/减少动效分支仅源码检查，未单独验证 Edge 或系统级 Windows scaling。
-- 媒体来源检查：`npx vue-tsc -b`、`npm run build`、7 项 Node 服务回归和 tracked/untracked diff whitespace 检查通过；未捕获浏览器 error/warn。无新依赖，无独立 lint 脚本。原型 `confirm()` 改为原生 `<dialog>` 二次确认；播放反馈沿用“未接入”，未迁移移动 Action Sheet 或自定义焦点代码。
+- 媒体来源原切片检查：`npx vue-tsc -b`、`npm run build`、7 项 Node 服务回归和 tracked/untracked diff whitespace 检查通过；未捕获浏览器 error/warn。该切片未新增依赖；当前 lint / format 能力及最新验证见本节开头。原型 `confirm()` 改为原生 `<dialog>` 二次确认；播放反馈沿用“未接入”，未迁移移动 Action Sheet 或自定义焦点代码。
 - 登录 / 注册：`/login`、`/register` 已接入真实 HTTP。注册密码下限为 12 个 Unicode 码点，页面在输入前提示 12–128 个字符；注册成功清空密码并回到登录页。登录后保存当前标签页 Token，验证 me 再加载来源。刷新身份失败可重试；401/账号禁用清理并返回登录；退出和账号切换取消旧请求、卸载个人页面，阻止旧响应回填。密码不持久化，侧栏显示真实用户名。
 - 登录 / 注册视觉：沿用私人电影收藏背景与深色磨砂认证窗口，参数见 DESIGN 第31节；新增注册成功中性提示和身份验证重试入口。沿用显式减少透明度、无滤镜回退和减少动效，不因系统减少透明度自动降级。
 - 认证验证：独立 MySQL 8.4 的两项 HTTP 集成场景通过，覆盖并发重复注册、完整 Unicode 密码、额外输入拒绝、Token 篡改/过期/缺失声明、当前角色复核、禁用账号、本人/他人来源、非空 501 和数据库故障 500。前端 26 项 Node 回归通过（含 7 项认证/请求竞态）；类型检查和构建通过。Edge 完成注册/校验/登录/刷新、来源失败重试、身份恢复重试、禁用跳转、退出及后退检查；1440×900 与 900×500 无横向溢出，截图已检查，无 pageerror。修复了身份清除后旧路由重新挂载覆盖禁用提示的问题。浏览器连接工具启动失败后使用本机 Edge 自动化；未验证系统级 scaling 或真实密码管理器。

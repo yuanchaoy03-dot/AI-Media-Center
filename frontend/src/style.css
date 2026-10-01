@@ -14,8 +14,9 @@
   --color-pressed: rgb(255 255 255 / 10%);
   --color-selected: rgb(115 169 183 / 14%);
   --color-hairline: rgb(245 245 247 / 7%);
-  --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
-    'Microsoft YaHei', system-ui, sans-serif;
+  --font-ui:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', system-ui,
+    sans-serif;
   --type-page: 700 2rem/1.2 var(--font-ui);
   --type-body: 400 0.9375rem/1.6 var(--font-ui);
   --tracking-title: -0.02em;
@@ -39,7 +40,7 @@
   --focus-offset: 3px;
   --motion-fast: 120ms;
   --motion-standard: 180ms;
-  --motion-ease: cubic-bezier(.2, .8, .2, 1);
+  --motion-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --motion-popover-offset: 4px;
   --material-floating-background: rgb(28 28 30 / 88%);
   --material-floating-blur: 20px;

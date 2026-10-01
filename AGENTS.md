@@ -29,7 +29,9 @@
 
 ## 前端边界
 
-- Vue 3 + Vite + TypeScript + Vue Router；`frontend/src/views/` 承担路由页面，`components/` 承担真实复用模块，`router/` 管理导航，`App.vue` 仅负责 Shell 与 RouterView。不得用 `currentView` 模拟路由或将多个页面堆入一个组件。
+- 当前前端基础技术栈为 Vue 3 + TypeScript + Vue Router + Pinia + Axios + Vite + ESLint + Prettier + 原生 CSS；`frontend/src/views/` 承担路由页面，`components/` 承担真实复用模块，`router/` 管理导航，`App.vue` 仅负责 Shell 与 RouterView。不得用 `currentView` 模拟路由或将多个页面堆入一个组件。
+- Pinia `auth` Store 管理认证状态与会话生命周期，`authService.ts` 负责认证 API 和响应校验，`http.ts` 负责 Axios 传输和统一错误，Router 负责导航与守卫。ESLint / Prettier 仅为开发辅助工具，不改变这些业务职责，不以接入工具为由重构分层。
+- 在 `frontend` 目录使用 `npm run lint` / `npm run lint:fix` 检查或修复代码质量，使用 `npm run format` / `npm run format:check` 写入或检查格式。唯一配置分别为 [eslint.config.js](frontend/eslint.config.js) 和 [.prettierrc.json](frontend/.prettierrc.json)，格式忽略项见 [.prettierignore](frontend/.prettierignore)；格式规则交给 Prettier，不添加重复配置或以大量 disable 掩盖问题。运行、测试、构建及类型检查命令见 [frontend/README.md](frontend/README.md)。
 - 已有 HTML Prototype 是对应页面完整视觉 Source of Truth：**Componentize the prototype, not redesign the prototype.** 保留布局、信息架构、模块/导航顺序、密度及各状态视觉终点；占位或未迁移 Vue 不能成为删减原型内容的依据。Apple Design Skill 只辅助交互体验，无权重设计。无原型的新页面按 DESIGN 与已有视觉语言设计。
 - 当前验收为 **Windows 11 + Desktop Chromium（Edge / Chrome）+ Mouse**，Desktop-first / Mouse-first；覆盖桌面窗口宽高变化、非最大化及高 DPI / Windows scaling，保证 hover、点击、菜单、滚动和 resize 可用。
 - Mobile / Touch、完整 Keyboard / focus management / 高级 Accessibility 延后至桌面核心闭环后的增强阶段。当前不新增移动专用布局/Action Sheet/safe-area/触摸专用分支，或方向键、Home/End、roving focus、自定义 Tab、手动焦点归还等键盘代码；保留语义 HTML、必要基础 aria、原生 Enter/Space/Tab、焦点可见性与 reduced-motion。
