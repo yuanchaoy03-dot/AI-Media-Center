@@ -112,7 +112,7 @@ Apple 交互精修按 [Skill 入口](.agents/skills/apple-design/SKILL.md)选择
 
 ### 4.1 本地事实来源与覆盖范围
 
-以下为 2026-09-11 初版设计研究的原型清单，记录当时来源，不代表当前 Vue 完成度。实现进度见 [PROJECT_STATUS.md](PROJECT_STATUS.md)，组件历史分析见 [前端组件边界审计](docs/前端组件边界审计.md)。
+以下为 2026-09-11 初版设计研究的原型清单，记录当时来源，不代表当前 Vue 完成度。实现进度见 [PROJECT_STATUS.md](PROJECT_STATUS.md)，组件历史分析见 [前端组件边界审计](docs/history/前端组件边界审计.md)。
 
 以下页面均位于 `html/`，文件名前缀为 `personal-cinema-`：
 
@@ -397,7 +397,7 @@ html[data-transparency="reduced"] .floating-glass {
 
 浮层文字只用 Primary / `color-text-on-floating`；禁用除外。亮白、高对比海报背景仍需逐帧可读，必要时 `data-backdrop="busy"` 或直接实色。Hover/Selected 改菜单行，不改变整个玻璃透明度；Focus 用统一焦点环，不用彩色 Glow。小尺寸 Poster 更多按钮优先半透明深色实底，不为每张海报开一个 blur。
 
-这组参数是基于现有 18–26px blur 与 `.76–.92` alpha 收敛的规范默认值，**尚未在本轮进行新材质的浏览器视觉/性能验收**。首个落地切片必须在亮/暗/高频 Artwork 后景、无滤镜、减少透明度和目标 Windows 浏览器检查；只可依据可读性/性能提升 alpha 或退回实色，不以个人喜好逐页换参数。
+这组参数是基于现有 18–26px blur 与 `.76–.92` alpha 收敛的通用规范默认值。新组件采用这些默认值时，必须在亮/暗/高频 Artwork 后景、无滤镜、减少透明度和目标 Windows 浏览器中进行视觉与性能验收；只可依据可读性/性能提升 alpha 或退回实色，不以个人喜好逐页换参数。已有页面仍优先保留原型已明确的材质与视觉终点。
 
 ## 12. Border & Hairline
 
@@ -704,7 +704,7 @@ AI 生成理由/标签以12px标识“AI 生成”；Genre、评分、码率等�
 
 Settings 最大阅读宽960，具体表单640；标题32、分组标题18、设置项Label14、Helper12。用“分组标题+设置行+必要Hairline”，一组最多一个Surface；Toggle/Select/Input按第22节复用。无Hero、Artwork、全页Glass或多层Card。
 
-个人资料、观看偏好、播放器说明、显示偏好按正式需求组织；只显示已支持选项，不给P0用户提供假PotPlayer/本地扫描开关。“减少动效/透明效果”跟随系统并允许用户明确减少；偏好属于当前用户/本地显示层，不泄露跨账号信息。
+个人资料、观看偏好、播放器说明、显示偏好按正式需求组织；只显示已支持选项，不给P0用户提供假PotPlayer/本地扫描开关。“减少动效”跟随系统并允许用户明确减少；“减少透明效果”按第 11 节显式控制，不跟随系统透明度设置。偏好属于当前用户/本地显示层，不泄露跨账号信息。
 
 保存方式每组一致：要么立即保存并局部反馈/失败回滚，要么显式保存；不能同一组无提示混用。需要离开提示时只针对尚未保存真实改动。危险区使用轻边界、准确影响文案和Destructive动作。
 
@@ -725,7 +725,7 @@ Vue 登录/注册采用独立无侧栏布局，左上沿用 PERSONAL CINEMA 品�
 | Tooltip / 简短解释 | Floating实色，radius8，padding8，最大240px，meta；Hover/Focus约400ms出现，blur/离开消失 | 非交互，Active/Selected/Disabled/Loading N/A；不含必要唯一信息，不放按钮，Escape可关 |
 | Dropdown / 单一选择或动作 | 宽至少触发器且常规≥180px；padding8；行高36；Glass/实色Floating | 行继承七态；选择型勾选当前值；Loading在列表内；键盘方向/Home/End/Enter/Escape |
 | Popover / 筛选/上下文表单 | 宽280–360px、padding16、锚点距8；Glass短面板，长表单实色 | 容器无Hover/Selected；内部控件各自七态；可Tab进入，不误作menu |
-| Context Menu / 影片更多 | 与Dropdown同一行规格；按钮附近或指针位置，碰撞翻转 | menuitem/checkbox/radio按真实动作；右键不是唯一入口；Shift+F10支持；Disabled项说明原因 |
+| Context Menu / 影片更多 | 与Dropdown同一行规格；已确认的 MovieContextMenu 桌面宽168px，作为通用宽度默认值的例外；按钮附近或指针位置，碰撞翻转 | menuitem/checkbox/radio按真实动作；右键不是唯一入口；Shift+F10支持；Disabled项说明原因 |
 | Modal / 多步骤任务 | 默认宽560、匹配960，padding24、radius20，Elevated实色；Overlay48% | 容器七态仅Default/Loading；内部控件继承；显示标题与关闭，内部滚动不裁Footer |
 | Dialog / 确认 | 宽440–560，影响说明+取消+唯一确认，Destructive按需要 | 默认焦点置安全动作/标题；Enter不能误触破坏操作；请求失败留在对话框 |
 | Drawer / 详情编辑 | 右侧宽440且不超视口，Elevated，左角20，右贴屏角0 | 从右侧进出；仅真选择条目Selected；关闭/中断和焦点行为遵守Motion |
@@ -837,7 +837,7 @@ Empty State / Error State 正文最多两三句，标题18，说明15，图标32
 
 下表用于当前任务涉及的 UI 状态验收；不要求普通局部修改重验整个产品。完成标准、文档更新与 Git 规则见 [AGENTS.md](AGENTS.md#工作方式与完成标准)。
 
-初版文档检查记录：本地来源链接可解析、CSS Token 引用均有定义、代码围栏成对。按不透明 Surface 的 sRGB 对比计算，Primary/Secondary/Tertiary 最低分别为12.77/5.41/4.61:1；control-border 对最亮 Floating 为3.13:1。88%玻璃覆盖白色背景时，合成底色约为`#373739`，Floating辅助文字对比约6.02:1。这是数值校验，不代替真实图片、焦点状态、浏览器渲染及性能验收。
+设计值计算参考：按不透明 Surface 的 sRGB 对比计算，Primary/Secondary/Tertiary 最低分别为12.77/5.41/4.61:1；control-border 对最亮 Floating 为3.13:1。88%玻璃覆盖白色背景时，合成底色约为`#373739`，Floating辅助文字对比约6.02:1。这些数值不代替真实图片、焦点状态、浏览器渲染及性能验收。
 
 | 自检维度 | 通过条件 / 对照现有页面 |
 |---|---|
