@@ -322,13 +322,16 @@ test('legal siblings produce a frozen snapshot unaffected by selection reconcili
 })
 
 // Exercise the actual setup state without DOM/browser dependencies.
-async function directorySetup(service) {
+async function directorySetup(service, presentation = false, props = {}) {
   const { readFile } = await import('node:fs/promises')
   const { parse, compileScript } = await import('@vue/compiler-sfc')
   const ts = await import('typescript')
   const vue = await import('vue')
   const source = await readFile(
-    new URL('../src/components/media-source/DirectoryBrowser.vue', import.meta.url),
+    new URL(
+      `../src/components/media-source/${presentation ? 'DirectoryBrowser' : 'DirectorySelectionPreview'}.vue`,
+      import.meta.url,
+    ),
     'utf8',
   )
   const { descriptor } = parse(source)
@@ -347,7 +350,7 @@ async function directorySetup(service) {
   new Function('require', 'module', 'exports', code)(require, module, module.exports)
   const events = []
   const setup = module.exports.default.setup(
-    { sourceId: 'source-new' },
+    { sourceId: 'source-new', ...props },
     { expose() {}, emit: (event) => events.push(event) },
   )
   return { setup, events, descriptor }
@@ -393,9 +396,9 @@ test('DirectoryBrowser actual draft: disabled roots selected, navigation indepen
   assert.equal(JSON.stringify(s.mediaSourceState), before) // Discard entire dialog.
 })
 
-test('DirectoryBrowser keeps folders before read-only files and only marks an empty directory as empty', async () => {
+test('Directory preview keeps folders before files and only marks an empty directory as empty', async () => {
   const s = await fresh()
-  const { setup: ui, descriptor } = await directorySetup(s)
+  const { setup: ui } = await directorySetup(s)
   const before = JSON.stringify(s.mediaSourceState)
   assert.equal(
     ui.directories.value.some((entry) => entry.name === 'Movies'),
@@ -422,9 +425,14 @@ test('DirectoryBrowser keeps folders before read-only files and only marks an em
     ui.files.value.map((entry) => entry.name),
     ['Interstellar (2014).mkv', 'poster.jpg', 'backdrop.jpg', 'logo.png'],
   )
-  assert.equal(ui.fileIcon(ui.files.value[0].name), 'video')
-  assert.equal(ui.fileIcon('EXAMPLE.MP4'), 'video')
-  assert.equal(ui.fileIcon('poster.jpg'), 'file')
+  const { setup: browser, descriptor } = await directorySetup(s, true, {
+    currentPath: ui.currentPath.value,
+    entries: ui.directory.value.entries,
+  })
+  assert.deepEqual(browser.files.value, ui.files.value)
+  assert.equal(browser.fileIcon(ui.files.value[0].name), 'video')
+  assert.equal(browser.fileIcon('EXAMPLE.MP4'), 'video')
+  assert.equal(browser.fileIcon('poster.jpg'), 'file')
   assert.equal(ui.currentSelection.value.label, '选择 /Movies/电影/星际穿越 及里面的内容')
   ui.select(ui.currentPath.value)
   assert.deepEqual(ui.draftSelectedPaths.value, ['/Movies/电影/星际穿越'])
@@ -432,7 +440,7 @@ test('DirectoryBrowser keeps folders before read-only files and only marks an em
   ui.currentPath.value = '/Downloads'
   assert.deepEqual(ui.directories.value, [])
   assert.deepEqual(ui.files.value, [])
-  assert.match(descriptor.template.content, /!directories\.length && !files\.length/)
+  assert.match(descriptor.template.content, /!entries\.length/)
   assert.match(descriptor.template.content, /这个文件夹是空的。/)
   assert.doesNotMatch(descriptor.template.content, /这里没有其他文件夹/)
 })
@@ -469,9 +477,12 @@ test('DirectoryBrowser dirty membership and save; root replacement uses explicit
 })
 
 test('DirectoryBrowser template keeps navigation/toggle separate and accessible, with no nested buttons', async () => {
-  const { descriptor } = await directorySetup(await fresh())
+  const s = await fresh()
+  const { descriptor } = await directorySetup(s, true, { currentPath: '/', entries: [] })
+  const { descriptor: previewDescriptor } = await directorySetup(s)
   const { baseParse } = await import('@vue/compiler-dom')
   const ast = baseParse(descriptor.template.content)
+  const previewAst = baseParse(previewDescriptor.template.content)
   function elements(node, withinButton = false) {
     const button = node.type === 1 && node.tag === 'button'
     if (button) assert.equal(withinButton, false)
@@ -497,7 +508,7 @@ test('DirectoryBrowser template keeps navigation/toggle separate and accessible,
   const files = nodes.find((node) => /(?:in|of)\s+files\b/.test(directive(node, 'for')))
   assert.ok(directories)
   assert.ok(files)
-  const selections = nodes.filter((node) => directive(node, 'bind', 'aria-pressed'))
+  const selections = elements(previewAst).filter((node) => directive(node, 'bind', 'aria-pressed'))
   assert.equal(selections.length, 2)
   for (const node of selections) {
     assert.equal(node.tag, 'button')
@@ -506,9 +517,14 @@ test('DirectoryBrowser template keeps navigation/toggle separate and accessible,
     assert.ok(directive(node, 'on', 'click'))
   }
   const directoryButtons = elements(directories).filter((node) => node.tag === 'button')
-  const selection = directoryButtons.find((node) => directive(node, 'bind', 'aria-pressed'))
-  const navigation = directoryButtons.find((node) => node !== selection)
-  assert.equal(directoryButtons.length, 2)
+  const selection = selections.find((node) => directive(node, 'on', 'click').includes('entry.path'))
+  const navigation = directoryButtons[0]
+  assert.equal(directoryButtons.length, 1)
+  assert.ok(
+    elements(directories).some(
+      (node) => node.tag === 'slot' && attr(node, 'name') === 'entry-control',
+    ),
+  )
   assert.ok(selection)
   assert.ok(navigation)
   assert.ok(directive(navigation, 'on', 'click'))

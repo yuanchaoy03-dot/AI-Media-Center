@@ -16,6 +16,7 @@ import org.springframework.test.context.DynamicPropertySource;
 import tools.jackson.databind.ObjectMapper;
 import java.net.InetSocketAddress;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.*;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
@@ -227,6 +228,77 @@ class AuthHttpIntegrationTest {
         }
     }
 
+    @Test void savedSourceDirectoryBrowsingIsReadOnlyAndRejectsOtherUsersBeforeWebDav() throws Exception {
+        String aliceToken = registerAndLogin("directory_alice");
+        String bobToken = registerAndLogin("directory_bob");
+        try (var dav = new TemporaryWebDavServer()) {
+            var input = dav.input("/dav/");
+            String sourceId = (String) data(check(call("/media-sources", input, aliceToken), 201, "OK")).get("id");
+            db.update("UPDATE media_source SET enabled=0 WHERE id=?", sourceId);
+            Object before = check(call("/media-sources", null, aliceToken), 200, "OK").get("data");
+            var artifacts = scanArtifactCounts();
+            String endpoint = "/media-sources/" + sourceId + "/directory";
+            var rootResponse = call(endpoint + "?path=%2F", null, aliceToken);
+            var root = data(check(rootResponse, 200, "OK"));
+            assertEquals(Set.of("path", "entries"), root.keySet()); assertEquals("/", root.get("path"));
+            assertEquals(List.of(Map.of("name", "empty", "path", "/empty", "kind", "directory"),
+                    Map.of("name", "电影 库 #?100%+", "path", "/电影 库 #?100%+", "kind", "directory"),
+                    Map.of("name", "video.mkv", "path", "/video.mkv", "kind", "file")), root.get("entries"));
+            assertSourceFailurePrivate(rootResponse, input);
+            var child = data(check(call(endpoint + "?path=" + URLEncoder.encode("/电影 库 #?100%+/", StandardCharsets.UTF_8), null, aliceToken), 200, "OK"));
+            assertEquals("/电影 库 #?100%+", child.get("path"));
+            assertEquals(List.of(Map.of("name", "notes %#?.txt", "path", "/电影 库 #?100%+/notes %#?.txt", "kind", "file")), child.get("entries"));
+            assertEquals(List.of(), data(check(call(endpoint + "?path=%2Fempty", null, aliceToken), 200, "OK")).get("entries"));
+            int requests = dav.directoryRequests.get();
+            check(call(endpoint + "?path=%2F", null, null), 401, "UNAUTHENTICATED");
+            var denied = call(endpoint + "?path=%2F", null, bobToken);
+            var absent = call("/media-sources/missing-source/directory?path=%2F", null, aliceToken);
+            check(denied, 404, "SOURCE_NOT_FOUND"); check(absent, 404, "SOURCE_NOT_FOUND");
+            assertEquals(dataOrMessage(denied), dataOrMessage(absent));
+            db.update("UPDATE users SET role='ADMIN' WHERE username='directory_bob'");
+            check(call(endpoint + "?path=%2F", null, bobToken), 404, "SOURCE_NOT_FOUND");
+            for (String query : List.of("", "?path=%2F&path=%2F", "?path=%2F&userId=other", "?path=", "?path=%2F..%2Fescape", "?path=%2Fa%252fb", "?path=https%3A%2F%2Foutside.invalid")) {
+                check(call(endpoint + query, null, aliceToken), 400, "VALIDATION_FAILED");
+            }
+            var getWithBody = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api" + endpoint + "?path=%2F"))
+                    .header("Authorization", "Bearer " + aliceToken).method("GET", HttpRequest.BodyPublishers.ofString("unexpected")).build();
+            check(client.send(getWithBody, HttpResponse.BodyHandlers.ofString()), 400, "VALIDATION_FAILED");
+            assertEquals(requests, dav.directoryRequests.get());
+            assertEquals(before, check(call("/media-sources", null, aliceToken), 200, "OK").get("data"));
+            assertEquals(1, db.queryForObject("SELECT COUNT(*) FROM media_source", Integer.class));
+            assertEquals(artifacts, scanArtifactCounts());
+        }
+    }
+
+    @Test void directoryProtocolFailuresRemainPrivateAndNeverChangeSavedSourceOrCreateArtifacts() throws Exception {
+        String token = registerAndLogin("directory_failures");
+        try (var dav = new TemporaryWebDavServer()) {
+            var input = dav.input("/dav/");
+            String id = (String) data(check(call("/media-sources", input, token), 201, "OK")).get("id");
+            String endpoint = "/media-sources/" + id + "/directory?path=";
+            Object before = check(call("/media-sources", null, token), 200, "OK").get("data");
+            var artifacts = scanArtifactCounts();
+            for (var failure : Map.of("/missing", "SOURCE_DIRECTORY_NOT_FOUND", "/file.mkv", "SOURCE_DIRECTORY_NOT_FOUND",
+                    "/invalid", "SOURCE_DIRECTORY_INVALID", "/redirect", "SOURCE_REDIRECT_UNSUPPORTED", "/offline", "SOURCE_CONNECTION_FAILED", "/html", "SOURCE_NOT_WEBDAV").entrySet()) {
+                var response = call(endpoint + URLEncoder.encode(failure.getKey(), StandardCharsets.UTF_8), null, token);
+                check(response, failure.getValue().equals("SOURCE_DIRECTORY_NOT_FOUND") ? 404 : 422, failure.getValue());
+                assertSourceFailurePrivate(response, input);
+            }
+            dav.rejectCredentials.set(true);
+            var rejected = call(endpoint + "%2F", null, token);
+            check(rejected, 422, "SOURCE_AUTH_FAILED"); assertSourceFailurePrivate(rejected, input);
+            dav.rejectCredentials.set(false);
+            var slow = call(endpoint + "%2Fslow", null, token);
+            check(slow, 504, "SOURCE_CONNECTION_TIMEOUT"); assertSourceFailurePrivate(slow, input);
+            assertEquals(0, dav.followedRedirects.get());
+            assertEquals(before, check(call("/media-sources", null, token), 200, "OK").get("data"));
+            assertEquals(1, db.queryForObject("SELECT COUNT(*) FROM media_source", Integer.class));
+            assertEquals(artifacts, scanArtifactCounts());
+        }
+    }
+
+    String dataOrMessage(HttpResponse<String> response) { return (String) json.readValue(response.body(), Map.class).get("message"); }
+
     @Test void mvcProtocolErrorsKeepTheirStatusAfterJwtAuthentication() throws Exception {
         check(call("/auth/register", Map.of("username", "protocol_user", "password", password), null), 201, "OK");
         String token = (String) data(check(call("/auth/login", Map.of("username", "protocol_user", "password", password), null), 200, "OK")).get("accessToken");
@@ -278,7 +350,7 @@ class AuthHttpIntegrationTest {
     }
     Map<String, Integer> scanArtifactCounts() {
         var counts = new HashMap<String, Integer>();
-        for (String table : List.of("media_scan_root", "scan_task")) {
+        for (String table : List.of("media_scan_root", "scan_task", "media_resource", "user_movie")) {
             boolean exists = db.queryForObject("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name=?", Integer.class, table) != 0;
             counts.put(table, exists ? db.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class) : 0);
         }
@@ -289,6 +361,7 @@ class AuthHttpIntegrationTest {
         static final String PASSWORD = "webdav-password-fixture";
         final HttpServer server;
         final AtomicInteger davRequests = new AtomicInteger();
+        final AtomicInteger directoryRequests = new AtomicInteger();
         final AtomicInteger followedRedirects = new AtomicInteger();
         final AtomicBoolean rejectCredentials = new AtomicBoolean();
         TemporaryWebDavServer() throws Exception {
@@ -298,8 +371,35 @@ class AuthHttpIntegrationTest {
                     exchange.getRequestBody().readAllBytes();
                     String path = exchange.getRequestURI().getPath();
                     String body; int status;
-                    if (!exchange.getRequestMethod().equals("PROPFIND") || !"0".equals(exchange.getRequestHeaders().getFirst("Depth"))) {
+                    String depth = exchange.getRequestHeaders().getFirst("Depth");
+                    if (!exchange.getRequestMethod().equals("PROPFIND") || !("0".equals(depth) || "1".equals(depth))) {
                         status = 405; body = "Expected PROPFIND Depth: 0";
+                    } else if ("1".equals(depth) && path.startsWith("/dav/")) {
+                        directoryRequests.incrementAndGet();
+                        String expected = "Basic " + Base64.getEncoder().encodeToString((USERNAME + ":" + PASSWORD).getBytes(StandardCharsets.UTF_8));
+                        if (rejectCredentials.get() || !expected.equals(exchange.getRequestHeaders().getFirst("Authorization"))) {
+                            status = 401; body = USERNAME + ":" + PASSWORD;
+                        } else if (path.equals("/dav/redirect/")) {
+                            status = 302; body = PASSWORD; exchange.getResponseHeaders().set("Location", address("/redirect-target/"));
+                        } else if (path.equals("/dav/missing/")) {
+                            status = 404; body = PASSWORD;
+                        } else if (path.equals("/dav/offline/")) {
+                            status = 503; body = PASSWORD;
+                        } else if (path.equals("/dav/html/")) {
+                            status = 200; body = "regular page " + PASSWORD;
+                        } else if (path.equals("/dav/slow/")) {
+                            try { Thread.sleep(1600); } catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); }
+                            status = 503; body = PASSWORD;
+                        } else {
+                            status = 207;
+                            String encoded = exchange.getRequestURI().getRawPath();
+                            body = directoryResource(encoded, !path.equals("/dav/file.mkv/"));
+                            if (path.equals("/dav/")) body += directoryResource("/dav/empty/", true)
+                                    + directoryResource("/dav/%E7%94%B5%E5%BD%B1%20%E5%BA%93%20%23%3F100%25+/", true) + directoryResource("/dav/video.mkv", false);
+                            else if (path.equals("/dav/电影 库 #?100%+/")) body += directoryResource(encoded + "notes%20%25%23%3F.txt", false);
+                            else if (path.equals("/dav/invalid/")) body += directoryResource("http://example.invalid/outside/", true);
+                            body = "<d:multistatus xmlns:d=\"DAV:\">" + body + "</d:multistatus>";
+                        }
                     } else if (path.equals("/dav/")) {
                         davRequests.incrementAndGet();
                         String expected = "Basic " + Base64.getEncoder().encodeToString((USERNAME + ":" + PASSWORD).getBytes(StandardCharsets.UTF_8));
@@ -332,6 +432,10 @@ class AuthHttpIntegrationTest {
         }
         String address(String path) { return "http://127.0.0.1:" + server.getAddress().getPort() + path; }
         Map<String, String> input(String path) { return Map.of("name", "个人 WebDAV", "address", address(path), "username", USERNAME, "password", PASSWORD); }
+        static String directoryResource(String href, boolean directory) {
+            return "<d:response><d:href>" + href + "</d:href><d:propstat><d:prop><d:resourcetype>"
+                    + (directory ? "<d:collection/>" : "") + "</d:resourcetype></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>";
+        }
         @Override public void close() { server.stop(0); }
     }
     @SuppressWarnings("unchecked") Map<String, Object> check(HttpResponse<String> response, int status, String code) {

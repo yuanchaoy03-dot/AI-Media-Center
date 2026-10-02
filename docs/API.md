@@ -10,9 +10,9 @@
 
 ### 认证与新用户空来源：首个联调切片
 
-确认日期：2026-09-27；实现日期：2026-09-28。注册 → 登录 → 获取当前用户 → 获取本人空来源列表已完成联调。2026-10-02 扩展为真实 WebDAV 测试、新增及本人非空列表；认证三个接口及这些来源接口为 `implemented`。
+确认日期：2026-09-27；实现日期：2026-09-28。注册 → 登录 → 获取当前用户 → 获取本人空来源列表已完成联调。2026-10-02 扩展为真实 WebDAV 测试、新增、本人非空列表及已保存来源只读目录浏览；认证三个接口及这些来源接口为 `implemented`。
 
-默认 Vue 运行路径调用 Spring Boot，使用真实账号、JWT、路由守卫及本人范围查询。未接入的个人数据页面显示尚未开放，不注入 Mock；开发预览须显式启用，配置见 [frontend/README.md](../frontend/README.md)。当前闭环到来源测试、加密保存和刷新后本人列表；目录、扫描及片库仍待接入。
+默认 Vue 运行路径调用 Spring Boot，使用真实账号、JWT、路由守卫及本人范围查询。未接入的个人数据页面显示尚未开放，不注入 Mock；开发预览须显式启用，配置见 [frontend/README.md](../frontend/README.md)。当前闭环到来源测试、加密保存、刷新后本人列表及逐层只读目录浏览；扫描根保存、扫描及片库仍待接入。
 
 #### 共同 HTTP 约定
 
@@ -50,6 +50,8 @@
 | 401 | `UNAUTHENTICATED` | 受保护请求缺失、无效或过期 JWT，或对应账号不存在 |
 | 403 | `ACCOUNT_DISABLED` | JWT 有效，但当前账号已禁用；清理本地登录态并提示账号暂不可用 |
 | 404 | `NOT_FOUND` | 请求路径没有对应接口或资源 |
+| 404 | `SOURCE_NOT_FOUND` | 来源不存在或不属于当前用户，使用相同脱敏响应 |
+| 404 | `SOURCE_DIRECTORY_NOT_FOUND` | 本人来源内请求的目录不存在或不是目录 |
 | 405 | `METHOD_NOT_ALLOWED` | 接口不支持该 HTTP Method；保留 `Allow` 响应头 |
 | 406 | `NOT_ACCEPTABLE` | 无法提供 `Accept` 要求的响应类型 |
 | 409 | `USERNAME_TAKEN` | 注册时规范化后的用户名已占用，包括并发注册冲突 |
@@ -58,7 +60,8 @@
 | 422 | `SOURCE_CONNECTION_FAILED` | WebDAV 不可达或上游服务失败 |
 | 422 | `SOURCE_NOT_WEBDAV` | 地址未返回有效的 WebDAV 目录事实 |
 | 422 | `SOURCE_REDIRECT_UNSUPPORTED` | WebDAV 地址返回重定向，本切片不跟随 |
-| 504 | `SOURCE_CONNECTION_TIMEOUT` | WebDAV 连接测试超过总时限 |
+| 422 | `SOURCE_DIRECTORY_INVALID` | 目录响应结构、路径边界或数量 / 大小不符合列举契约，不能作为完整目录展示 |
+| 504 | `SOURCE_CONNECTION_TIMEOUT` | WebDAV 连接测试或目录读取超过总时限 |
 | 503 | `SOURCE_CONFIG_UNAVAILABLE` | 来源加密主密钥未配置或格式错误 |
 | 500 | `SOURCE_CONFIG_INVALID` | 本人保存的连接密文损坏或无法解密；不得伪装为空列表 |
 | 500 | `INTERNAL_ERROR` | 数据库不可用或其他服务内部失败；统一说明“服务暂时不可用，请稍后重试。” |
@@ -210,9 +213,37 @@ Vue 接入后区分加载中、请求失败和成功空列表；仅在成功取�
 - 测试结果仅适用于当次输入；修改字段使前端旧结果失效。新增接口独立重新测试当前请求的全部连接信息，不信任前端成功状态；失败不写入。外部调用结束后再执行单行数据库写入，不在数据库事务中等待网络。
 - 成功创建时由可信 CurrentUser 填入归属、后端生成 ID，默认启用；不自动创建扫描根、任务、资源或影片。新增后 Vue 留在本人来源页重新加载列表，刷新后仍可见。退出、账号切换或离开页面取消请求并隔离迟到响应。
 - 完整地址与凭据使用 AES-256-GCM 加密，随机 nonce，认证附加数据绑定用户 ID 与来源 ID。`MEDIA_SOURCE_ENCRYPTION_KEY` 是 32 字节随机密钥的 Base64，仅存于后端安全配置；不与 JWT 密钥复用。缺失或非法密钥不能保存来源；密文或主密钥不可写入响应、日志或前端。
-- 保存成功、关闭或卸载弹窗清除表单凭据；Mock 预览仍仅用内存和演示凭据。编辑、删除、已保存来源重测、目录与扫描接口仍为 `draft`。
+- 保存成功、关闭或卸载弹窗清除表单凭据；Mock 预览仍仅用内存和演示凭据。编辑、删除、已保存来源重测、扫描根与扫描接口仍为 `draft`。
 
 主要错误除共同鉴权与输入错误外，包括 `422 SOURCE_AUTH_FAILED / SOURCE_CONNECTION_FAILED / SOURCE_NOT_WEBDAV / SOURCE_REDIRECT_UNSUPPORTED`、`504 SOURCE_CONNECTION_TIMEOUT`；新增还可能返回加密配置与数据库错误。上游 WebDAV 的 401/403 映射为来源错误，不冒充平台 `UNAUTHENTICATED / ACCOUNT_DISABLED`，错误不回显提交信息或上游正文。
+
+#### 浏览本人已保存来源的目录
+
+| 项目 | 内容 |
+| --- | --- |
+| Method / Path | GET `/api/media-sources/{sourceId}/directory?path=%2F` |
+| 认证 / 状态 | Bearer JWT / `implemented` |
+| 成功 | `200 OK`；`data` 为指定目录及其直接子项 |
+
+`sourceId` 为不透明字符串；`path` 是必需且唯一的查询参数，不接受额外参数、重复参数或 GET 请求体。路径为已解码的来源内绝对路径，由 Vue 用 `encodeURIComponent` 编码一次；`/` 表示已保存连接地址对应的根目录，不表示服务器文件系统根。内部连续 `/` 合并，非根尾部 `/` 去除；路径最多 2048 个 Unicode 码点，空白、相对路径、前导 `//`、`.` / `..` 段、反斜线、控制字符、非法 Unicode 及危险编码串返回 `400 VALIDATION_FAILED`。中文、空格和普通字面 `%`、`#`、`?` 可以作为名称；当前拒绝含 `%2F` / `%5C` / `%2E` 编码串及其再次编码形式的名称。
+
+```json
+{
+  "path": "/",
+  "entries": [
+    { "name": "电影", "path": "/电影", "kind": "directory" },
+    { "name": "说明.txt", "path": "/说明.txt", "kind": "file" }
+  ]
+}
+```
+
+- Spring Boot 先按可信 CurrentUser 和 sourceId 查询本人行，再解密配置并调用 Adapter。来源不存在或归属不符均为 `404 SOURCE_NOT_FOUND`，拒绝时不访问上游；USER / ADMIN 都不能浏览他人来源。来源或扫描根启停不限制只读浏览，扫描授权单独实现。
+- Adapter 使用 `PROPFIND Depth: 1`，只返回直接子项，排除当前目录自身；`name` 从经过严格解码和边界校验的 href 取得，`kind` 来自成功 DAV 属性。DTO 不含服务地址、远程 href、用户名、密码、认证头或密文。
+- 请求目标固定在已保存连接的同协议 / 主机 / 有效端口及目录边界内；不跟随重定向，拒绝外部或越界 href、编码路径分隔符、非法 UTF-8、重复项及非直接子项。上游目录不存在或当前项不是目录返回 `404 SOURCE_DIRECTORY_NOT_FOUND`；认证、连接、超时继续使用来源错误码，不能伪装成空目录。
+- 目录成功 XML 最多 1 MiB，直接子项最多 2000 个，不递归、不分页、不截断成假完整列表；超限或列举结构无效返回 `422 SOURCE_DIRECTORY_INVALID`。总时限沿用连接配置，禁用 DTD / 外部实体；Depth:0 测试仍保留 128 KiB 限制。
+- 浏览不写数据库、不创建扫描根、任务、资源或个人片库关系，不调用 TMDB / ffprobe。Vue 正式列表提供“浏览目录”，弹窗支持加载、成功空目录、进入子目录、返回上一级、失败重试与关闭；不展示根选择或保存控件。目录导航、关闭、离页及会话变化取消请求并隔离迟到响应，真实模式不读取 Mock 状态。
+
+主要错误：共同鉴权 / 输入 / 加密配置错误、`404 SOURCE_NOT_FOUND / SOURCE_DIRECTORY_NOT_FOUND`、`422 SOURCE_AUTH_FAILED / SOURCE_CONNECTION_FAILED / SOURCE_NOT_WEBDAV / SOURCE_REDIRECT_UNSUPPORTED / SOURCE_DIRECTORY_INVALID`、`504 SOURCE_CONNECTION_TIMEOUT`。
 
 #### 本切片实现后的验收条件
 
@@ -306,7 +337,7 @@ Response：当前前端复用 `LibraryMovie` 展示字段，搜索行可附带�
 
 ## 已确认的媒体来源接口语义边界
 
-状态：列表、测试未保存连接与首次新增为 `implemented`，契约见上文；来源详情、编辑、删除、已保存来源重测、目录与扫描仍为 `draft`，当前仅有显式开发预览。
+状态：列表、测试未保存连接、首次新增及只读目录浏览为 `implemented`，契约见上文；来源详情、编辑、删除、已保存来源重测、扫描根与扫描仍为 `draft`，当前仅有显式开发预览。
 
 - MediaSource是当前用户保存的一套WebDAV连接配置，MediaSource ≠ MediaScanRoot；一个来源允许0~N个MediaScanRoot，后者是用户明确选择、允许递归扫描的目录根。
 - 创建MediaSource不自动扫描，也不默认将`/`加入扫描根；需要支持连接测试及来源当前可见完整目录结构的逐层浏览。

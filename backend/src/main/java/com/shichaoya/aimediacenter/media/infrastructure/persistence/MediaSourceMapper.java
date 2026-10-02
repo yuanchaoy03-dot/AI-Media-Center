@@ -17,6 +17,11 @@ public interface MediaSourceMapper {
             + "last_connection_test_at AS lastConnectionTestAt, created_at AS createdAt "
             + "FROM media_source WHERE user_id = #{userId} ORDER BY created_at DESC, id DESC")
     List<MediaSourceRow> findByUser(String userId);
+    @Select("SELECT id, user_id AS userId, name, source_type AS sourceType, "
+            + "connection_config_ciphertext AS connectionConfigCiphertext, enabled, "
+            + "last_connection_test_at AS lastConnectionTestAt, created_at AS createdAt "
+            + "FROM media_source WHERE user_id = #{userId} AND id = #{sourceId}")
+    MediaSourceRow findOwned(String userId, String sourceId);
     @Insert("INSERT INTO media_source (id,user_id,name,source_type,connection_config_ciphertext,enabled,"
             + "last_connection_test_at,created_at,updated_at) VALUES "
             + "(#{id},#{userId},#{name},'WEBDAV',#{connectionConfigCiphertext},1,#{lastConnectionTestAt},#{createdAt},#{createdAt})")

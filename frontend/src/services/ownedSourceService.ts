@@ -1,6 +1,6 @@
 import { useAuthStore } from '../stores/auth'
 import { pinia } from '../stores/index'
-import type { SourceConnectionInput } from '../types/mediaSource'
+import type { DirectoryEntry, SourceConnectionInput } from '../types/mediaSource'
 import { ApiError } from './http'
 
 /** Spring Boot 返回的本人来源 DTO；与开发预览的连接/扫描展示模型分开。 */
@@ -16,6 +16,11 @@ export interface OwnedMediaSource {
 
 export interface ConnectionTestResult {
   testedAt: string
+}
+
+export interface OwnedSourceDirectory {
+  path: string
+  entries: DirectoryEntry[]
 }
 
 function responseError(message: string): never {
@@ -86,6 +91,65 @@ export async function getOwnedSources(signal: AbortSignal): Promise<OwnedMediaSo
   if (new Set(sources.map((source) => source.id)).size !== sources.length)
     responseError('来源列表响应异常，请稍后重试。')
   return sources
+}
+
+function isDirectoryPath(value: unknown): value is string {
+  if (typeof value !== 'string' || !value.startsWith('/')) return false
+  if (value === '/') return true
+  const characters = [...value]
+  return (
+    characters.length <= 2048 &&
+    !value.includes('\\') &&
+    characters.every((character) => {
+      const code = character.codePointAt(0) ?? 0
+      return code > 31 && (code < 127 || code > 159) && (code < 0xd800 || code > 0xdfff)
+    }) &&
+    !/%(?:25)*(?:2f|5c|2e)/i.test(value) &&
+    value
+      .slice(1)
+      .split('/')
+      .every((part) => part && part !== '.' && part !== '..')
+  )
+}
+
+export async function getOwnedSourceDirectory(
+  sourceId: string,
+  path: string,
+  signal: AbortSignal,
+): Promise<OwnedSourceDirectory> {
+  if (!sourceId.trim() || !isDirectoryPath(path)) responseError('目录路径异常，请关闭后重试。')
+  const result = await useAuthStore(pinia).authenticatedRequest<unknown>(
+    `/media-sources/${encodeURIComponent(sourceId)}/directory?path=${encodeURIComponent(path)}`,
+    signal,
+  )
+  const invalid = () => responseError('目录响应异常，请稍后重试。')
+  if (
+    !result ||
+    typeof result !== 'object' ||
+    Array.isArray(result) ||
+    Object.keys(result).length !== 2 ||
+    !('path' in result && isDirectoryPath(result.path) && result.path === path) ||
+    !('entries' in result && Array.isArray(result.entries) && result.entries.length <= 2000)
+  )
+    return invalid()
+  const prefix = path === '/' ? '/' : `${path}/`
+  const entries = result.entries.map((entry: unknown): DirectoryEntry => {
+    if (
+      !entry ||
+      typeof entry !== 'object' ||
+      Array.isArray(entry) ||
+      Object.keys(entry).length !== 3 ||
+      !('name' in entry && typeof entry.name === 'string' && entry.name) ||
+      !('path' in entry && isDirectoryPath(entry.path)) ||
+      !('kind' in entry && (entry.kind === 'directory' || entry.kind === 'file')) ||
+      entry.path !== `${prefix}${entry.name}` ||
+      entry.name.includes('/')
+    )
+      return invalid()
+    return { name: entry.name, path: entry.path, kind: entry.kind }
+  })
+  if (new Set(entries.map((entry) => entry.path)).size !== entries.length) return invalid()
+  return { path: result.path, entries }
 }
 
 export async function testOwnedSourceConnection(

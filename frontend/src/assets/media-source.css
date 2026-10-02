@@ -690,6 +690,16 @@ dialog.media-source-ui::backdrop {
   gap: 8px;
   padding-right: 8px;
 }
+.directory-readonly.media-source-ui .directory-row {
+  grid-template-columns: minmax(0, 1fr);
+  padding-right: 0;
+}
+.media-source-ui .directory-error {
+  padding: 16px;
+}
+.media-source-ui .directory-error .source-note {
+  margin-bottom: 12px;
+}
 .media-source-ui .directory-open {
   display: flex;
   align-items: center;

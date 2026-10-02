@@ -48,7 +48,7 @@ axios.defaults.adapter = async (config) => {
 const { useAuthStore } = await import('../src/stores/auth.ts')
 const { pinia } = await import('../src/stores/index.ts')
 const auth = useAuthStore(pinia)
-const { getOwnedSources, createOwnedSource, testOwnedSourceConnection } =
+const { getOwnedSources, getOwnedSourceDirectory, createOwnedSource, testOwnedSourceConnection } =
   await import('../src/services/ownedSourceService.ts')
 const { request, ApiError } = await import('../src/services/http.ts')
 axios.defaults.adapter = originalAdapter
@@ -664,7 +664,12 @@ async function componentSetup(path, props = {}, { preview = false, instance = pi
     if (name.endsWith('/services/dataMode')) return { mockPreview: preview }
     if (name.endsWith('/services/http')) return { ApiError }
     if (name.endsWith('/services/ownedSourceService'))
-      return { getOwnedSources, createOwnedSource, testOwnedSourceConnection }
+      return {
+        getOwnedSources,
+        getOwnedSourceDirectory,
+        createOwnedSource,
+        testOwnedSourceConnection,
+      }
     if (name === './router') return { signOut: () => auth.logout() }
     if (name.endsWith('.vue') || name.endsWith('.css') || name.endsWith('.svg')) return {}
     throw new Error(`Unexpected import: ${name}`)
@@ -933,6 +938,242 @@ test('owned DTO validation rejects wrong types, credentials, duplicate IDs and i
   assert.equal(auth.tokenPresent, true)
 })
 
+test('owned directory GET encodes each segment once and carries the current bearer only to Spring Boot', async () => {
+  await signIn()
+  const sourceId = 'source /?#'
+  const path = '/电影/中文 空格 &?#%文件夹🎬'
+  const directory = {
+    path,
+    entries: [
+      { name: '子目录', path: `${path}/子目录`, kind: 'directory' },
+      { name: '电影 (2026).mkv', path: `${path}/电影 (2026).mkv`, kind: 'file' },
+    ],
+  }
+  respond = async (url, config) => {
+    assert.equal(
+      url,
+      `/api/media-sources/${encodeURIComponent(sourceId)}/directory?path=${encodeURIComponent(path)}`,
+    )
+    assert.equal(config.method, 'get')
+    assert.equal(config.body, undefined)
+    assert.equal(config.headers.Authorization, 'Bearer synthetic-test-token')
+    return ok(directory)
+  }
+  assert.deepEqual(
+    await getOwnedSourceDirectory(sourceId, path, new AbortController().signal),
+    directory,
+  )
+  respond = async () => ok({ path: '/', entries: [] })
+  assert.deepEqual(await getOwnedSourceDirectory('source-a', '/', new AbortController().signal), {
+    path: '/',
+    entries: [],
+  })
+  assert.deepEqual([...storage.entries()], [[storageKey, 'synthetic-test-token']])
+})
+
+test('owned directory rejects malformed, credential-bearing, duplicate and non-direct entries', async () => {
+  await signIn()
+  const entry = { name: '电影', path: '/Movies/电影', kind: 'directory' }
+  const valid = { path: '/Movies', entries: [entry] }
+  for (const invalid of [
+    null,
+    {},
+    [],
+    { ...valid, password: 'synthetic-secret' },
+    { ...valid, path: '/Other' },
+    { ...valid, path: '/Movies/' },
+    { ...valid, entries: null },
+    { ...valid, entries: [entry, entry] },
+    { ...valid, entries: [null] },
+    { ...valid, entries: [[]] },
+    { ...valid, entries: [{ ...entry, name: '' }] },
+    { ...valid, entries: [{ ...entry, name: '其他名字' }] },
+    { ...valid, entries: [{ ...entry, path: '/Else/电影' }] },
+    { ...valid, entries: [{ ...entry, name: '电影/子目录', path: '/Movies/电影/子目录' }] },
+    { ...valid, entries: [{ ...entry, path: 'https://dav.example.com/Movies/电影' }] },
+    { ...valid, entries: [{ ...entry, kind: 'symlink' }] },
+    { ...valid, entries: [{ ...entry, password: 'synthetic-secret' }] },
+    {
+      ...valid,
+      entries: Array.from({ length: 2001 }, (_, index) => ({
+        name: `item${index}`,
+        path: `/Movies/item${index}`,
+        kind: 'file',
+      })),
+    },
+    ...[
+      '.',
+      '..',
+      'back\\slash',
+      'encoded%2Fslash',
+      'encoded%2Edot',
+      'encoded%5Cslash',
+      'nested%252fslash',
+      'nested%25252edot',
+      'nested%25255cslash',
+      'a\nb',
+      'a\u0080b',
+      '\ud800',
+      'x'.repeat(2048),
+    ].map((name) => ({ ...valid, entries: [{ ...entry, name, path: `/Movies/${name}` }] })),
+  ]) {
+    respond = async () => ok(invalid)
+    await assert.rejects(
+      getOwnedSourceDirectory('source-a', '/Movies', new AbortController().signal),
+      (error) => {
+        assert.equal(error.code, 'REQUEST_FAILED')
+        assert.equal(error.message, '目录响应异常，请稍后重试。')
+        return true
+      },
+    )
+  }
+  respond = () => assert.fail('unsafe directory path reached transport')
+  for (const path of [
+    '',
+    'Movies',
+    '//Movies',
+    '/Movies/',
+    '/Movies//child',
+    '/.',
+    '/../x',
+    '/%2f',
+    '/%252f',
+    '/%25252e',
+    '/%25255c',
+  ])
+    await assert.rejects(getOwnedSourceDirectory('source-a', path, new AbortController().signal), {
+      code: 'REQUEST_FAILED',
+    })
+  assert.equal(auth.tokenPresent, true)
+})
+
+test('real directory workflow opens from list and menu, enters folders, retries errors and shows an empty directory', async () => {
+  await signIn()
+  const view = await componentSetup('views/MediaSourcesView.vue')
+  const entries = [
+    { name: 'Movies', path: '/Movies', kind: 'directory' },
+    { name: 'README.txt', path: '/README.txt', kind: 'file' },
+  ]
+  const paths = []
+  try {
+    respond = async () => ok([ownedSource])
+    await view.mount()
+    respond = async (url) => {
+      const path = new URL(url, 'http://localhost').searchParams.get('path')
+      paths.push(path)
+      return ok({ path, entries: path === '/' ? entries : [] })
+    }
+    await view.ui.openDirectory(ownedSource)
+    assert.equal(view.ui.browsingSource.value.id, ownedSource.id)
+    assert.equal(view.ui.directoryPath.value, '/')
+    assert.deepEqual(view.ui.directoryEntries.value, entries)
+    assert.equal(view.ui.directoryLoading.value, false)
+    assert.equal(view.ui.directoryError.value, '')
+    await view.ui.loadDirectory('/Movies')
+    assert.equal(view.ui.directoryPath.value, '/Movies')
+    assert.deepEqual(view.ui.directoryEntries.value, [])
+    assert.equal(view.ui.directoryError.value, '')
+    respond = async () => failure(502, 'SOURCE_DIRECTORY_FAILED')
+    await view.ui.loadDirectory('/')
+    assert.equal(view.ui.directoryLoading.value, false)
+    assert.equal(view.ui.directoryError.value, '测试错误')
+    assert.deepEqual(view.ui.directoryEntries.value, [])
+    respond = async () => ok({ path: '/', entries })
+    await view.ui.loadDirectory(view.ui.directoryPath.value)
+    assert.equal(view.ui.directoryError.value, '')
+    assert.deepEqual(view.ui.directoryEntries.value, entries)
+    view.ui.closeDirectory()
+    assert.equal(view.ui.browsingSource.value, undefined)
+    view.ui.menuSource.value = ownedSource
+    await view.ui.menuAction('scan')
+    assert.equal(view.ui.menuSource.value, undefined)
+    assert.equal(view.ui.browsingSource.value.id, ownedSource.id)
+    assert.deepEqual(view.routes, [])
+    assert.deepEqual(paths, ['/', '/Movies'])
+  } finally {
+    view.unmount()
+  }
+})
+
+test('fast directory navigation and source switching cancel and isolate each late response', async () => {
+  await signIn()
+  const view = await componentSetup('views/MediaSourcesView.vue')
+  const old = deferred()
+  let oldSignal
+  try {
+    respond = (url, config) => {
+      oldSignal = config.signal
+      return old.promise
+    }
+    const opening = view.ui.openDirectory(ownedSource)
+    assert.equal(view.ui.directoryLoading.value, true)
+    respond = async () => ok({ path: '/Movies', entries: [] })
+    await view.ui.loadDirectory('/Movies')
+    assert.equal(oldSignal.aborted, true)
+    old.resolve(ok({ path: '/', entries: [{ name: 'stale', path: '/stale', kind: 'directory' }] }))
+    await opening
+    assert.equal(view.ui.directoryPath.value, '/Movies')
+    assert.deepEqual(view.ui.directoryEntries.value, [])
+    assert.equal(view.ui.directoryLoading.value, false)
+
+    const delayed = deferred()
+    respond = (url, config) => {
+      oldSignal = config.signal
+      return delayed.promise
+    }
+    const previousSource = view.ui.openDirectory(ownedSource)
+    respond = async () => ok({ path: '/', entries: [] })
+    await view.ui.openDirectory({ ...ownedSource, id: 'source-b', name: 'Other source' })
+    assert.equal(oldSignal.aborted, true)
+    delayed.resolve(failure(502, 'SOURCE_DIRECTORY_FAILED'))
+    await previousSource
+    assert.equal(view.ui.browsingSource.value.id, 'source-b')
+    assert.equal(view.ui.directoryError.value, '')
+    assert.deepEqual(view.ui.directoryEntries.value, [])
+  } finally {
+    view.unmount()
+  }
+})
+
+test('closing, unmounting and switching accounts cancel directory HTTP and clear private entries', async () => {
+  for (const cancel of ['close', 'unmount', 'account']) {
+    await signIn()
+    const view = await componentSetup('views/MediaSourcesView.vue')
+    try {
+      respond = async () => ok([ownedSource])
+      await view.mount()
+      respond = async () => ok({ path: '/', entries: [{ name: 'a', path: '/a', kind: 'file' }] })
+      await view.ui.openDirectory(ownedSource)
+      const delayed = deferred()
+      let signal
+      respond = (url, config) => {
+        signal = config.signal
+        return delayed.promise
+      }
+      const pending = view.ui.loadDirectory('/Movies')
+      assert.deepEqual(view.ui.directoryEntries.value, [])
+      if (cancel === 'close') view.ui.closeDirectory()
+      else if (cancel === 'unmount') view.unmount()
+      else {
+        auth.logout()
+        await signIn({ id: 'user-b', username: 'bob', role: 'USER' })
+      }
+      assert.equal(signal.aborted, true)
+      delayed.resolve(failure(401, 'UNAUTHENTICATED'))
+      await pending
+      assert.equal(view.ui.browsingSource.value, undefined)
+      assert.deepEqual(view.ui.directoryEntries.value, [])
+      assert.equal(view.ui.directoryPath.value, '/')
+      assert.equal(view.ui.directoryError.value, '')
+      assert.equal(view.ui.directoryLoading.value, false)
+      assert.equal(auth.user.username, cancel === 'account' ? 'bob' : 'alice')
+      assert.equal(auth.tokenPresent, true)
+    } finally {
+      view.unmount()
+    }
+  }
+})
+
 test('test and create POST requests cancel on page exit or logout and ignore late account responses', async () => {
   for (const operation of [testOwnedSourceConnection, createOwnedSource]) {
     for (const cancel of ['external', 'logout']) {
@@ -982,7 +1223,7 @@ test('real source page injects real operations, refreshes after save, and keeps 
     assert.equal(view.ui.status.value, 'ready')
     assert.deepEqual(view.ui.sourceList.value, [ownedSource])
     assert.deepEqual(view.routes, [])
-    for (const action of ['detail', 'scan', 'edit', 'remove']) {
+    for (const action of ['detail', 'edit', 'remove']) {
       view.ui.menuSource.value = ownedSource
       view.ui.unavailable(action)
       assert.equal(view.ui.menuSource.value, undefined)

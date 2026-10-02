@@ -3,6 +3,7 @@ package com.shichaoya.aimediacenter.media.infrastructure.webdav;
 import com.shichaoya.aimediacenter.common.web.ApiException;
 import com.shichaoya.aimediacenter.media.application.port.MediaSourceAdapter;
 import com.shichaoya.aimediacenter.media.domain.SourceConnection;
+import com.shichaoya.aimediacenter.media.domain.MediaDirectory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.w3c.dom.Element;
@@ -35,10 +36,11 @@ import java.util.concurrent.Flow;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-/** 只读 Depth:0 PROPFIND；不下载视频、不跟随重定向，不将远程正文或凭据用于日志/错误。 */
+/** 只读 PROPFIND；不下载视频、不跟随重定向，不将远程正文或凭据用于日志/错误。 */
 @Component
 public class WebDavMediaSourceAdapter implements MediaSourceAdapter {
     private static final int MAX_BODY_BYTES = 128 * 1024;
+    private static final int MAX_DIRECTORY_BYTES = 1024 * 1024;
     private static final String PROPFIND = """
             <?xml version="1.0" encoding="utf-8"?>
             <d:propfind xmlns:d="DAV:"><d:prop><d:resourcetype/></d:prop></d:propfind>
@@ -53,9 +55,19 @@ public class WebDavMediaSourceAdapter implements MediaSourceAdapter {
     }
     @Override public void testConnection(SourceConnection connection) {
         URI target = URI.create(connection.address());
+        verifyDirectory(request(connection, target, "0", MAX_BODY_BYTES, false), target);
+    }
+    @Override public MediaDirectory browseDirectory(SourceConnection connection, String path) {
+        var reader = new WebDavDirectoryReader(connection.address(), path);
+        byte[] xml = request(connection, reader.target(), "1", MAX_DIRECTORY_BYTES, true);
+        try { return reader.read(parseXml(xml)); }
+        catch (ApiException error) { throw error; }
+        catch (Exception error) { throw WebDavDirectoryReader.invalid(); }
+    }
+    private byte[] request(SourceConnection connection, URI target, String depth, int bodyLimit, boolean browsing) {
         rejectDangerousLiteralTarget(target);
         var builder = HttpRequest.newBuilder(target).timeout(Duration.ofMillis(timeoutMs))
-                .header("Depth", "0").header("Content-Type", "application/xml; charset=utf-8")
+                .header("Depth", depth).header("Content-Type", "application/xml; charset=utf-8")
                 .header("Accept", "application/xml, text/xml")
                 .method("PROPFIND", HttpRequest.BodyPublishers.ofString(PROPFIND, StandardCharsets.UTF_8));
         if (!connection.username().isEmpty()) {
@@ -63,7 +75,7 @@ public class WebDavMediaSourceAdapter implements MediaSourceAdapter {
             builder.header("Authorization", "Basic " + basic);
         }
         // HttpRequest.timeout 不足以单独保证慢响应体的终点；整个 sendAsync + 有界订阅统一截止。
-        var pending = client.sendAsync(builder.build(), info -> new LimitedBodySubscriber(info.statusCode() == 207));
+        var pending = client.sendAsync(builder.build(), info -> new LimitedBodySubscriber(info.statusCode() == 207, bodyLimit, browsing));
         try {
             var response = pending.get(timeoutMs, TimeUnit.MILLISECONDS);
             int status = response.statusCode();
@@ -71,9 +83,10 @@ public class WebDavMediaSourceAdapter implements MediaSourceAdapter {
             if (status >= 300 && status < 400) {
                 throw new ApiException(422, "SOURCE_REDIRECT_UNSUPPORTED", "来源地址发生重定向，请填写最终 WebDAV 目录地址。");
             }
+            if (browsing && status == 404) throw WebDavDirectoryReader.notFound();
             if (status == 200 || status == 405 || status == 501) throw notWebDav();
             if (status != 207) throw connectionFailed();
-            verifyDirectory(response.body(), target);
+            return response.body();
         } catch (TimeoutException error) {
             pending.cancel(true);
             throw timeout();
@@ -104,22 +117,7 @@ public class WebDavMediaSourceAdapter implements MediaSourceAdapter {
     }
     private static void verifyDirectory(byte[] xml, URI target) {
         try {
-            var factory = DocumentBuilderFactory.newInstance();
-            factory.setNamespaceAware(true);
-            factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
-            factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
-            factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
-            factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
-            factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
-            factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
-            factory.setXIncludeAware(false);
-            factory.setExpandEntityReferences(false);
-            var parser = factory.newDocumentBuilder();
-            parser.setErrorHandler(new DefaultHandler() {
-                @Override public void error(SAXParseException error) throws SAXException { throw error; }
-                @Override public void fatalError(SAXParseException error) throws SAXException { throw error; }
-            });
-            Element root = parser.parse(new ByteArrayInputStream(xml)).getDocumentElement();
+            Element root = parseXml(xml);
             if (!isDav(root, "multistatus")) throw notWebDav();
             for (var resource : children(root, "response")) {
                 var hrefs = children(resource, "href");
@@ -143,6 +141,24 @@ public class WebDavMediaSourceAdapter implements MediaSourceAdapter {
             throw notWebDav();
         } catch (ApiException error) { throw error; }
         catch (Exception error) { throw notWebDav(); }
+    }
+    private static Element parseXml(byte[] xml) throws Exception {
+        var factory = DocumentBuilderFactory.newInstance();
+        factory.setNamespaceAware(true);
+        factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
+        factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+        factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+        factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+        factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
+        factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
+        factory.setXIncludeAware(false);
+        factory.setExpandEntityReferences(false);
+        var parser = factory.newDocumentBuilder();
+        parser.setErrorHandler(new DefaultHandler() {
+            @Override public void error(SAXParseException error) throws SAXException { throw error; }
+            @Override public void fatalError(SAXParseException error) throws SAXException { throw error; }
+        });
+        return parser.parse(new ByteArrayInputStream(xml)).getDocumentElement();
     }
     private static boolean sameResource(URI target, String href) {
         try {
@@ -203,8 +219,12 @@ public class WebDavMediaSourceAdapter implements MediaSourceAdapter {
         private final CompletableFuture<byte[]> body = new CompletableFuture<>();
         private final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         private final boolean readBody;
+        private final int limit;
+        private final boolean browsing;
         private Flow.Subscription subscription;
-        LimitedBodySubscriber(boolean readBody) { this.readBody = readBody; }
+        LimitedBodySubscriber(boolean readBody, int limit, boolean browsing) {
+            this.readBody = readBody; this.limit = limit; this.browsing = browsing;
+        }
         @Override public CompletionStage<byte[]> getBody() { return body; }
         @Override public void onSubscribe(Flow.Subscription subscription) {
             this.subscription = subscription;
@@ -213,8 +233,8 @@ public class WebDavMediaSourceAdapter implements MediaSourceAdapter {
         }
         @Override public void onNext(List<ByteBuffer> buffers) {
             for (var buffer : buffers) {
-                if (buffer.remaining() > MAX_BODY_BYTES - bytes.size()) {
-                    body.completeExceptionally(notWebDav());
+                if (buffer.remaining() > limit - bytes.size()) {
+                    body.completeExceptionally(browsing ? WebDavDirectoryReader.invalid() : notWebDav());
                     subscription.cancel();
                     return;
                 }

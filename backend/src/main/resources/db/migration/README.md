@@ -33,7 +33,7 @@ Migration 是按顺序改变数据库结构的脚本。文件名中的 `V1`、`V
 - `ON DELETE RESTRICT` 表示用户仍被来源引用时，不允许直接删除该用户，避免留下失去归属的来源。
 - `source_type` 的 `CHECK` 目前只允许 `WEBDAV`，`enabled` 的 `CHECK` 只允许 `0` 或 `1`。`connection_config_ciphertext` 由 Java 的 AES-256-GCM 加密后写入，完整地址和凭据不存明文；密钥只由后端配置提供。
 
-当前 `MediaSourceMapper` 支持单行新增和 `WHERE user_id = #{userId}` 本人查询，应用层解密本人行后投影脱敏 DTO；无来源返回空列表，非空返回真实来源。首次新增先完成 WebDAV 测试再写入，不建立扫描根或任务。编辑、删除、目录与扫描仍未实现。
+当前 `MediaSourceMapper` 支持单行新增、`WHERE user_id = #{userId}` 本人列表及 `user_id + sourceId` 本人单条查询，应用层解密本人行后投影脱敏 DTO 或进行只读 WebDAV 目录浏览；无来源返回空列表，非空返回真实来源。首次新增先完成 WebDAV 测试再写入，不建立扫描根或任务；目录浏览不写库。本切片不新增迁移，编辑、删除、扫描范围配置与扫描仍未实现。
 
 ## V3：最近成功连接测试时间
 

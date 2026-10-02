@@ -17,7 +17,7 @@ import type { SourceConnectionInput } from '../types/mediaSource'
 import SourceIcon from '../components/media-source/SourceIcon.vue'
 import SourceDialog from '../components/media-source/SourceDialog.vue'
 import SourceConfirmDialog from '../components/media-source/SourceConfirmDialog.vue'
-import DirectoryBrowser from '../components/media-source/DirectoryBrowser.vue'
+import DirectorySelectionPreview from '../components/media-source/DirectorySelectionPreview.vue'
 import ScanTaskList from '../components/media-source/ScanTaskList.vue'
 import MovieCard from '../components/media/MovieCard.vue'
 import MovieContextMenu from '../components/media/MovieContextMenu.vue'
@@ -358,7 +358,7 @@ onMounted(async () => {
         }
       "
     />
-    <DirectoryBrowser
+    <DirectorySelectionPreview
       v-if="browsing && source"
       :source-id="sourceId"
       @close="browsing = false"

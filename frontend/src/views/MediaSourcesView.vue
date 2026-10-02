@@ -4,13 +4,15 @@ import { RouterLink } from 'vue-router'
 import SourceIcon from '../components/media-source/SourceIcon.vue'
 import SourceDialog from '../components/media-source/SourceDialog.vue'
 import SourceMenu from '../components/media-source/SourceMenu.vue'
+import DirectoryBrowser from '../components/media-source/DirectoryBrowser.vue'
 import {
   createOwnedSource,
+  getOwnedSourceDirectory,
   getOwnedSources,
   testOwnedSourceConnection,
 } from '../services/ownedSourceService'
 import type { OwnedMediaSource } from '../services/ownedSourceService'
-import type { SourceConnectionInput } from '../types/mediaSource'
+import type { DirectoryEntry, SourceConnectionInput } from '../types/mediaSource'
 import { useAuthStore } from '../stores/auth'
 import '../assets/media-source.css'
 
@@ -22,7 +24,13 @@ const menuSource = ref<OwnedMediaSource>()
 const trigger = shallowRef<HTMLButtonElement>()
 const error = ref('')
 const notice = ref('')
+const browsingSource = ref<OwnedMediaSource>()
+const directoryPath = ref('/')
+const directoryEntries = ref<DirectoryEntry[]>([])
+const directoryLoading = ref(false)
+const directoryError = ref('')
 let controller: AbortController | undefined
+let directoryController: AbortController | undefined
 async function load() {
   // 每次重试先取消上一轮请求；只有当前请求未被取消时，才更新成功或失败状态。
   controller?.abort()
@@ -45,6 +53,7 @@ async function load() {
   }
 }
 function addSource() {
+  closeDirectory()
   menuSource.value = undefined
   dialogOpen.value = true
 }
@@ -57,7 +66,7 @@ async function saveConnection(input: SourceConnectionInput, signal: AbortSignal)
 }
 async function saved() {
   dialogOpen.value = false
-  notice.value = '来源已添加。选择影片文件夹与扫描功能尚未开放。'
+  notice.value = '来源已添加，可以浏览目录。扫描范围设置与扫描功能尚未开放。'
   await load()
 }
 function openMenu(source: OwnedMediaSource, event: MouseEvent) {
@@ -65,21 +74,62 @@ function openMenu(source: OwnedMediaSource, event: MouseEvent) {
   menuSource.value = menuSource.value?.id === source.id ? undefined : source
   trigger.value = event.currentTarget
 }
-function unavailable(action: 'detail' | 'scan' | 'edit' | 'remove') {
+function unavailable(action: 'detail' | 'edit' | 'remove') {
   menuSource.value = undefined
   const labels = {
     detail: '来源详情',
-    scan: '选择影片文件夹与扫描',
     edit: '编辑来源',
     remove: '移除来源',
   }
   notice.value = `${labels[action]}功能尚未开放。`
+}
+async function menuAction(action: 'detail' | 'scan' | 'edit' | 'remove') {
+  const source = menuSource.value
+  if (action === 'scan') {
+    if (source) await openDirectory(source)
+  } else unavailable(action)
+}
+function closeDirectory() {
+  directoryController?.abort()
+  browsingSource.value = undefined
+  directoryPath.value = '/'
+  directoryEntries.value = []
+  directoryLoading.value = false
+  directoryError.value = ''
+}
+async function openDirectory(source: OwnedMediaSource) {
+  menuSource.value = undefined
+  browsingSource.value = source
+  await loadDirectory('/')
+}
+async function loadDirectory(path: string) {
+  const source = browsingSource.value
+  if (!source) return
+  directoryController?.abort()
+  const current = new AbortController()
+  directoryController = current
+  directoryPath.value = path
+  directoryEntries.value = []
+  directoryLoading.value = true
+  directoryError.value = ''
+  try {
+    const directory = await getOwnedSourceDirectory(source.id, path, current.signal)
+    if (current.signal.aborted) return
+    directoryPath.value = directory.path
+    directoryEntries.value = directory.entries
+    directoryLoading.value = false
+  } catch (reason) {
+    if (current.signal.aborted) return
+    directoryLoading.value = false
+    directoryError.value = reason instanceof Error ? reason.message : '目录读取失败，请重试。'
+  }
 }
 // 会话改变时同步清理本页；尚未返回的旧请求和弹窗不能显示在新账号下。
 watch(
   () => auth.epoch,
   () => {
     controller?.abort()
+    closeDirectory()
     sourceList.value = []
     dialogOpen.value = false
     menuSource.value = undefined
@@ -91,7 +141,10 @@ watch(
 )
 // onMounted 在页面挂载后加载数据；onBeforeUnmount 在离开页面前取消尚未完成的请求。
 onMounted(load)
-onBeforeUnmount(() => controller?.abort())
+onBeforeUnmount(() => {
+  controller?.abort()
+  closeDirectory()
+})
 </script>
 
 <template>
@@ -148,9 +201,7 @@ onBeforeUnmount(() => controller?.abort())
               }}</span
             >
             <span class="source-config">未选择影片文件夹</span>
-            <button class="source-config-link" @click="unavailable('scan')">
-              选择影片文件夹 →
-            </button>
+            <button class="source-config-link" @click="openDirectory(source)">浏览目录 →</button>
             <span class="source-footer"><span>0 部电影</span><span>上次扫描 · 尚未扫描</span></span>
             <button
               class="source-more"
@@ -187,9 +238,9 @@ onBeforeUnmount(() => controller?.abort())
     <SourceMenu
       v-if="menuSource && trigger"
       :trigger="trigger"
-      scan-label="选择影片文件夹"
+      scan-label="浏览目录"
       @close="menuSource = undefined"
-      @action="unavailable"
+      @action="menuAction"
     />
     <SourceDialog
       v-if="dialogOpen"
@@ -197,6 +248,17 @@ onBeforeUnmount(() => controller?.abort())
       :save-connection="saveConnection"
       @close="dialogOpen = false"
       @saved="saved"
+    />
+    <DirectoryBrowser
+      v-if="browsingSource"
+      :current-path="directoryPath"
+      :entries="directoryEntries"
+      :loading="directoryLoading"
+      :error="directoryError"
+      :description="`只读查看“${browsingSource.name}”中的文件夹和文件。`"
+      @close="closeDirectory"
+      @navigate="loadDirectory"
+      @retry="loadDirectory(directoryPath)"
     />
   </section>
 </template>
