@@ -6,6 +6,9 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
 app:
+  media-source:
+    encryption-key: ${MEDIA_SOURCE_ENCRYPTION_KEY:}
+    connection-timeout-ms: ${MEDIA_SOURCE_CONNECTION_TIMEOUT_MS:8000}
   jwt:
     secret: ${JWT_SECRET}
     issuer: ai-media-center

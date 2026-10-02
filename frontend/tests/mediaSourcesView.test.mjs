@@ -110,3 +110,46 @@ test('list scan sends unconfigured and paused sources to folders; connection iss
     query: { action: 'scan' },
   })
 })
+
+test('Preview explicitly injects Mock test/save and preserves new-source detail navigation', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const input = {
+    name: '演示新增来源',
+    address: 'https://preview.example.com/dav',
+    username: 'synthetic-preview-user',
+    password: 'synthetic-preview-password',
+  }
+  view.openDialog()
+  const testing = view.testConnectionInput(input, new AbortController().signal)
+  t.mock.timers.tick(850)
+  assert.equal(await testing, true)
+  const saving = view.savePreviewSource(input, new AbortController().signal)
+  t.mock.timers.tick(250)
+  const id = await saving
+  const added = byId(id)
+  assert.equal(added.name, input.name)
+  assert.equal(added.lastScan, '尚未扫描')
+  assert.equal('password' in added, false)
+  assert.equal('username' in added, false)
+  view.saved(id)
+  assert.equal(view.dialogOpen.value, false)
+  assert.deepEqual(pushes.pop(), {
+    name: 'media-source-detail',
+    params: { sourceId: id },
+    query: { created: '1' },
+  })
+  view.openDialog(added)
+  const editing = view.savePreviewSource(
+    { ...input, name: '演示编辑来源' },
+    new AbortController().signal,
+    id,
+  )
+  t.mock.timers.tick(250)
+  assert.equal(await editing, id)
+  assert.equal(byId(id).name, '演示编辑来源')
+  view.saved(id)
+  assert.deepEqual(pushes.pop().query, {})
+  const controller = new AbortController()
+  controller.abort()
+  await assert.rejects(view.savePreviewSource(input, controller.signal), /请求已取消/)
+})

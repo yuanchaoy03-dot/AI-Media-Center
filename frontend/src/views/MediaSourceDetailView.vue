@@ -8,9 +8,12 @@ import {
   setRootEnabled,
   removeScanRoot,
   startScan,
+  saveSource,
+  testConnectionInput,
 } from '../services/mediaSourceService'
 import { getLibraryMovies } from '../services/movieService'
 import type { LibraryMovie } from '../types/movie'
+import type { SourceConnectionInput } from '../types/mediaSource'
 import SourceIcon from '../components/media-source/SourceIcon.vue'
 import SourceDialog from '../components/media-source/SourceDialog.vue'
 import SourceConfirmDialog from '../components/media-source/SourceConfirmDialog.vue'
@@ -41,6 +44,10 @@ const sourceMovies = computed(() =>
     .sort((a, b) => b.addedAt - a.addedAt),
 )
 const editing = ref(false)
+function savePreviewSource(input: SourceConnectionInput, signal: AbortSignal, id?: string) {
+  if (signal.aborted) return Promise.reject(new Error('请求已取消。'))
+  return saveSource(input, id)
+}
 const browsing = ref(false)
 const removingRoot = ref<{ id: string; path: string }>()
 const notice = ref('')
@@ -340,6 +347,9 @@ onMounted(async () => {
     <SourceDialog
       v-if="editing && source"
       :source="source"
+      preview
+      :test-connection="testConnectionInput"
+      :save-connection="savePreviewSource"
       @close="editing = false"
       @saved="
         () => {

@@ -7,10 +7,12 @@ import {
   removeSource,
   scanLabel,
   startScan,
+  saveSource,
+  testConnectionInput,
 } from '../services/mediaSourceService'
 import { getLibraryMovies } from '../services/movieService'
 import type { LibraryMovie } from '../types/movie'
-import type { MediaSource } from '../types/mediaSource'
+import type { MediaSource, SourceConnectionInput } from '../types/mediaSource'
 import SourceIcon from '../components/media-source/SourceIcon.vue'
 import SourceMenu from '../components/media-source/SourceMenu.vue'
 import SourceDialog from '../components/media-source/SourceDialog.vue'
@@ -65,6 +67,10 @@ function openMenu(source: MediaSource, event: MouseEvent) {
 function openDialog(source?: MediaSource) {
   editing.value = source
   dialogOpen.value = true
+}
+function savePreviewSource(input: SourceConnectionInput, signal: AbortSignal, id?: string) {
+  if (signal.aborted) return Promise.reject(new Error('请求已取消。'))
+  return saveSource(input, id)
 }
 // “扫描”按当前状态决定去哪里：连接异常去检查、已有任务去查看、未选目录去选择，否则启动演示任务。
 // params 带来源 ID，query 带任务或动作，hash 指向详情页内需要滚动到的区域。
@@ -242,7 +248,15 @@ onMounted(async () => {
       @close="menuSource = undefined"
       @action="menuAction"
     />
-    <SourceDialog v-if="dialogOpen" :source="editing" @close="dialogOpen = false" @saved="saved" />
+    <SourceDialog
+      v-if="dialogOpen"
+      :source="editing"
+      preview
+      :test-connection="testConnectionInput"
+      :save-connection="savePreviewSource"
+      @close="dialogOpen = false"
+      @saved="saved"
+    />
     <SourceConfirmDialog
       v-if="removing"
       title="移除来源？"

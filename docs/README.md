@@ -32,7 +32,7 @@
 | 文档 | 职责 | 什么时候读 |
 |---|---|---|
 | [前端学习顺序](learning/前端学习顺序.md) | 按项目代码安排 Vue / TypeScript / Router / Pinia / Axios 学习 | 补基础或沿登录链阅读源码，不作为项目规范 |
-| [数据库迁移学习说明](../backend/src/main/resources/db/migration/README.md) | 就地解释 V1 / V2 脚本与约束，不是 migration 或数据库设计基线 | 阅读迁移源码；正式表结构查数据库设计文档 |
+| [数据库迁移学习说明](../backend/src/main/resources/db/migration/README.md) | 就地解释迁移脚本与约束，不是 migration 或数据库设计基线 | 阅读迁移源码；正式表结构查数据库设计文档 |
 
 ## 历史资料
 

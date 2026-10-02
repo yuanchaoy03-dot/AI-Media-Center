@@ -39,7 +39,7 @@ TypeScript 工程与 IDE 配置可参考 [Vue 官方指南](https://vuejs.org/gu
 - 侧栏按路由记录高亮，嵌套子路由会保留父级入口的选中态。电影、合集等详情路由应明确所属导航，不依靠路径字符串前缀猜测。
 - `/login`、`/register` 共用 `AuthForm.vue`，默认接入真实注册/登录。受保护路由验证身份后才展示个人页面；侧栏展示当前用户名，退出清除当前标签页登录态。
 - Token 仅保存在 `sessionStorage`。刷新先调用 `/api/auth/me`；网络失败保留 Token 并允许重试，401/账号禁用清除身份。未完成旧请求在退出、账号切换后不能回填数据。
-- `/media-sources` 接入本人空来源查询，区分加载、失败和成功空状态。添加来源、非空来源 DTO 及其他个人页面尚未接入；正常运行不显示示例收藏。
+- `/media-sources` 接入本人空/非空来源查询、真实 WebDAV 连接测试与首次新增；区分加载、失败、成功空状态与列表。新增加密保存后留在列表，刷新仍可见；目录、扫描、编辑删除和其他个人页面尚未接入，正常运行不显示示例收藏。
 
 Vite 开发服务器将 `/api` 代理到 `http://127.0.0.1:8080`；正式部署与构建预览需要提供同源 `/api` 反向代理。
 
@@ -57,7 +57,7 @@ Vite 开发服务器将 `/api` 代理到 `http://127.0.0.1:8080`；正式部署�
 
 ## 本地后端与集成测试
 
-准备 JDK 21 与 MySQL 数据库，按 [backend/.env.example](../backend/.env.example) 将 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD` 和 `JWT_SECRET` 设置到当前 PowerShell 环境；示例文件不会被 Spring Boot 自动加载。JWT_SECRET 必须是至少 32 字节安全随机数的 Base64 文本；实际值只放在被忽略的本地配置或部署环境中，轮换会使旧 Token 失效。配置完成后，从仓库根目录执行：
+准备 JDK 21 与 MySQL 数据库，按 [backend/.env.example](../backend/.env.example) 设置 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD`、`JWT_SECRET` 与 `MEDIA_SOURCE_ENCRYPTION_KEY`；示例文件不会被 Spring Boot 自动加载。JWT_SECRET 为至少 32 字节安全随机数的 Base64，来源加密密钥为独立的、恰好 32 字节随机数的 Base64；实际值只放在被忽略的本地配置或部署环境中。JWT 密钥轮换会使旧 Token 失效；来源密钥须与数据库备份一起安全保存，丢失或直接替换会使已保存来源不可读，当前未实现在线轮换。缺少来源密钥不阻止认证或空列表，但新增和非空列表返回 `503 SOURCE_CONFIG_UNAVAILABLE`。配置完成后，从仓库根目录执行：
 
 ```powershell
 Set-Location backend
@@ -70,6 +70,8 @@ Set-Location backend
 . ./backend/.env.local.ps1
 ```
 
-`AuthHttpIntegrationTest` 使用真实 MySQL 和随机 HTTP 端口。运行前准备独立、可丢弃且名称以 `_auth_test` 结尾的数据库，设置 `AUTH_TEST_DB_URL`、`AUTH_TEST_DB_USERNAME`、`AUTH_TEST_DB_PASSWORD` 后执行 `.\mvnw.cmd test`；测试自行生成临时签名密钥，清理该测试库的用户和来源。未设置测试 URL 时明确跳过，不能把普通 package 成功视为已执行集成测试。不要指向开发库或生产库。
+`AuthHttpIntegrationTest` 使用真实 MySQL 和随机 HTTP 端口，同时启动本机临时 WebDAV HTTP 服务验证首次新增。运行前准备独立、可丢弃且名称以 `_auth_test` 结尾的数据库，设置 `AUTH_TEST_DB_URL`、`AUTH_TEST_DB_USERNAME`、`AUTH_TEST_DB_PASSWORD` 后执行 `.\mvnw.cmd test`；测试自行生成临时签名与加密密钥，清理该测试库的用户和来源。未设置测试 URL 时明确跳过，不能把普通 package 成功视为已执行集成测试。不要指向开发库或生产库。
+
+来源测试支持匿名 / Basic 认证、HTTP(S) 与地址自身目录验证，不跟随重定向；请填写最终 WebDAV 目录地址。默认总时限 8000ms，可用 `MEDIA_SOURCE_CONNECTION_TIMEOUT_MS` 设置 100–15000ms；完整认证兼容范围和限制见 [API.md](../docs/API.md#测试未保存的-webdav-连接--新增本人来源)。
 
 使用 History 模式部署时，静态服务器需要将非静态资源的前端路径回退到 `index.html`，使 `/library` 等地址支持直接访问和刷新；业务 API 不应走此回退。参见 [Vue Router History 模式说明](https://router.vuejs.org/guide/essentials/history-mode.html)。

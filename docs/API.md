@@ -10,9 +10,9 @@
 
 ### 认证与新用户空来源：首个联调切片
 
-确认日期：2026-09-27；实现日期：2026-09-28。注册 → 登录 → 获取当前用户 → 获取本人空来源列表已完成联调。认证三个接口及共同约定为 `implemented`；媒体来源列表仅空列表场景为 `implemented`，非空条目仍为 `draft`。
+确认日期：2026-09-27；实现日期：2026-09-28。注册 → 登录 → 获取当前用户 → 获取本人空来源列表已完成联调。2026-10-02 扩展为真实 WebDAV 测试、新增及本人非空列表；认证三个接口及这些来源接口为 `implemented`。
 
-默认 Vue 运行路径调用 Spring Boot，使用真实账号、JWT、路由守卫及本人范围查询。未接入的个人数据页面显示尚未开放，不注入 Mock；开发预览须显式启用，配置见 [frontend/README.md](../frontend/README.md)。这只完成真实空来源闭环，不代表片库、WebDAV 保存或扫描已实现。
+默认 Vue 运行路径调用 Spring Boot，使用真实账号、JWT、路由守卫及本人范围查询。未接入的个人数据页面显示尚未开放，不注入 Mock；开发预览须显式启用，配置见 [frontend/README.md](../frontend/README.md)。当前闭环到来源测试、加密保存和刷新后本人列表；目录、扫描及片库仍待接入。
 
 #### 共同 HTTP 约定
 
@@ -54,7 +54,13 @@
 | 406 | `NOT_ACCEPTABLE` | 无法提供 `Accept` 要求的响应类型 |
 | 409 | `USERNAME_TAKEN` | 注册时规范化后的用户名已占用，包括并发注册冲突 |
 | 415 | `UNSUPPORTED_MEDIA_TYPE` | 请求 Content-Type 不受支持 |
-| 501 | `SOURCE_LIST_NOT_READY` | 当前用户已有来源，但非空来源 DTO 尚未实现；明确失败，不伪装为空数组 |
+| 422 | `SOURCE_AUTH_FAILED` | 上游 WebDAV 拒绝认证或访问；不会清理平台登录态 |
+| 422 | `SOURCE_CONNECTION_FAILED` | WebDAV 不可达或上游服务失败 |
+| 422 | `SOURCE_NOT_WEBDAV` | 地址未返回有效的 WebDAV 目录事实 |
+| 422 | `SOURCE_REDIRECT_UNSUPPORTED` | WebDAV 地址返回重定向，本切片不跟随 |
+| 504 | `SOURCE_CONNECTION_TIMEOUT` | WebDAV 连接测试超过总时限 |
+| 503 | `SOURCE_CONFIG_UNAVAILABLE` | 来源加密主密钥未配置或格式错误 |
+| 500 | `SOURCE_CONFIG_INVALID` | 本人保存的连接密文损坏或无法解密；不得伪装为空列表 |
 | 500 | `INTERNAL_ERROR` | 数据库不可用或其他服务内部失败；统一说明“服务暂时不可用，请稍后重试。” |
 
 Spring Security 的认证失败响应与 Controller 异常响应采用同一包裹；受保护接口的 `401` 响应附带 `WWW-Authenticate: Bearer`。受保护请求先认证，再校验业务输入；缺失身份不因携带无效参数而变成业务成功。网络断开、网关非 JSON 错误等由前端归为请求失败，不伪装成空列表或登录失效。
@@ -135,14 +141,14 @@ Spring MVC 请求协议与映射错误保留框架确定的 4xx 状态及协议�
 
 **主要错误**：`400 VALIDATION_FAILED`（未知查询参数）、`401 UNAUTHENTICATED`、`403 ACCOUNT_DISABLED`、`500 INTERNAL_ERROR`。
 
-#### 获取本人媒体来源列表（空列表场景）
+#### 获取本人媒体来源列表
 
 | 项目 | 内容 |
 | --- | --- |
 | 所属模块 / 页面 | media / `/media-sources` |
 | Method / Path | GET `/api/media-sources` |
 | 认证 | Bearer JWT |
-| 状态 | `implemented`：路径、鉴权、响应包裹、空列表和用户范围；非空条目 DTO 仍为 `draft` |
+| 状态 | `implemented`：鉴权、本人范围、空列表及下述非空 DTO |
 
 **Request**：无请求体、无查询参数；不接受 `userId`、分页、筛选或排序参数，未知查询参数返回 `400`。
 
@@ -159,13 +165,54 @@ Spring MVC 请求协议与映射错误保留框架确定的 4xx 状态及协议�
 
 必须按可信 CurrentUser 查询本人来源后得出空集合；不得硬编码 `[]`、返回全库来源、注入演示来源，或把数据库失败转换为空数组。用户 B 有来源不影响新用户 A 的空结果，公共 Movie 元数据存在也不改变结果。查询不测试 WebDAV、不扫描、不创建默认来源或扫描根。
 
-本切片只验收无来源用户。非空来源条目的连接状态、测试/扫描摘要、扫描根和影片数量等字段，在保存/测试 WebDAV 切片中结合下方 UI 数据需求确认；不得将现有 TypeScript 展示模型直接宣称为已确认的 HTTP DTO，也不得为有来源用户静默返回空数组。
+非空 `data` 为下述来源 DTO 数组，按创建时间及 ID 降序排列；只查询本人行，再解密以取得不含认证信息的地址。列表不执行实时连接测试。原临时 `501 SOURCE_LIST_NOT_READY` 分支已移除。
 
-当前实现先按可信用户查询来源 ID；查询结果非空时返回 `501 SOURCE_LIST_NOT_READY`，不返回 ID 列表作为非空 DTO，也不返回密文或连接信息。后续完成非空契约时替换这一临时错误分支。
+```json
+{
+  "id": "source-example",
+  "name": "家庭 NAS",
+  "type": "WebDAV",
+  "address": "https://nas.example.com/dav/",
+  "enabled": true,
+  "lastConnectionTestAt": "2026-10-02T05:00:00Z",
+  "createdAt": "2026-10-02T05:00:00Z"
+}
+```
+
+`lastConnectionTestAt` 只表示保存时成功测试的历史时间，不表示当前在线或可播放；兼容已有未测试行时为 `null`。DTO 不含 `userId`、用户名、密码、认证 Header、密文、扫描根或伪造影片数量。新来源未扫描，正式页展示“尚未扫描”。
 
 Vue 接入后区分加载中、请求失败和成功空列表；仅在成功取得 `data: []` 时显示现有“还没有媒体来源”状态。本人来源、最近扫描和最近入库均不得回退到 Mock fixture。其他尚未接入的页面不能据此宣称已完成真实空片库闭环。
 
-**主要错误**：`400 VALIDATION_FAILED`、`401 UNAUTHENTICATED`、`403 ACCOUNT_DISABLED`、`500 INTERNAL_ERROR`、`501 SOURCE_LIST_NOT_READY`。
+**主要错误**：`400 VALIDATION_FAILED`、`401 UNAUTHENTICATED`、`403 ACCOUNT_DISABLED`、`500 INTERNAL_ERROR`、`500 SOURCE_CONFIG_INVALID`、`503 SOURCE_CONFIG_UNAVAILABLE`。无来源用户不需要配置加密密钥即可得到空列表。
+
+#### 测试未保存的 WebDAV 连接 / 新增本人来源
+
+| 项目 | 测试连接 | 新增来源 |
+| --- | --- | --- |
+| Method / Path | POST `/api/media-sources/test-connection` | POST `/api/media-sources` |
+| 认证 / 状态 | Bearer JWT / `implemented` | Bearer JWT / `implemented` |
+| 成功 | `200 OK`；`data: { "testedAt": "2026-10-02T05:00:00Z" }` | `201 Created`；`data` 为上面的来源 DTO |
+
+两个接口均不接受查询参数；请求 JSON 固定为四个字符串字段：
+
+```json
+{
+  "name": "家庭 NAS",
+  "address": "https://nas.example.com/dav/",
+  "username": "webdav-user",
+  "password": "example-only"
+}
+```
+
+- 名称和地址去除首尾空白；凭据保持原样。名称 1–80 个字符，地址最多 2048、用户名最多 256、密码最多 1024；用户名不能含冒号，名称及凭据拒绝控制字符和非法 Unicode。空用户名、空密码表示匿名访问；非空密码需要用户名。未知字段（包括 `userId`、`enabled`、`tested` 或客户端测试授权声明）、缺失字段及错误类型返回 `400 VALIDATION_FAILED`。
+- 地址只支持 HTTP(S)，不允许 URL 内凭据、查询参数或 fragment。P0 本切片支持匿名或 Basic 认证，不承诺所有 Provider 的认证兼容性。浏览器只向 Spring Boot 提交，Spring Boot 通过 `MediaSourceAdapter` / `WebDavMediaSourceAdapter` 访问来源。
+- 测试使用 `PROPFIND`、`Depth: 0`，验证地址自身的 `DAV:multistatus`、成功属性和目录类型；普通网页 `200` 不算成功。不跟随重定向，不因测试展开目录或创建来源。成功 XML 上限 128 KiB，总时限默认 8000ms（配置范围 100–15000ms），禁用 XML DTD / 外部实体。NAS 私网与 localhost 可用，明确危险的 IP 字面量和已知元数据主机被拒绝；部署仍需约束目标网络并防 DNS 重绑定。
+- 测试结果仅适用于当次输入；修改字段使前端旧结果失效。新增接口独立重新测试当前请求的全部连接信息，不信任前端成功状态；失败不写入。外部调用结束后再执行单行数据库写入，不在数据库事务中等待网络。
+- 成功创建时由可信 CurrentUser 填入归属、后端生成 ID，默认启用；不自动创建扫描根、任务、资源或影片。新增后 Vue 留在本人来源页重新加载列表，刷新后仍可见。退出、账号切换或离开页面取消请求并隔离迟到响应。
+- 完整地址与凭据使用 AES-256-GCM 加密，随机 nonce，认证附加数据绑定用户 ID 与来源 ID。`MEDIA_SOURCE_ENCRYPTION_KEY` 是 32 字节随机密钥的 Base64，仅存于后端安全配置；不与 JWT 密钥复用。缺失或非法密钥不能保存来源；密文或主密钥不可写入响应、日志或前端。
+- 保存成功、关闭或卸载弹窗清除表单凭据；Mock 预览仍仅用内存和演示凭据。编辑、删除、已保存来源重测、目录与扫描接口仍为 `draft`。
+
+主要错误除共同鉴权与输入错误外，包括 `422 SOURCE_AUTH_FAILED / SOURCE_CONNECTION_FAILED / SOURCE_NOT_WEBDAV / SOURCE_REDIRECT_UNSUPPORTED`、`504 SOURCE_CONNECTION_TIMEOUT`；新增还可能返回加密配置与数据库错误。上游 WebDAV 的 401/403 映射为来源错误，不冒充平台 `UNAUTHENTICATED / ACCOUNT_DISABLED`，错误不回显提交信息或上游正文。
 
 #### 本切片实现后的验收条件
 
@@ -259,7 +306,7 @@ Response：当前前端复用 `LibraryMovie` 展示字段，搜索行可附带�
 
 ## 已确认的媒体来源接口语义边界
 
-状态：`draft`，仅上文“获取本人媒体来源列表”的空列表场景为 `implemented`。默认列表已接入 Spring Boot 本人查询；来源详情、添加/编辑/测试/删除、目录与扫描仍仅有显式开发预览，不属于 implemented 接口。
+状态：列表、测试未保存连接与首次新增为 `implemented`，契约见上文；来源详情、编辑、删除、已保存来源重测、目录与扫描仍为 `draft`，当前仅有显式开发预览。
 
 - MediaSource是当前用户保存的一套WebDAV连接配置，MediaSource ≠ MediaScanRoot；一个来源允许0~N个MediaScanRoot，后者是用户明确选择、允许递归扫描的目录根。
 - 创建MediaSource不自动扫描，也不默认将`/`加入扫描根；需要支持连接测试及来源当前可见完整目录结构的逐层浏览。
@@ -267,7 +314,7 @@ Response：当前前端复用 `LibraryMovie` 展示字段，搜索行可附带�
 - ScanTask由用户主动发起，只扫描本人已启用来源下已配置、已启用的MediaScanRoot；没有启用扫描根时不产生实际扫描结果。
 - 目录浏览是只读操作，不创建MediaResource、不建立个人片库关系、不触发TMDB、ffprobe或扫描；只返回展示所需目录/文件元信息。
 - Spring Boot依据可信CurrentUser校验来源、扫描根归属及路径边界，不信任前端sourceId、path、scanRootId或声明身份的userId；WebDAV密码、Token和认证Header不得返回Vue。
-- 除上文已确认的空列表场景与共同响应约定，其他 Endpoint / Request / Response、业务错误码与分页仍待垂直联调确认；下面只记录 Vue 已确认的数据需求，不锁定其余路径或非空响应 DTO。
+- 除上文已实现契约与共同响应约定，其余 Endpoint / Request / Response、业务错误码与分页仍待垂直联调确认；下面保留完整 Mock 页的数据需求，不扩展已实现 DTO。
 
 ### 媒体来源 Vue 已确认的数据需求（draft）
 
@@ -282,7 +329,7 @@ Response：当前前端复用 `LibraryMovie` 展示字段，搜索行可附带�
 
 - 当前连接状态为 `available/error/testing`；`testing` 是前端请求中状态，不要求后端持久化。扫描沿用原型 `pending/running/completed/failed`，无历史任务表达尚未扫描。时间目前为 Mock 展示字符串，正式时间格式待确认。
 - 添加/编辑输入名称、WebDAV 地址、用户名和密码；测试结果仅适用于当次输入，修改任意字段后须重新测试。当前拒绝 URL 内的账号密码、查询参数和 fragment，错误不回显输入值；此限制不代表所有 Provider 的正式兼容策略。
-- 密码不回填、不进入来源展示模型、不持久化；编辑空凭据目前只是“保留凭据”的 UI 演示，正式留空/更新/清除语义及测试授权凭证机制待后端确认。
+- Mock 密码不回填、不进入展示模型、不持久化；正式新增按上文加密保存。编辑空凭据仍只是“保留凭据”的 UI 演示，正式留空/更新/清除语义待对应切片确认；首次新增无需测试授权凭证，保存时重新测试。
 - MediaScanRoot 表示从该目录开始递归扫描全部后代；同一 MediaSource 的根集合必须互不包含：禁止精确重复及祖先/后代重叠，兄弟目录合法。范围校验与 enabled 无关，停用不代表从其他根的范围中排除该目录；本轮不支持 exclude path 或单文件根。
 - 路径按目录边界比较，合并连续 `/` 并去掉非根路径尾部 `/`；空白、非绝对路径及 `.` / `..` 路径段无效。`/电影` 与 `/电影2` 不冲突；`/` 合法且包含全部其他目录。
 - DirectoryBrowser 只读浏览；草稿从全部已有根初始化（包括已停用根），只管理 membership。已有祖先时后代仍可浏览，但不可独立选择；选择祖先必须明确确认后一次替换所有已选后代，取消祖先不恢复被替换后代。选择 `/` 替换已有根时同样确认，并说明递归扫描全部可见目录。

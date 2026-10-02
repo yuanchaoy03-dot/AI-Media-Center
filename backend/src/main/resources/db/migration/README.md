@@ -1,6 +1,6 @@
 # 数据库迁移学习说明
 
-本文件只用于阅读，不是 Flyway migration。实际建表语句以同目录的 [V1__create_users.sql](V1__create_users.sql) 和 [V2__create_media_source.sql](V2__create_media_source.sql) 为准。
+本文件只用于阅读，不是 Flyway migration。实际结构以同目录的 [V1__create_users.sql](V1__create_users.sql)、[V2__create_media_source.sql](V2__create_media_source.sql) 与 [V3__add_media_source_connection_test_time.sql](V3__add_media_source_connection_test_time.sql) 为准。
 
 ## Flyway migration 是什么
 
@@ -31,9 +31,13 @@ Migration 是按顺序改变数据库结构的脚本。文件名中的 `V1`、`V
 - `user_id NOT NULL` 要求每条来源都有归属；外键 `FOREIGN KEY (user_id) REFERENCES users(id)` 还要求所指账号真实存在。外键保证关系有效，但不会自动判断某个 HTTP 请求能否读取这条来源。
 - `idx_media_source_user_id` 是 `user_id` 上的非唯一索引，帮助数据库执行“按用户查来源”的查询；非唯一是因为一个用户可有多条来源。**外键检查引用是否有效，索引帮助查找，两者用途不同。**
 - `ON DELETE RESTRICT` 表示用户仍被来源引用时，不允许直接删除该用户，避免留下失去归属的来源。
-- `source_type` 的 `CHECK` 目前只允许 `WEBDAV`，`enabled` 的 `CHECK` 只允许 `0` 或 `1`。表中有 `connection_config_ciphertext` 字段，但当前 Java 代码尚未实现连接配置的加密保存。
+- `source_type` 的 `CHECK` 目前只允许 `WEBDAV`，`enabled` 的 `CHECK` 只允许 `0` 或 `1`。`connection_config_ciphertext` 由 Java 的 AES-256-GCM 加密后写入，完整地址和凭据不存明文；密钥只由后端配置提供。
 
-**表结构不等于功能已经完成。** 当前 `MediaSourceMapper` 只执行 `SELECT id FROM media_source WHERE user_id = #{userId}`：按可信当前用户 ID 查询来源 ID。本人无来源时接口返回空列表；本人已有来源时，由于正式的非空来源响应尚未实现，接口返回 `501 SOURCE_LIST_NOT_READY`。当前还没有 WebDAV 来源新增、编辑、删除、连接测试、目录浏览或扫描能力。
+当前 `MediaSourceMapper` 支持单行新增和 `WHERE user_id = #{userId}` 本人查询，应用层解密本人行后投影脱敏 DTO；无来源返回空列表，非空返回真实来源。首次新增先完成 WebDAV 测试再写入，不建立扫描根或任务。编辑、删除、目录与扫描仍未实现。
+
+## V3：最近成功连接测试时间
+
+V3 在 `media_source` 增加可空的 `last_connection_test_at DATETIME(3)`，按 UTC 写入保存前成功测试的时间。旧记录保留 `NULL`，不伪造成功测试历史；新建来源必须先测试成功。它表示历史测试事实，不保证来源当前在线、已经扫描或资源可以播放。未修改已执行的 V1/V2。
 
 ## 数据库约束和 Java 业务权限有什么区别
 

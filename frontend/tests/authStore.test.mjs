@@ -48,10 +48,26 @@ axios.defaults.adapter = async (config) => {
 const { useAuthStore } = await import('../src/stores/auth.ts')
 const { pinia } = await import('../src/stores/index.ts')
 const auth = useAuthStore(pinia)
-const { getOwnedSources } = await import('../src/services/ownedSourceService.ts')
+const { getOwnedSources, createOwnedSource, testOwnedSourceConnection } =
+  await import('../src/services/ownedSourceService.ts')
 const { request, ApiError } = await import('../src/services/http.ts')
 axios.defaults.adapter = originalAdapter
 const user = { id: 'user-a', username: 'alice', role: 'USER' }
+const sourceInput = {
+  name: '我的 WebDAV',
+  address: 'https://dav.example.com/media/',
+  username: 'dav-user',
+  password: 'synthetic-dav-password',
+}
+const ownedSource = {
+  id: 'owned-source-a',
+  name: sourceInput.name,
+  type: 'WebDAV',
+  address: sourceInput.address,
+  enabled: true,
+  lastConnectionTestAt: '2026-10-02T06:30:00Z',
+  createdAt: '2026-10-02T06:30:00Z',
+}
 const ok = (data, status = 200) => ({
   data: JSON.stringify({ code: 'OK', message: '', data, requestId: 'test' }),
   status,
@@ -110,7 +126,7 @@ test('public credentials omit old bearer token; registration stores no password'
   )
 })
 
-test('refresh verifies identity and loads a real empty list; malformed/nonempty responses fail', async () => {
+test('refresh verifies identity and loads a real empty list; malformed responses fail', async () => {
   await signIn()
   // 新 Pinia 模拟刷新后的应用：只从 sessionStorage 读 Token，不缓存旧用户。
   const refreshed = freshStore()
@@ -618,6 +634,7 @@ async function componentSetup(path, props = {}, { preview = false, instance = pi
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText
   const routes = []
+  const events = []
   const unmounts = []
   let mount
   const require = (name) => {
@@ -646,7 +663,8 @@ async function componentSetup(path, props = {}, { preview = false, instance = pi
     if (name.endsWith('/stores/auth')) return { useAuthStore }
     if (name.endsWith('/services/dataMode')) return { mockPreview: preview }
     if (name.endsWith('/services/http')) return { ApiError }
-    if (name.endsWith('/services/ownedSourceService')) return { getOwnedSources }
+    if (name.endsWith('/services/ownedSourceService'))
+      return { getOwnedSources, createOwnedSource, testOwnedSourceConnection }
     if (name === './router') return { signOut: () => auth.logout() }
     if (name.endsWith('.vue') || name.endsWith('.css') || name.endsWith('.svg')) return {}
     throw new Error(`Unexpected import: ${name}`)
@@ -657,11 +675,17 @@ async function componentSetup(path, props = {}, { preview = false, instance = pi
   app.use(instance)
   const scope = vue.effectScope()
   const ui = app.runWithContext(() =>
-    scope.run(() => module.exports.default.setup(props, { expose() {} })),
+    scope.run(() =>
+      module.exports.default.setup(props, {
+        expose() {},
+        emit: (event, ...args) => events.push([event, ...args]),
+      }),
+    ),
   )
   return {
     ui,
     routes,
+    events,
     mount,
     unmount: () => {
       unmounts.forEach((callback) => callback())
@@ -830,5 +854,259 @@ test('real MediaSourcesView keeps loading, error, retry and empty states through
     assert.equal(view.ui.status.value, 'loading') // 已卸载页面不能由旧响应回填。
   } finally {
     view.unmount()
+  }
+})
+
+test('owned WebDAV test/create POST JSON with bearer, and the saved source reloads after refresh', async () => {
+  await signIn()
+  const calls = []
+  respond = async (path, config) => {
+    calls.push(path)
+    assert.equal(config.headers.Authorization, 'Bearer synthetic-test-token')
+    assert.equal(config.method, 'post')
+    assert.deepEqual(JSON.parse(config.body), sourceInput)
+    return path.endsWith('/test-connection')
+      ? ok({ testedAt: ownedSource.lastConnectionTestAt })
+      : ok(ownedSource, 201)
+  }
+  assert.deepEqual(await testOwnedSourceConnection(sourceInput, new AbortController().signal), {
+    testedAt: ownedSource.lastConnectionTestAt,
+  })
+  assert.deepEqual(await createOwnedSource(sourceInput, new AbortController().signal), ownedSource)
+  assert.deepEqual(calls, ['/api/media-sources/test-connection', '/api/media-sources'])
+  respond = async (path, config) => {
+    assert.equal(config.method, 'get')
+    assert.equal(config.body, undefined)
+    return path.endsWith('/me') ? ok(user) : ok([ownedSource])
+  }
+  const refreshed = freshStore()
+  assert.equal(await refreshed.restoreSession(), true)
+  assert.deepEqual(await getOwnedSources(new AbortController().signal), [ownedSource])
+  assert.deepEqual([...storage.entries()], [[storageKey, 'synthetic-test-token']])
+})
+
+test('owned DTO validation rejects wrong types, credentials, duplicate IDs and invalid UTC times', async () => {
+  await signIn()
+  for (const malformed of [
+    null,
+    {},
+    { ...ownedSource, enabled: 'true' },
+    { ...ownedSource, type: 'SMB' },
+    { ...ownedSource, id: '' },
+    { ...ownedSource, name: '   ' },
+    { ...ownedSource, address: 'https://username:secret@example.com/' },
+    { ...ownedSource, lastConnectionTestAt: 'just now' },
+    { ...ownedSource, createdAt: '2026-02-31T06:30:00Z' },
+    { ...ownedSource, createdAt: '2026-10-02T14:30:00+08:00' },
+    { ...ownedSource, password: 'should-not-be-returned' },
+    { ...ownedSource, connectionConfig: 'encrypted-should-not-be-returned' },
+  ]) {
+    respond = async () => ok([malformed])
+    await assert.rejects(getOwnedSources(new AbortController().signal), { code: 'REQUEST_FAILED' })
+    respond = async () => ok(malformed, 201)
+    await assert.rejects(createOwnedSource(sourceInput, new AbortController().signal), {
+      code: 'REQUEST_FAILED',
+    })
+  }
+  respond = async () => ok([ownedSource, ownedSource])
+  await assert.rejects(getOwnedSources(new AbortController().signal), { code: 'REQUEST_FAILED' })
+  respond = async () => ok([{ ...ownedSource, lastConnectionTestAt: null }])
+  assert.deepEqual(await getOwnedSources(new AbortController().signal), [
+    { ...ownedSource, lastConnectionTestAt: null },
+  ])
+  respond = async () => ok({ ...ownedSource, lastConnectionTestAt: null }, 201)
+  await assert.rejects(createOwnedSource(sourceInput, new AbortController().signal), {
+    code: 'REQUEST_FAILED',
+  })
+  for (const malformed of [
+    null,
+    {},
+    { testedAt: 'now' },
+    { testedAt: null },
+    { testedAt: ownedSource.createdAt, password: 'secret' },
+  ]) {
+    respond = async () => ok(malformed)
+    await assert.rejects(testOwnedSourceConnection(sourceInput, new AbortController().signal), {
+      code: 'REQUEST_FAILED',
+    })
+  }
+  assert.equal(auth.tokenPresent, true)
+})
+
+test('test and create POST requests cancel on page exit or logout and ignore late account responses', async () => {
+  for (const operation of [testOwnedSourceConnection, createOwnedSource]) {
+    for (const cancel of ['external', 'logout']) {
+      await signIn()
+      const external = new AbortController()
+      const delayed = deferred()
+      let signal
+      respond = (path, config) => {
+        signal = config.signal
+        return delayed.promise
+      }
+      const pending = operation(sourceInput, external.signal)
+      if (cancel === 'external') external.abort()
+      else auth.logout()
+      assert.equal(signal.aborted, true)
+      await signIn({ id: 'user-b', username: 'bob', role: 'USER' })
+      delayed.resolve(
+        ok(operation === createOwnedSource ? ownedSource : { testedAt: ownedSource.createdAt }),
+      )
+      await assert.rejects(pending, { code: 'STALE_REQUEST' })
+      assert.equal(auth.user.username, 'bob')
+      assert.equal(auth.tokenPresent, true)
+    }
+  }
+})
+
+test('real source page injects real operations, refreshes after save, and keeps unsupported actions local', async () => {
+  await signIn()
+  const view = await componentSetup('views/MediaSourcesView.vue')
+  try {
+    respond = async () => ok([])
+    await view.mount()
+    view.ui.addSource()
+    assert.equal(view.ui.dialogOpen.value, true)
+    respond = async (path) =>
+      path.endsWith('/test-connection')
+        ? ok({ testedAt: ownedSource.createdAt })
+        : ok(ownedSource, 201)
+    assert.equal(await view.ui.testConnection(sourceInput, new AbortController().signal), true)
+    assert.equal(
+      await view.ui.saveConnection(sourceInput, new AbortController().signal),
+      ownedSource.id,
+    )
+    respond = async () => ok([ownedSource])
+    await view.ui.saved()
+    assert.equal(view.ui.dialogOpen.value, false)
+    assert.equal(view.ui.status.value, 'ready')
+    assert.deepEqual(view.ui.sourceList.value, [ownedSource])
+    assert.deepEqual(view.routes, [])
+    for (const action of ['detail', 'scan', 'edit', 'remove']) {
+      view.ui.menuSource.value = ownedSource
+      view.ui.unavailable(action)
+      assert.equal(view.ui.menuSource.value, undefined)
+      assert.match(view.ui.notice.value, /尚未开放/)
+      assert.deepEqual(view.routes, [])
+    }
+    view.ui.addSource()
+    auth.logout()
+    assert.equal(view.ui.dialogOpen.value, false)
+    assert.deepEqual(view.ui.sourceList.value, [])
+    assert.equal(view.ui.notice.value, '')
+  } finally {
+    view.unmount()
+  }
+})
+
+test('source dialog cancels edited and closed tests, invalidates old success, and clears credentials', async () => {
+  let testResult = deferred()
+  const signals = []
+  const inputs = []
+  const dialog = await componentSetup('components/media-source/SourceDialog.vue', {
+    testConnection: (input, signal) => {
+      inputs.push(input)
+      signals.push(signal)
+      return testResult.promise
+    },
+    saveConnection: async () => 'saved-id',
+  })
+  const ui = dialog.ui
+  try {
+    ui.form.value = { reportValidity: () => true }
+    Object.assign(ui.input, sourceInput)
+    const first = ui.test()
+    assert.equal(ui.testing.value, true)
+    ui.input.address = 'https://changed.example.com/'
+    ui.changed()
+    assert.equal(signals[0].aborted, true)
+    assert.equal(ui.testing.value, false)
+    assert.equal(ui.success.value, false)
+    assert.equal(inputs[0].address, sourceInput.address)
+    testResult.resolve(true)
+    await first
+    assert.equal(ui.success.value, false)
+    assert.match(ui.feedback.value, /重新测试/)
+    testResult = deferred()
+    const second = ui.test()
+    testResult.resolve(true)
+    await second
+    assert.equal(ui.success.value, true)
+    assert.doesNotMatch(ui.feedback.value, /演示/)
+    ui.input.password = 'changed-password'
+    ui.changed()
+    assert.equal(ui.success.value, false)
+    await ui.save()
+    assert.deepEqual(dialog.events, [])
+    testResult = deferred()
+    const third = ui.test()
+    ui.close()
+    assert.equal(signals[2].aborted, true)
+    assert.equal(ui.input.password, '')
+    assert.equal(ui.input.username, '')
+    testResult.resolve(true)
+    await third
+    assert.equal(ui.success.value, false)
+    assert.deepEqual(dialog.events, [['close']])
+  } finally {
+    dialog.unmount()
+  }
+})
+
+test('source dialog clears credentials after real save and ignores a POST completing after unmount', async () => {
+  await signIn()
+  for (const canceled of [false, true]) {
+    const dialog = await componentSetup('components/media-source/SourceDialog.vue', {
+      testConnection: async (input, signal) => {
+        await testOwnedSourceConnection(input, signal)
+        return true
+      },
+      saveConnection: async (input, signal) => (await createOwnedSource(input, signal)).id,
+    })
+    const ui = dialog.ui
+    try {
+      ui.form.value = { reportValidity: () => true }
+      Object.assign(ui.input, sourceInput)
+      respond = async () => ok({ testedAt: ownedSource.createdAt })
+      await ui.test()
+      const delayed = deferred()
+      let transportSignal
+      respond = (path, config) => {
+        transportSignal = config.signal
+        return delayed.promise
+      }
+      const saving = ui.save()
+      assert.equal(ui.saving.value, true)
+      if (canceled) {
+        dialog.unmount()
+        assert.equal(transportSignal.aborted, true)
+      }
+      delayed.resolve(ok(ownedSource, 201))
+      await saving
+      assert.equal(ui.input.password, '')
+      assert.equal(ui.input.username, '')
+      assert.deepEqual(dialog.events, canceled ? [] : [['saved', ownedSource.id]])
+    } finally {
+      dialog.unmount()
+    }
+  }
+})
+
+test('source dialog retains the explicit preview connection message', async () => {
+  const dialog = await componentSetup('components/media-source/SourceDialog.vue', {
+    preview: true,
+    testConnection: async () => true,
+    saveConnection: async () => 'preview-id',
+  })
+  try {
+    dialog.ui.form.value = { reportValidity: () => true }
+    Object.assign(dialog.ui.input, sourceInput)
+    await dialog.ui.test()
+    assert.equal(dialog.ui.success.value, true)
+    assert.match(dialog.ui.feedback.value, /连接成功（演示）/)
+    await dialog.ui.save()
+    assert.deepEqual(dialog.events, [['saved', 'preview-id']])
+  } finally {
+    dialog.unmount()
   }
 })

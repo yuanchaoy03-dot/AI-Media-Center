@@ -1,12 +1,25 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import SourceIcon from '../components/media-source/SourceIcon.vue'
-import { getOwnedSources } from '../services/ownedSourceService'
+import SourceDialog from '../components/media-source/SourceDialog.vue'
+import SourceMenu from '../components/media-source/SourceMenu.vue'
+import {
+  createOwnedSource,
+  getOwnedSources,
+  testOwnedSourceConnection,
+} from '../services/ownedSourceService'
+import type { OwnedMediaSource } from '../services/ownedSourceService'
+import type { SourceConnectionInput } from '../types/mediaSource'
+import { useAuthStore } from '../stores/auth'
 import '../assets/media-source.css'
 
-// 真实接口页面目前有加载中、失败、空列表三种状态，模板按 status 切换显示内容。
-const status = ref<'loading' | 'error' | 'empty'>('loading')
+const auth = useAuthStore()
+const status = ref<'loading' | 'error' | 'empty' | 'ready'>('loading')
+const sourceList = ref<OwnedMediaSource[]>([])
+const dialogOpen = ref(false)
+const menuSource = ref<OwnedMediaSource>()
+const trigger = shallowRef<HTMLButtonElement>()
 const error = ref('')
 const notice = ref('')
 let controller: AbortController | undefined
@@ -16,11 +29,15 @@ async function load() {
   const current = new AbortController()
   controller = current
   status.value = 'loading'
+  sourceList.value = []
   error.value = ''
   try {
     // 页面负责显示状态，service 负责取数据；signal 会一直传到 Axios。
-    await getOwnedSources(current.signal)
-    if (!current.signal.aborted) status.value = 'empty'
+    const sources = await getOwnedSources(current.signal)
+    if (!current.signal.aborted) {
+      sourceList.value = sources
+      status.value = sources.length ? 'ready' : 'empty'
+    }
   } catch (reason) {
     if (current.signal.aborted) return
     status.value = 'error'
@@ -28,8 +45,50 @@ async function load() {
   }
 }
 function addSource() {
-  notice.value = '添加媒体来源功能尚未开放。'
+  menuSource.value = undefined
+  dialogOpen.value = true
 }
+async function testConnection(input: SourceConnectionInput, signal: AbortSignal) {
+  await testOwnedSourceConnection(input, signal)
+  return true
+}
+async function saveConnection(input: SourceConnectionInput, signal: AbortSignal) {
+  return (await createOwnedSource(input, signal)).id
+}
+async function saved() {
+  dialogOpen.value = false
+  notice.value = '来源已添加。选择影片文件夹与扫描功能尚未开放。'
+  await load()
+}
+function openMenu(source: OwnedMediaSource, event: MouseEvent) {
+  if (!(event.currentTarget instanceof HTMLButtonElement)) return
+  menuSource.value = menuSource.value?.id === source.id ? undefined : source
+  trigger.value = event.currentTarget
+}
+function unavailable(action: 'detail' | 'scan' | 'edit' | 'remove') {
+  menuSource.value = undefined
+  const labels = {
+    detail: '来源详情',
+    scan: '选择影片文件夹与扫描',
+    edit: '编辑来源',
+    remove: '移除来源',
+  }
+  notice.value = `${labels[action]}功能尚未开放。`
+}
+// 会话改变时同步清理本页；尚未返回的旧请求和弹窗不能显示在新账号下。
+watch(
+  () => auth.epoch,
+  () => {
+    controller?.abort()
+    sourceList.value = []
+    dialogOpen.value = false
+    menuSource.value = undefined
+    notice.value = ''
+    error.value = ''
+    status.value = 'loading'
+  },
+  { flush: 'sync' },
+)
 // onMounted 在页面挂载后加载数据；onBeforeUnmount 在离开页面前取消尚未完成的请求。
 onMounted(load)
 onBeforeUnmount(() => controller?.abort())
@@ -57,6 +116,53 @@ onBeforeUnmount(() => controller?.abort())
           <p>{{ error }}</p>
           <button class="primary-action" @click="load">重试</button>
         </div>
+        <div v-else-if="status === 'ready'" class="source-list">
+          <article v-for="source in sourceList" :key="source.id" class="source-item">
+            <button
+              class="source-hit"
+              :aria-label="`查看${source.name}详情`"
+              @click="unavailable('detail')"
+            />
+            <div class="source-copy">
+              <strong class="source-name" :title="source.name">{{ source.name }}</strong
+              ><span class="source-type">{{ source.type }}</span
+              ><span class="source-location" :title="source.address">{{
+                source.address.replace(/^https?:\/\//, '')
+              }}</span>
+            </div>
+            <span
+              class="source-status"
+              :title="
+                source.lastConnectionTestAt
+                  ? `上次测试成功 · ${new Date(source.lastConnectionTestAt).toLocaleString('zh-CN')}`
+                  : '尚未测试'
+              "
+              ><SourceIcon
+                :name="source.enabled && source.lastConnectionTestAt ? 'check-circle' : 'x'"
+              />{{
+                !source.enabled
+                  ? '已停用'
+                  : source.lastConnectionTestAt
+                    ? '上次测试成功'
+                    : '尚未测试'
+              }}</span
+            >
+            <span class="source-config">未选择影片文件夹</span>
+            <button class="source-config-link" @click="unavailable('scan')">
+              选择影片文件夹 →
+            </button>
+            <span class="source-footer"><span>0 部电影</span><span>上次扫描 · 尚未扫描</span></span>
+            <button
+              class="source-more"
+              :aria-label="`${source.name}更多操作`"
+              aria-controls="source-menu"
+              :aria-expanded="menuSource?.id === source.id"
+              @click="openMenu(source, $event)"
+            >
+              <SourceIcon name="dots-three-bold" />
+            </button>
+          </article>
+        </div>
         <div v-else class="source-empty">
           <span class="empty-icon"><SourceIcon name="hard-drives" /></span>
           <h3>还没有媒体来源</h3>
@@ -67,7 +173,7 @@ onBeforeUnmount(() => controller?.abort())
           <button class="primary-action" @click="addSource">添加媒体来源</button>
         </div>
       </section>
-      <section v-if="status === 'empty'" class="sources-section">
+      <section v-if="status === 'empty' || status === 'ready'" class="sources-section">
         <div class="section-heading-row">
           <h2 class="section-title">最近入库</h2>
           <RouterLink class="section-action" to="/library"
@@ -78,5 +184,28 @@ onBeforeUnmount(() => controller?.abort())
       </section>
       <p v-if="notice" class="source-note" role="status">{{ notice }}</p>
     </div>
+    <SourceMenu
+      v-if="menuSource && trigger"
+      :trigger="trigger"
+      scan-label="选择影片文件夹"
+      @close="menuSource = undefined"
+      @action="unavailable"
+    />
+    <SourceDialog
+      v-if="dialogOpen"
+      :test-connection="testConnection"
+      :save-connection="saveConnection"
+      @close="dialogOpen = false"
+      @saved="saved"
+    />
   </section>
 </template>
+
+<style scoped>
+.source-hit,
+.source-config-link {
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+</style>

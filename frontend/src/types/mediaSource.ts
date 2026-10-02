@@ -42,7 +42,7 @@ export interface ScanTask {
   error?: string
 }
 
-/** 仅表单输入；凭据不会进入 MediaSource 或持久化。 */
+/** 仅表单输入；凭据不会进入展示模型或浏览器持久化。 */
 export interface SourceConnectionInput {
   name: string
   address: string
