@@ -125,6 +125,24 @@ class AuthHttpIntegrationTest {
         assertEquals(aliceId, data(check(call("/auth/me", null, token), 200, "OK")).get("id"));
     }
 
+    @Test void mvcProtocolErrorsKeepTheirStatusAfterJwtAuthentication() throws Exception {
+        check(call("/auth/register", Map.of("username", "protocol_user", "password", password), null), 201, "OK");
+        String token = (String) data(check(call("/auth/login", Map.of("username", "protocol_user", "password", password), null), 200, "OK")).get("accessToken");
+        var unsupportedMethod = call("/auth/me", Map.of(), token);
+        check(unsupportedMethod, 405, "METHOD_NOT_ALLOWED");
+        assertTrue(unsupportedMethod.headers().firstValue("Allow").orElse("").contains("GET"));
+        var unacceptable = HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port+"/api/auth/me"))
+                .header("Authorization", "Bearer "+token).header("Accept", "image/png").GET().build();
+        check(client.send(unacceptable, HttpResponse.BodyHandlers.ofString()), 406, "NOT_ACCEPTABLE");
+        var unsupportedMedia = HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port+"/api/auth/login"))
+                .header("Content-Type", "text/plain").POST(HttpRequest.BodyPublishers.ofString("fixture")).build();
+        check(client.send(unsupportedMedia, HttpResponse.BodyHandlers.ofString()), 415, "UNSUPPORTED_MEDIA_TYPE");
+        check(call("/unknown-fixture-path", null, token), 404, "NOT_FOUND");
+        // Security 仍先于 MVC：没有身份的受保护请求继续返回 401；错误请求不会改变已有身份。
+        check(call("/auth/me", Map.of(), null), 401, "UNAUTHENTICATED");
+        assertEquals("protocol_user", data(check(call("/auth/me", null, token), 200, "OK")).get("username"));
+    }
+
     @Test void concurrentRegistrationAndUnicodeLimit() throws Exception {
         try (var pool = Executors.newFixedThreadPool(2)) {
             var start = new CountDownLatch(1);

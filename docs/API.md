@@ -49,11 +49,17 @@
 | 401 | `INVALID_CREDENTIALS` | 登录失败；用户名不存在、密码错误或账号禁用统一说明“用户名或密码错误，或账号暂不可用。” |
 | 401 | `UNAUTHENTICATED` | 受保护请求缺失、无效或过期 JWT，或对应账号不存在 |
 | 403 | `ACCOUNT_DISABLED` | JWT 有效，但当前账号已禁用；清理本地登录态并提示账号暂不可用 |
+| 404 | `NOT_FOUND` | 请求路径没有对应接口或资源 |
+| 405 | `METHOD_NOT_ALLOWED` | 接口不支持该 HTTP Method；保留 `Allow` 响应头 |
+| 406 | `NOT_ACCEPTABLE` | 无法提供 `Accept` 要求的响应类型 |
 | 409 | `USERNAME_TAKEN` | 注册时规范化后的用户名已占用，包括并发注册冲突 |
+| 415 | `UNSUPPORTED_MEDIA_TYPE` | 请求 Content-Type 不受支持 |
 | 501 | `SOURCE_LIST_NOT_READY` | 当前用户已有来源，但非空来源 DTO 尚未实现；明确失败，不伪装为空数组 |
 | 500 | `INTERNAL_ERROR` | 数据库不可用或其他服务内部失败；统一说明“服务暂时不可用，请稍后重试。” |
 
 Spring Security 的认证失败响应与 Controller 异常响应采用同一包裹；受保护接口的 `401` 响应附带 `WWW-Authenticate: Bearer`。受保护请求先认证，再校验业务输入；缺失身份不因携带无效参数而变成业务成功。网络断开、网关非 JSON 错误等由前端归为请求失败，不伪装成空列表或登录失效。
+
+Spring MVC 请求协议与映射错误保留框架确定的 4xx 状态及协议响应头，使用同一 JSON 错误包裹，不返回框架异常详情；即使 `Accept` 无法满足，406 错误体仍为 `application/json`。其他框架 4xx 使用对应 HTTP 状态名作为错误码（非标准状态使用 `CLIENT_ERROR`），400 继续使用 `VALIDATION_FAILED`；未预期服务器错误仍返回 `500 INTERNAL_ERROR`。
 
 #### 身份与 JWT 生命周期
 

@@ -212,6 +212,24 @@ test('Mock Preview bypasses auth APIs and keeps preview routes without creating 
   assert.equal(storage.size, 0)
 })
 
+test('Mock Preview guards preserve a stored token without requesting or restoring real identity', async () => {
+  const calls = []
+  respond = async (path) => {
+    calls.push(path)
+    return ok(user)
+  }
+  const { router, auth } = loadRouter({ token: 'preview-retained-token', preview: true })
+  for (const path of ['/media-sources', '/library', '/login', '/register']) {
+    await router.push(path)
+    assert.equal(router.currentRoute.value.path, path)
+  }
+  assert.deepEqual(calls, [])
+  assert.equal(auth.user, null)
+  assert.equal(auth.verifying, false)
+  assert.equal(auth.tokenPresent, true)
+  assert.equal(storage.get('personal-cinema.access-token'), 'preview-retained-token')
+})
+
 test('main installs the shared Pinia before Router and component setup uses that same store', async () => {
   const { router, auth, pinia } = loadRouter()
   const installed = []

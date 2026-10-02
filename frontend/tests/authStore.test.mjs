@@ -610,7 +610,7 @@ test('registration creates no session, consumes its hint once, and validates the
 
 // 与现有组件测试一致：执行真实 SFC setup，仅替换 DOM 生命周期和导航。
 // auth Store / ownedSourceService / Axios 请求链均保持真实实现。
-async function componentSetup(path, props = {}) {
+async function componentSetup(path, props = {}, { preview = false, instance = pinia } = {}) {
   const source = await readFile(new URL(`../src/${path}`, import.meta.url), 'utf8')
   const { descriptor } = parse(source)
   const script = compileScript(descriptor, { id: 'auth-component-regression' })
@@ -644,7 +644,7 @@ async function componentSetup(path, props = {}) {
         }),
       }
     if (name.endsWith('/stores/auth')) return { useAuthStore }
-    if (name.endsWith('/services/dataMode')) return { mockPreview: false }
+    if (name.endsWith('/services/dataMode')) return { mockPreview: preview }
     if (name.endsWith('/services/http')) return { ApiError }
     if (name.endsWith('/services/ownedSourceService')) return { getOwnedSources }
     if (name === './router') return { signOut: () => auth.logout() }
@@ -654,7 +654,7 @@ async function componentSetup(path, props = {}) {
   const module = { exports: {} }
   new Function('require', 'module', 'exports', code)(require, module, module.exports)
   const app = vue.createApp({})
-  app.use(pinia)
+  app.use(instance)
   const scope = vue.effectScope()
   const ui = app.runWithContext(() =>
     scope.run(() => module.exports.default.setup(props, { expose() {} })),
@@ -669,6 +669,79 @@ async function componentSetup(path, props = {}) {
     },
   }
 }
+
+test('Mock Preview with a stored token keeps auth forms isolated from real identity restoration', async () => {
+  const restored = freshStore('preview-retained-token')
+  const instance = instances.at(-1)
+  const calls = []
+  respond = async (path) => {
+    calls.push(path)
+    return ok(user)
+  }
+  for (const mode of ['login', 'register']) {
+    const form = await componentSetup(
+      'components/auth/AuthForm.vue',
+      { mode },
+      {
+        preview: true,
+        instance,
+      },
+    )
+    try {
+      assert.equal(form.ui.auth, restored)
+      await form.ui.retryIdentity()
+      assert.deepEqual(calls, [])
+      assert.equal(form.ui.needsRestore.value, false)
+      assert.equal(restored.user, null)
+      assert.equal(restored.verifying, false)
+      form.ui.username.value = 'alice'
+      form.ui.password.value = 'test-only-password'
+      form.ui.confirmation.value = 'test-only-password'
+      await form.ui.submit()
+      assert.equal(form.ui.message.value, '当前为开发预览，账号服务未启用。')
+      assert.deepEqual(form.routes, [])
+      assert.deepEqual(calls, [])
+      assert.equal(restored.user, null)
+      assert.equal(restored.tokenPresent, true)
+      assert.equal(storage.get(storageKey), 'preview-retained-token')
+    } finally {
+      form.unmount()
+    }
+  }
+})
+
+test('normal auth form still restores a valid stored token after a Preview visit', async () => {
+  const restored = freshStore('preview-retained-token')
+  const instance = instances.at(-1)
+  const preview = await componentSetup(
+    'components/auth/AuthForm.vue',
+    { mode: 'login' },
+    {
+      preview: true,
+      instance,
+    },
+  )
+  preview.unmount()
+  const form = await componentSetup('components/auth/AuthForm.vue', { mode: 'login' }, { instance })
+  const calls = []
+  respond = async (path, options) => {
+    calls.push(path)
+    assert.equal(options.headers.Authorization, 'Bearer preview-retained-token')
+    return ok(user)
+  }
+  try {
+    assert.equal(restored.user, null)
+    assert.equal(form.ui.needsRestore.value, true)
+    await form.ui.retryIdentity()
+    assert.deepEqual(calls, ['/api/auth/me'])
+    assert.deepEqual(restored.user, user)
+    assert.equal(form.ui.needsRestore.value, false)
+    assert.deepEqual(form.routes, [{ name: 'media-sources' }])
+    assert.equal(storage.get(storageKey), 'preview-retained-token')
+  } finally {
+    form.unmount()
+  }
+})
 
 test('App and AuthForm share Pinia identity; epoch clears shell state and retry uses restored user', async () => {
   const shell = await componentSetup('App.vue')

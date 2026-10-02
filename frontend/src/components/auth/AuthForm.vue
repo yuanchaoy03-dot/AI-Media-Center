@@ -41,8 +41,10 @@ const errors = reactive({ username: '', password: '', confirmation: '' })
 // controller.signal 是 AbortSignal，传到 Axios 后可以取消请求。
 // 离开表单时会调用 abort，避免请求回来后继续跳转或更新这份表单。
 const controller = new AbortController()
-// 有 Token 但还没拿到当前用户时，先显示身份验证入口，不能只凭 Token 就当作已登录。
-const needsRestore = computed(() => !registering.value && auth.tokenPresent && !auth.user)
+// 正常模式有 Token 时先验证身份；开发预览不使用遗留 Token 恢复真实会话。
+const needsRestore = computed(
+  () => !mockPreview && !registering.value && auth.tokenPresent && !auth.user,
+)
 
 // 类型里的 typeof errors 取出对象的类型，keyof 再取出它的字段名。
 // 因此 field 只能是 username、password 或 confirmation，拼错会被类型检查发现。
@@ -116,6 +118,7 @@ async function submit() {
 }
 // restoreSession 用已有 Token 向后端确认身份；确认成功才进入媒体来源页。
 async function retryIdentity() {
+  if (mockPreview) return
   if (await auth.restoreSession()) await router.replace({ name: 'media-sources' })
   else message.value = auth.error || auth.notice
 }

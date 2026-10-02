@@ -1,6 +1,6 @@
 # PROJECT STATUS
 
-- 最后更新时间：2026-10-01
+- 最后更新时间：2026-10-02
 
 ## 当前阶段
 
@@ -14,9 +14,10 @@
 |---|---|
 | 前端基础工程 | Vue 路由与 Shell、TypeScript、Pinia auth Store、Axios 传输层；ESLint / Prettier 与 Node 回归检查。运行细节见 [前端 README](frontend/README.md)。 |
 | 注册 / 登录 / JWT | 真实注册、登录、当前用户查询；密码默认使用 Argon2id。sessionStorage 保存当前标签页 Token，刷新经 me 恢复可信身份。支持失败重试、禁用 / 失效清理、退出与账号切换请求取消及旧响应隔离。 |
+| HTTP 错误与诊断日志 | 已收口 MVC 协议错误语义、Preview 身份恢复隔离、异常与认证失败日志三个 P2。MVC 已知 4xx 保留状态与协议头，继续统一 JSON / requestId；未预期异常保留脱敏原因链与代码位置，登录失败记录统一脱敏 WARN。 |
 | 本人媒体来源 | 正式来源页按可信当前用户请求空列表，区分加载、失败和成功空状态。后端按用户归属查询；本人已有来源时明确返回 `501 SOURCE_LIST_NOT_READY`，非空 DTO 尚未实现。 |
 | 数据库迁移 | 已有 Flyway V1 `users`、V2 `media_source` 脚本及 MySQL 迁移验证记录。来源表含用户归属、外键及约束；表结构不代表 WebDAV 保存或配置加密已实现。 |
-| 开发 Mock 预览 | 片库筛选排序、合集聚合 / 详情、全局搜索、电影详情；来源模拟连接 / 编辑、目录选择与扫描根管理、模拟扫描。数据仅在内存，刷新恢复 fixture；播放和 AI 仍提示未接入。 |
+| 开发 Mock 预览 | 片库筛选排序、合集聚合 / 详情、全局搜索、电影详情；来源模拟连接 / 编辑、目录选择与扫描根管理、模拟扫描。数据仅在内存，刷新恢复 fixture；遗留 Token 保留但不请求真实认证或恢复身份，切回正常模式再验证。播放和 AI 仍提示未接入。 |
 
 ## 当前真实链路
 
@@ -51,19 +52,23 @@
 
 ## 当前验证
 
-以下前端结果保留自最近的 2026-10-01 记录；本轮密码算法升级未改动前端，也未重跑前端检查。
+2026-10-02 三个 P2 收口后，实际重新执行以下完整前端检查：
 
 | 检查 | 最近记录 |
 |---|---|
 | `npm run lint` | 通过，0 错误 / 0 警告 |
 | `npm run format:check` | 通过 |
-| `npm test` | 56 项通过，0 失败 / 0 跳过 |
+| `npm test` | 59 项通过，0 失败 / 0 跳过；含 Preview 遗留 Token 的表单与 Router 隔离、切回正常模式恢复身份 |
 | `npm run build` | 通过 |
-| `npx vue-tsc -b` | 通过 |
+| `npx --no-install vue-tsc -b` | 通过 |
 
-2026-10-01 后端密码算法验证：`mvn -B -ntp compile`、`mvn -B -ntp test` 通过；共 12 项测试通过（9 项单元测试、3 项真实 HTTP + MySQL 的 `AuthHttpIntegrationTest`），0 失败 / 0 错误 / 0 跳过。覆盖随机盐、完整长密码与 Unicode、登录状态及 dummyHash 路径；真实 HTTP 验证 Argon2id 注册落库、12 码点和 128 个 emoji 的完整密码、登录 / JWT / me、当前角色与禁用状态复核、非法或缺失 Token、本人来源隔离、并发注册及数据库错误响应。测试运行入口见 [前端 README](frontend/README.md#本地后端与集成测试)。
+2026-10-02 后端：`mvn -B -ntp compile`、`mvn -B -ntp test`、`mvn -B -ntp dependency:tree` 全部通过。共 30 项测试通过（26 项不依赖数据库的回归、4 项真实 HTTP + MySQL 的 `AuthHttpIntegrationTest`），0 失败 / 0 错误 / 0 跳过。已从被忽略的本机 `backend/.env.local.ps1` 加载现有安全配置，真实集成测试确实执行于独立 `_auth_test` 库，未使用开发库。
 
-`mvn dependency:tree` 通过，Spring Security 统一为 7.0.7，Password4j 为唯一的 1.8.4 依赖，未引入 Bouncy Castle。Flyway V1 / V2 已在全新独立 `_auth_test` 数据库首次迁移成功，未改动开发库或 migration；本轮未重跑浏览器验收。
+- MVC 回归实际覆盖 405 / 406 / 415 / 404、框架参数 400、统一错误体和 requestId；普通异常及框架 500 仍为 `INTERNAL_ERROR`。真实 HTTP 在有效 JWT 下复核这些协议错误，并验证缺失 Token 时仍先返回 401。
+- 日志回归实际覆盖 MVC 与外层过滤器的异常类型、原因链和代码位置、循环与截断，以及真实 AuthService 的用户不存在 / 密码错误 / 禁用账号统一脱敏日志。敏感哨兵不进入日志或错误体；运行日志检查未匹配现有数据库密码与 JWT Secret。
+- 既有 Argon2id 随机盐、完整长密码与 Unicode、dummyHash、注册 / 登录 / JWT / me、角色与禁用状态复核、非法或缺失 Token、本人来源隔离、并发注册及数据库错误响应全部重跑通过。测试入口见 [前端 README](frontend/README.md#本地后端与集成测试)。
+- 依赖树确认为 Spring Boot 4.0.8 / Spring Framework 7.0.9 / Spring Security 7.0.7，Password4j 仍为唯一的 1.8.4 依赖；未新增依赖。Flyway V1 / V2 在独立测试库迁移成功，本机 MySQL / Flyway 已知版本与显示宽度提示仍存在，未修改 migration。
+- `git diff --check` 通过。未运行浏览器 / 桌面视觉验收、Edge / Chrome 双浏览器、Windows scaling 或生产部署验证；本轮未开发 WebDAV 等新业务。
 
 ## 历史说明
 

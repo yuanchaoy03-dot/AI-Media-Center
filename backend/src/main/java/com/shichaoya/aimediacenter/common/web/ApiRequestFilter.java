@@ -32,8 +32,8 @@ public class ApiRequestFilter extends OncePerRequestFilter {
         // 捕获向外传播的异常；MVC 内部处理的异常走 ApiExceptionHandler，Security 入口错误由其处理器直接写响应。
         catch (ApiException error) { responses.error(request, response, error); }
         catch (Exception error) {
-            // 只记录 requestId 与异常类型；SQL 参数、凭据、请求体及异常消息可能泄露敏感数据。
-            LoggerFactory.getLogger(getClass()).error("Request {} failed ({})", request.getAttribute("requestId"), error.getClass().getSimpleName());
+            // 与 MVC 共用只含异常类型/代码位置的诊断投影，不记录原始异常消息或请求载荷。
+            ApiDiagnostics.unexpected(LoggerFactory.getLogger(getClass()), request, error);
             if (!response.isCommitted()) responses.error(request, response, ApiException.internal());
         }
     }

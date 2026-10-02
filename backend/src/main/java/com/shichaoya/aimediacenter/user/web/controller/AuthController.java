@@ -1,10 +1,12 @@
 package com.shichaoya.aimediacenter.user.web.controller;
 
 import com.shichaoya.aimediacenter.common.security.CurrentUser;
+import com.shichaoya.aimediacenter.common.web.ApiException;
 import com.shichaoya.aimediacenter.common.web.ApiResponses;
 import com.shichaoya.aimediacenter.user.application.service.AuthService;
 import com.shichaoya.aimediacenter.user.web.dto.CredentialsRequest;
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -29,7 +31,17 @@ public class AuthController {
     public Object login(@RequestBody Map<String, Object> body, HttpServletRequest request) {
         ApiResponses.noQuery(request);
         var input = CredentialsRequest.parse(body, false);
-        return ApiResponses.success(request, Map.of("accessToken", auth.login(input.username(), input.password()), "tokenType", "Bearer", "expiresIn", 3600));
+        String token;
+        try { token = auth.login(input.username(), input.password()); }
+        catch (ApiException error) {
+            if (error.code().equals("INVALID_CREDENTIALS")) {
+                // 输入已规范化且只含合法 ASCII；不区分用户不存在、密码错误或账号不可用。
+                LoggerFactory.getLogger(getClass()).warn("request_id={} error_category=AUTHENTICATION_FAILED result=FAILURE code=INVALID_CREDENTIALS username_hint={}",
+                        request.getAttribute("requestId"), input.username().charAt(0) + "***");
+            }
+            throw error;
+        }
+        return ApiResponses.success(request, Map.of("accessToken", token, "tokenType", "Bearer", "expiresIn", 3600));
     }
     @GetMapping("/me")
     public Object me(@AuthenticationPrincipal CurrentUser user, HttpServletRequest request) {
