@@ -133,6 +133,36 @@ class WebDavDirectoryBrowserTest {
         assertEquals(List.of(), browse().entries());
         assertEquals("SOURCE_NOT_WEBDAV", assertThrows(ApiException.class, () -> adapter.testConnection(new SourceConnection(address, "", ""))).code());
     }
+    @Test void scanRootValidationUsesDepthZeroAndAllHrefBoundariesWithoutListingChildren() {
+        var connection = new SourceConnection(address, "", "");
+        adapter.validateDirectories(connection, List.of("/")); assertEquals("0", depth.get());
+        for (String href : List.of("/dav/other/", "/dav/../dav/", "/dav/%2e/", "/dav/x%2fy/", "http://example.invalid/dav/")) {
+            xml.set(listing(resource(href, true)));
+            assertEquals("SOURCE_DIRECTORY_INVALID", assertThrows(ApiException.class, () -> adapter.validateDirectories(connection, List.of("/"))).code());
+        }
+        xml.set(listing(resource("/dav/", true), resource("/dav/child/", true)));
+        assertEquals("SOURCE_DIRECTORY_INVALID", assertThrows(ApiException.class, () -> adapter.validateDirectories(connection, List.of("/"))).code());
+        xml.set(listing(resource("/dav/", false)));
+        assertEquals("SOURCE_DIRECTORY_NOT_FOUND", assertThrows(ApiException.class, () -> adapter.validateDirectories(connection, List.of("/"))).code());
+        xml.set(listing(resource("/dav/", true)) + " ".repeat(128 * 1024));
+        assertEquals("SOURCE_DIRECTORY_INVALID", assertThrows(ApiException.class, () -> adapter.validateDirectories(connection, List.of("/"))).code());
+    }
+    @Test void scanRootBatchSharesOneDeadlineAcrossDirectoriesAndCancelsSlowBodies() {
+        server.removeContext("/");
+        server.createContext("/", exchange -> {
+            try (exchange) {
+                requests.incrementAndGet(); exchange.getRequestBody().readAllBytes();
+                byte[] body = listing(resource(exchange.getRequestURI().getRawPath(), true)).getBytes(StandardCharsets.UTF_8);
+                exchange.sendResponseHeaders(207, body.length); exchange.getResponseBody().flush();
+                try { Thread.sleep(180); } catch (InterruptedException error) { Thread.currentThread().interrupt(); }
+                exchange.getResponseBody().write(body);
+            }
+        });
+        long started = System.nanoTime();
+        var error = assertThrows(ApiException.class, () -> new WebDavMediaSourceAdapter(500).validateDirectories(new SourceConnection(address, "", ""), List.of("/a", "/b", "/c", "/d")));
+        assertEquals("SOURCE_CONNECTION_TIMEOUT", error.code()); assertEquals(504, error.status());
+        assertTrue((System.nanoTime() - started) / 1_000_000 < 950); assertTrue(requests.get() < 4);
+    }
     private MediaDirectory browse() { return adapter.browseDirectory(new SourceConnection(address, "", ""), "/"); }
     private void assertError(int httpStatus, String body, String code, int expectedStatus) {
         status.set(httpStatus); xml.set(body);

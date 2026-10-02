@@ -48,8 +48,15 @@ axios.defaults.adapter = async (config) => {
 const { useAuthStore } = await import('../src/stores/auth.ts')
 const { pinia } = await import('../src/stores/index.ts')
 const auth = useAuthStore(pinia)
-const { getOwnedSources, getOwnedSourceDirectory, createOwnedSource, testOwnedSourceConnection } =
-  await import('../src/services/ownedSourceService.ts')
+const {
+  getOwnedSources,
+  getOwnedSourceDirectory,
+  getOwnedSourceScanRoots,
+  saveOwnedSourceScanRoots,
+  createOwnedSource,
+  testOwnedSourceConnection,
+} = await import('../src/services/ownedSourceService.ts')
+const scanRootPaths = await import('../src/services/scanRootPaths.ts')
 const { request, ApiError } = await import('../src/services/http.ts')
 axios.defaults.adapter = originalAdapter
 const user = { id: 'user-a', username: 'alice', role: 'USER' }
@@ -68,6 +75,10 @@ const ownedSource = {
   lastConnectionTestAt: '2026-10-02T06:30:00Z',
   createdAt: '2026-10-02T06:30:00Z',
 }
+const ownedRoots = [
+  { id: 'root-a', sourceId: ownedSource.id, path: '/Movies', enabled: false },
+  { id: 'root-b', sourceId: ownedSource.id, path: '/TV', enabled: true },
+]
 const ok = (data, status = 200) => ({
   data: JSON.stringify({ code: 'OK', message: '', data, requestId: 'test' }),
   status,
@@ -667,9 +678,12 @@ async function componentSetup(path, props = {}, { preview = false, instance = pi
       return {
         getOwnedSources,
         getOwnedSourceDirectory,
+        getOwnedSourceScanRoots,
+        saveOwnedSourceScanRoots,
         createOwnedSource,
         testOwnedSourceConnection,
       }
+    if (name.endsWith('/services/scanRootPaths')) return scanRootPaths
     if (name === './router') return { signOut: () => auth.logout() }
     if (name.endsWith('.vue') || name.endsWith('.css') || name.endsWith('.svg')) return {}
     throw new Error(`Unexpected import: ${name}`)
@@ -679,9 +693,10 @@ async function componentSetup(path, props = {}, { preview = false, instance = pi
   const app = vue.createApp({})
   app.use(instance)
   const scope = vue.effectScope()
+  const setupProps = vue.reactive(props)
   const ui = app.runWithContext(() =>
     scope.run(() =>
-      module.exports.default.setup(props, {
+      module.exports.default.setup(setupProps, {
         expose() {},
         emit: (event, ...args) => events.push([event, ...args]),
       }),
@@ -691,6 +706,7 @@ async function componentSetup(path, props = {}, { preview = false, instance = pi
     ui,
     routes,
     events,
+    props: setupProps,
     mount,
     unmount: () => {
       unmounts.forEach((callback) => callback())
@@ -1349,5 +1365,643 @@ test('source dialog retains the explicit preview connection message', async () =
     assert.deepEqual(dialog.events, [['saved', 'preview-id']])
   } finally {
     dialog.unmount()
+  }
+})
+
+test('owned scan roots use authenticated GET and explicit PUT JSON without caching across reads', async () => {
+  await signIn()
+  const sourceId = 'source /?#'
+  const path = '/电影/中文 空格 &?#%文件夹🎬'
+  const roots = [{ id: 'root-special', sourceId, path, enabled: false }]
+  const calls = []
+  respond = async (url, config) => {
+    calls.push(config.method)
+    assert.equal(url, `/api/media-sources/${encodeURIComponent(sourceId)}/scan-roots`)
+    assert.equal(config.headers.Authorization, 'Bearer synthetic-test-token')
+    if (config.method === 'put') {
+      assert.equal(config.headers['Content-Type'], 'application/json')
+      assert.deepEqual(JSON.parse(config.body), { paths: [path] })
+    } else {
+      assert.equal(config.method, 'get')
+      assert.equal(config.body, undefined)
+    }
+    return ok(roots)
+  }
+  assert.deepEqual(
+    await saveOwnedSourceScanRoots(sourceId, [path], new AbortController().signal),
+    roots,
+  )
+  assert.deepEqual(await getOwnedSourceScanRoots(sourceId, new AbortController().signal), roots)
+  assert.deepEqual(calls, ['put', 'get'])
+  respond = async (url, config) => {
+    assert.equal(config.method, 'get')
+    return ok([])
+  }
+  assert.deepEqual(await getOwnedSourceScanRoots(sourceId, new AbortController().signal), [])
+  respond = async (url, config) => {
+    assert.equal(config.method, 'put')
+    assert.deepEqual(JSON.parse(config.body), { paths: [] })
+    return ok([])
+  }
+  assert.deepEqual(await saveOwnedSourceScanRoots(sourceId, [], new AbortController().signal), [])
+  assert.deepEqual([...storage.entries()], [[storageKey, 'synthetic-test-token']])
+})
+
+test('scan root responses reject wrong ownership, unsafe paths, duplicate IDs and overlapping ranges', async () => {
+  await signIn()
+  const first = ownedRoots[0]
+  const operations = [
+    () => getOwnedSourceScanRoots(ownedSource.id, new AbortController().signal),
+    () => saveOwnedSourceScanRoots(ownedSource.id, ['/Movies'], new AbortController().signal),
+  ]
+  const invalidResponses = [
+    null,
+    {},
+    [null],
+    [[]],
+    [{ ...first, id: '' }],
+    [{ ...first, id: ' ' }],
+    [{ ...first, sourceId: 'another-owner-source' }],
+    [{ ...first, sourceId: undefined }],
+    [{ ...first, enabled: 'true' }],
+    [{ ...first, password: 'synthetic-secret' }],
+    [first, first],
+    [first, { ...first, id: 'different-id' }],
+    [first, { ...first, id: 'child', path: '/Movies/child', enabled: true }],
+    [first, { ...first, id: 'parent', path: '/', enabled: false }],
+    Array.from({ length: 33 }, (_, index) => ({
+      ...first,
+      id: `id-${index}`,
+      path: `/root-${index}`,
+    })),
+    ...[
+      '',
+      'Movies',
+      '/Movies/',
+      '//Movies',
+      '/Movies//child',
+      '/Movies/../TV',
+      '/Movies/./child',
+      '/back\\slash',
+      '/%2f',
+      '/%252f',
+      '/%25252e',
+      '/%25255c',
+      '/a\nb',
+      '/a\u0080b',
+      '/\ud800',
+      `/${'x'.repeat(2048)}`,
+    ].map((path) => [{ ...first, path }]),
+  ]
+  for (const response of invalidResponses) {
+    respond = async () => ok(response)
+    for (const operation of operations)
+      await assert.rejects(operation(), (error) => {
+        assert.equal(error.code, 'REQUEST_FAILED')
+        assert.equal(error.message.includes('synthetic-secret'), false)
+        return true
+      })
+  }
+  respond = async () => ok(ownedRoots)
+  assert.deepEqual(
+    await getOwnedSourceScanRoots(ownedSource.id, new AbortController().signal),
+    ownedRoots,
+  )
+  assert.equal(auth.tokenPresent, true)
+})
+
+test('invalid root selections never reach transport and mismatched successful saves are rejected', async () => {
+  await signIn()
+  respond = () => assert.fail('invalid selection reached HTTP')
+  for (const paths of [
+    ['/Movies', '/Movies'],
+    ['/Movies', '/Movies/child'],
+    ['/Movies/child', '/Movies'],
+    ['/', '/Movies'],
+    ['/Movies/'],
+    ['/../Movies'],
+    ['Movies'],
+    ['/%25252e'],
+    Array.from({ length: 33 }, (_, index) => `/root-${index}`),
+  ])
+    await assert.rejects(
+      saveOwnedSourceScanRoots(ownedSource.id, paths, new AbortController().signal),
+      { code: 'VALIDATION_FAILED' },
+    )
+  await assert.rejects(getOwnedSourceScanRoots(' ', new AbortController().signal), {
+    code: 'REQUEST_FAILED',
+  })
+  await assert.rejects(saveOwnedSourceScanRoots('', [], new AbortController().signal), {
+    code: 'REQUEST_FAILED',
+  })
+  respond = async () => ok([ownedRoots[0]])
+  await assert.rejects(
+    saveOwnedSourceScanRoots(ownedSource.id, ['/TV'], new AbortController().signal),
+    { code: 'REQUEST_FAILED' },
+  )
+  respond = async () => ok([])
+  await assert.rejects(
+    saveOwnedSourceScanRoots(ownedSource.id, ['/Movies'], new AbortController().signal),
+    { code: 'REQUEST_FAILED' },
+  )
+  assert.equal(auth.tokenPresent, true)
+})
+
+test('scan root GET and PUT retain backend failures and clear identity only on session invalidation', async () => {
+  for (const operation of [
+    () => getOwnedSourceScanRoots(ownedSource.id, new AbortController().signal),
+    () => saveOwnedSourceScanRoots(ownedSource.id, ['/Movies'], new AbortController().signal),
+  ]) {
+    for (const [status, code] of [
+      [401, 'UNAUTHENTICATED'],
+      [403, 'ACCOUNT_DISABLED'],
+      [403, 'FORBIDDEN'],
+      [404, 'SOURCE_NOT_FOUND'],
+      [409, 'SCAN_ROOT_CONFLICT'],
+      [502, 'SOURCE_DIRECTORY_FAILED'],
+    ]) {
+      await signIn()
+      respond = async () => failure(status, code)
+      await assert.rejects(operation(), { status, code, message: '测试错误' })
+      assert.equal(auth.tokenPresent, !['UNAUTHENTICATED', 'ACCOUNT_DISABLED'].includes(code))
+    }
+  }
+})
+
+test('scan root GET and PUT cancel on exit or account change and ignore late success or unauthorized data', async () => {
+  for (const operation of [
+    (signal) => getOwnedSourceScanRoots(ownedSource.id, signal),
+    (signal) => saveOwnedSourceScanRoots(ownedSource.id, ['/Movies', '/TV'], signal),
+  ]) {
+    for (const cancel of ['external', 'account']) {
+      for (const late of [ok(ownedRoots), failure(401, 'UNAUTHENTICATED')]) {
+        await signIn()
+        const external = new AbortController()
+        const delayed = deferred()
+        let signal
+        respond = (url, config) => {
+          signal = config.signal
+          return delayed.promise
+        }
+        const pending = operation(external.signal)
+        if (cancel === 'external') external.abort()
+        else auth.logout()
+        assert.equal(signal.aborted, true)
+        await signIn({ id: 'user-b', username: 'bob', role: 'USER' })
+        delayed.resolve(late)
+        await assert.rejects(pending, { code: 'STALE_REQUEST' })
+        assert.equal(auth.user.id, 'user-b')
+        assert.equal(auth.tokenPresent, true)
+      }
+    }
+  }
+})
+
+const realSelectionProps = (sourceId = ownedSource.id) => ({
+  sourceId,
+  loadRoots: getOwnedSourceScanRoots,
+  loadDirectory: async (id, path, signal) =>
+    (await getOwnedSourceDirectory(id, path, signal)).entries,
+  saveRoots: saveOwnedSourceScanRoots,
+})
+const selectionDirectory = (url) => {
+  const path = new URL(url, 'http://localhost').searchParams.get('path')
+  return ok({
+    path,
+    entries:
+      path === '/'
+        ? [
+            { name: 'Movies', path: '/Movies', kind: 'directory' },
+            { name: 'TV', path: '/TV', kind: 'directory' },
+            { name: 'README.txt', path: '/README.txt', kind: 'file' },
+          ]
+        : [],
+  })
+}
+
+test('real directory selection discards drafts, retries failed PUT and rereads saved IDs and paused roots', async () => {
+  await signIn()
+  let persisted = [ownedRoots[0]]
+  let failSave = false
+  const calls = []
+  respond = async (url, config) => {
+    calls.push(
+      config.method === 'put' ? 'save' : url.endsWith('/scan-roots') ? 'roots' : 'directory',
+    )
+    if (!url.endsWith('/scan-roots')) return selectionDirectory(url)
+    if (config.method === 'put') {
+      if (failSave)
+        return failure(502, 'SOURCE_DIRECTORY_FAILED', { paths: '文件夹暂时无法读取。' })
+      persisted = JSON.parse(config.body).paths.map(
+        (path, index) =>
+          persisted.find((root) => root.path === path) ?? {
+            id: `created-${index}`,
+            sourceId: ownedSource.id,
+            path,
+            enabled: true,
+          },
+      )
+    }
+    return ok(persisted)
+  }
+  const discarded = await componentSetup(
+    'components/media-source/DirectorySelection.vue',
+    realSelectionProps(),
+  )
+  try {
+    await discarded.mount()
+    assert.equal(discarded.ui.selectionState('/Movies').text, '扫描已暂停')
+    discarded.ui.select('/TV')
+    assert.equal(discarded.ui.dirty.value, true)
+    discarded.ui.close()
+    assert.deepEqual(discarded.events, [['loaded', [ownedRoots[0]], ownedSource.id], ['close']])
+    assert.deepEqual(persisted, [ownedRoots[0]])
+    assert.equal(calls.includes('save'), false)
+  } finally {
+    discarded.unmount()
+  }
+  const dialog = await componentSetup(
+    'components/media-source/DirectorySelection.vue',
+    realSelectionProps(),
+  )
+  try {
+    await dialog.mount()
+    assert.deepEqual(dialog.ui.draftSelectedPaths.value, ['/Movies'])
+    dialog.ui.select('/TV')
+    failSave = true
+    await dialog.ui.save()
+    assert.equal(dialog.ui.error.value, '文件夹暂时无法读取。')
+    assert.equal(dialog.ui.saving.value, false)
+    assert.equal(dialog.ui.dirty.value, true)
+    assert.deepEqual(dialog.ui.draftSelectedPaths.value, ['/Movies', '/TV'])
+    assert.deepEqual(dialog.ui.initialSelectedPaths.value, ['/Movies'])
+    assert.deepEqual(dialog.events, [['loaded', [ownedRoots[0]], ownedSource.id]])
+    assert.deepEqual(persisted, [ownedRoots[0]])
+    failSave = false
+    await dialog.ui.save()
+    assert.equal(dialog.ui.error.value, '')
+    assert.equal(dialog.ui.dirty.value, false)
+    assert.deepEqual(dialog.events.at(-1), ['saved', persisted, ownedSource.id])
+    assert.equal(persisted[0].id, ownedRoots[0].id)
+    assert.equal(persisted[0].enabled, false)
+    assert.equal(persisted[1].enabled, true)
+  } finally {
+    dialog.unmount()
+  }
+  const refreshed = await componentSetup(
+    'components/media-source/DirectorySelection.vue',
+    realSelectionProps(),
+  )
+  try {
+    await refreshed.mount()
+    assert.deepEqual(refreshed.ui.roots.value, persisted)
+    assert.deepEqual(refreshed.ui.draftSelectedPaths.value, ['/Movies', '/TV'])
+    assert.deepEqual(calls.slice(-2), ['roots', 'directory'])
+    refreshed.ui.select('/Movies')
+    refreshed.ui.select('/TV')
+    await refreshed.ui.save()
+    assert.deepEqual(persisted, [])
+    assert.deepEqual(refreshed.events.at(-1), ['saved', [], ownedSource.id])
+    assert.deepEqual([...storage.entries()], [[storageKey, 'synthetic-test-token']])
+  } finally {
+    refreshed.unmount()
+  }
+})
+
+test('directory selection retries root and browse failures without losing or prematurely saving the draft', async () => {
+  await signIn()
+  let rootFailure = true
+  let directoryFailure = false
+  const calls = []
+  respond = async (url, config) => {
+    calls.push(url)
+    assert.equal(config.method, 'get')
+    if (url.endsWith('/scan-roots'))
+      return rootFailure ? failure(500, 'INTERNAL_ERROR') : ok(ownedRoots)
+    return directoryFailure ? failure(502, 'SOURCE_DIRECTORY_FAILED') : selectionDirectory(url)
+  }
+  const dialog = await componentSetup(
+    'components/media-source/DirectorySelection.vue',
+    realSelectionProps(),
+  )
+  try {
+    await dialog.mount()
+    assert.equal(dialog.ui.initialized.value, false)
+    assert.equal(dialog.ui.loading.value, false)
+    assert.equal(dialog.ui.directoryError.value, '测试错误')
+    assert.equal(calls.length, 1)
+    dialog.ui.select('/Movies')
+    await dialog.ui.save()
+    assert.equal(calls.length, 1)
+    rootFailure = false
+    await dialog.ui.retry()
+    assert.equal(dialog.ui.initialized.value, true)
+    assert.equal(dialog.ui.directoryError.value, '')
+    assert.deepEqual(dialog.ui.draftSelectedPaths.value, ['/Movies', '/TV'])
+    dialog.ui.select('/TV')
+    assert.deepEqual(dialog.ui.draftSelectedPaths.value, ['/Movies'])
+    directoryFailure = true
+    await dialog.ui.navigateDirectory('/Movies')
+    assert.equal(dialog.ui.directoryError.value, '测试错误')
+    assert.deepEqual(dialog.ui.entries.value, [])
+    assert.deepEqual(dialog.ui.draftSelectedPaths.value, ['/Movies'])
+    dialog.ui.select('/Movies')
+    assert.deepEqual(dialog.ui.draftSelectedPaths.value, ['/Movies'])
+    directoryFailure = false
+    await dialog.ui.retry()
+    assert.equal(dialog.ui.currentPath.value, '/Movies')
+    assert.equal(dialog.ui.directoryError.value, '')
+    assert.deepEqual(dialog.ui.draftSelectedPaths.value, ['/Movies'])
+    assert.deepEqual(dialog.events, [['loaded', ownedRoots, ownedSource.id]])
+  } finally {
+    dialog.unmount()
+  }
+})
+
+test('directory selection blocks changes during PUT and isolates roots, browsing and saves after close, unmount or source switch', async () => {
+  for (const phase of ['roots', 'directory', 'save']) {
+    for (const cancel of ['close', 'unmount', 'source']) {
+      await signIn()
+      respond = async (url) =>
+        url.endsWith('/scan-roots') ? ok(ownedRoots) : selectionDirectory(url)
+      const dialog = await componentSetup(
+        'components/media-source/DirectorySelection.vue',
+        realSelectionProps(),
+      )
+      try {
+        if (phase !== 'roots') await dialog.mount()
+        const delayed = deferred()
+        let oldSignal
+        const received = deferred()
+        respond = (url, config) => {
+          oldSignal = config.signal
+          received.resolve()
+          return delayed.promise
+        }
+        let pending
+        if (phase === 'roots') pending = dialog.mount()
+        else if (phase === 'directory') pending = dialog.ui.navigateDirectory('/Movies')
+        else {
+          dialog.ui.select('/TV')
+          pending = dialog.ui.save()
+        }
+        await received.promise
+        if (phase === 'save') {
+          assert.equal(dialog.ui.saving.value, true)
+          dialog.ui.select('/Movies')
+          await dialog.ui.navigateDirectory('/Movies')
+          assert.deepEqual(dialog.ui.draftSelectedPaths.value, ['/Movies'])
+          assert.equal(dialog.ui.currentPath.value, '/')
+        }
+        if (cancel === 'close') dialog.ui.close()
+        else if (cancel === 'unmount') dialog.unmount()
+        else {
+          respond = async (url) => (url.endsWith('/scan-roots') ? ok([]) : selectionDirectory(url))
+          dialog.props.sourceId = 'source-b'
+          await nextTick()
+        }
+        assert.equal(oldSignal.aborted, true)
+        delayed.resolve(
+          phase === 'directory'
+            ? ok({
+                path: '/Movies',
+                entries: [{ name: 'stale', path: '/Movies/stale', kind: 'file' }],
+              })
+            : ok(ownedRoots),
+        )
+        await pending
+        if (cancel === 'source') {
+          // Let the new root read and subsequent directory request settle.
+          for (let turn = 0; turn < 10 && dialog.ui.loading.value; turn++) await nextTick()
+          assert.deepEqual(dialog.ui.roots.value, [])
+          assert.deepEqual(dialog.ui.draftSelectedPaths.value, [])
+          assert.equal(dialog.ui.currentPath.value, '/')
+          assert.equal(dialog.ui.directoryError.value, '')
+        }
+        assert.equal(
+          dialog.ui.entries.value.some((entry) => entry.name === 'stale'),
+          false,
+        )
+        assert.deepEqual(
+          dialog.events.filter(([event]) => event === 'close' || event === 'saved'),
+          cancel === 'close' ? [['close']] : [],
+        )
+      } finally {
+        dialog.unmount()
+      }
+    }
+  }
+})
+
+test('source list distinguishes loading, empty, paused roots and per-source errors, then retries only the failed source', async () => {
+  await signIn()
+  const sourceB = { ...ownedSource, id: 'source-b', name: '第二个来源' }
+  const sourceC = { ...ownedSource, id: 'source-c', name: '第三个来源' }
+  const delayed = deferred()
+  const received = deferred()
+  const calls = []
+  respond = async (url) => {
+    calls.push(url)
+    if (url === '/api/media-sources') return ok([ownedSource, sourceB, sourceC])
+    if (url.includes(`/${ownedSource.id}/`)) return ok(ownedRoots)
+    if (url.includes('/source-b/')) return ok([])
+    received.resolve()
+    return delayed.promise
+  }
+  const view = await componentSetup('views/MediaSourcesView.vue')
+  try {
+    const loading = view.mount()
+    await received.promise
+    assert.equal(view.ui.status.value, 'ready')
+    assert.equal(view.ui.folderSummary(sourceC.id), '正在读取影片文件夹…')
+    delayed.resolve(failure(502, 'SOURCE_DIRECTORY_FAILED'))
+    await loading
+    assert.equal(view.ui.folderSummary(ownedSource.id), '已选择 2 个影片文件夹 · 1 个已暂停')
+    assert.equal(view.ui.folderSummary(sourceB.id), '未选择影片文件夹')
+    assert.equal(view.ui.folderSummary(sourceC.id), '影片文件夹读取失败')
+    assert.equal(view.ui.status.value, 'ready')
+    assert.equal(view.ui.error.value, '')
+    assert.equal(view.ui.scanRoots.value[sourceC.id].error, '测试错误')
+    const retryRoots = [{ id: 'root-c', sourceId: sourceC.id, path: '/Cinema', enabled: true }]
+    respond = async (url) => {
+      calls.push(url)
+      assert.equal(url, '/api/media-sources/source-c/scan-roots')
+      return ok(retryRoots)
+    }
+    await view.ui.loadScanRoots(sourceC.id)
+    assert.equal(view.ui.folderSummary(sourceC.id), '已选择 1 个影片文件夹')
+    assert.deepEqual(view.ui.scanRoots.value[ownedSource.id].roots, ownedRoots)
+    assert.deepEqual(calls.slice(-1), ['/api/media-sources/source-c/scan-roots'])
+    assert.equal(calls.filter((url) => url === '/api/media-sources').length, 1)
+  } finally {
+    view.unmount()
+  }
+})
+
+test('saving roots replaces the source summary and cancels an older summary GET without starting a scan', async () => {
+  await signIn()
+  const view = await componentSetup('views/MediaSourcesView.vue')
+  const delayed = deferred()
+  let signal
+  const calls = []
+  try {
+    respond = (url, config) => {
+      calls.push(url)
+      signal = config.signal
+      assert.equal(config.method, 'get')
+      return delayed.promise
+    }
+    const oldRead = view.ui.loadScanRoots(ownedSource.id)
+    view.ui.openSelection(ownedSource)
+    assert.equal(view.ui.selectingSource.value.id, ownedSource.id)
+    view.ui.selectionSaved(ownedRoots, ownedSource.id)
+    assert.equal(signal.aborted, true)
+    assert.equal(view.ui.selectingSource.value, undefined)
+    assert.equal(view.ui.folderSummary(ownedSource.id), '已选择 2 个影片文件夹 · 1 个已暂停')
+    assert.match(view.ui.notice.value, /已保存.*尚未开始扫描/)
+    delayed.resolve(ok([]))
+    await oldRead
+    assert.deepEqual(view.ui.scanRoots.value[ownedSource.id].roots, ownedRoots)
+    assert.deepEqual(calls, [`/api/media-sources/${ownedSource.id}/scan-roots`])
+    assert.deepEqual(view.routes, [])
+    view.ui.notice.value = ''
+    view.ui.openSelection({ ...ownedSource, id: 'source-b' })
+    view.ui.selectionLoaded(ownedRoots, ownedSource.id)
+    view.ui.selectionSaved(ownedRoots, ownedSource.id)
+    assert.equal(view.ui.selectingSource.value.id, 'source-b')
+    assert.equal(view.ui.scanRoots.value['source-b'], undefined)
+    assert.equal(view.ui.notice.value, '')
+    view.ui.selectionLoaded([], 'source-b')
+    assert.equal(view.ui.folderSummary('source-b'), '未选择影片文件夹')
+    assert.equal(view.ui.selectingSource.value.id, 'source-b')
+  } finally {
+    view.unmount()
+  }
+})
+
+test('rapid selection browsing cancels an earlier directory read while keeping the draft and current folder', async () => {
+  await signIn()
+  respond = async (url) => (url.endsWith('/scan-roots') ? ok(ownedRoots) : selectionDirectory(url))
+  const dialog = await componentSetup(
+    'components/media-source/DirectorySelection.vue',
+    realSelectionProps(),
+  )
+  try {
+    await dialog.mount()
+    dialog.ui.select('/TV')
+    const delayed = deferred()
+    let signal
+    respond = (url, config) => {
+      signal = config.signal
+      return delayed.promise
+    }
+    const oldBrowse = dialog.ui.navigateDirectory('/Movies')
+    respond = async (url) => selectionDirectory(url)
+    await dialog.ui.navigateDirectory('/TV')
+    assert.equal(signal.aborted, true)
+    delayed.resolve(
+      ok({ path: '/Movies', entries: [{ name: 'stale', path: '/Movies/stale', kind: 'file' }] }),
+    )
+    await oldBrowse
+    assert.equal(dialog.ui.currentPath.value, '/TV')
+    assert.equal(dialog.ui.loading.value, false)
+    assert.equal(dialog.ui.directoryError.value, '')
+    assert.deepEqual(dialog.ui.entries.value, [])
+    assert.deepEqual(dialog.ui.draftSelectedPaths.value, ['/Movies'])
+    assert.equal(dialog.ui.dirty.value, true)
+    assert.equal(
+      dialog.events.some(([event]) => event === 'saved'),
+      false,
+    )
+  } finally {
+    dialog.unmount()
+  }
+})
+
+test('list refresh, page exit and account switching cancel late summary reads without refilling old source roots', async () => {
+  for (const cancel of ['reload', 'unmount', 'account']) {
+    await signIn()
+    const view = await componentSetup('views/MediaSourcesView.vue')
+    const delayed = deferred()
+    let signal
+    try {
+      respond = (url, config) => {
+        signal = config.signal
+        return delayed.promise
+      }
+      const oldRead = view.ui.loadScanRoots(ownedSource.id)
+      view.ui.openSelection(ownedSource)
+      if (cancel === 'reload') {
+        respond = async () => ok([])
+        await view.ui.load()
+      } else if (cancel === 'unmount') view.unmount()
+      else {
+        auth.logout()
+        await signIn({ id: 'user-b', username: 'bob', role: 'USER' })
+      }
+      assert.equal(signal.aborted, true)
+      delayed.resolve(cancel === 'account' ? failure(401, 'UNAUTHENTICATED') : ok(ownedRoots))
+      await oldRead
+      assert.equal(view.ui.selectingSource.value, undefined)
+      assert.equal(
+        Object.values(view.ui.scanRoots.value).some((selection) => selection.roots.length),
+        false,
+      )
+      if (cancel !== 'unmount') assert.deepEqual(view.ui.scanRoots.value, {})
+      assert.equal(view.ui.notice.value, '')
+      assert.equal(auth.user.username, cancel === 'account' ? 'bob' : 'alice')
+      assert.equal(auth.tokenPresent, true)
+    } finally {
+      view.unmount()
+    }
+  }
+})
+
+test('account switching closes the selection and cancels its PUT before a late unauthorized response can affect the new account', async () => {
+  await signIn()
+  const view = await componentSetup('views/MediaSourcesView.vue')
+  view.ui.openSelection(ownedSource)
+  const dialog = await componentSetup(
+    'components/media-source/DirectorySelection.vue',
+    realSelectionProps(),
+  )
+  // The SFC harness does not render children; reproduce the parent's v-if unmount.
+  const stop = vue.watch(
+    () => view.ui.selectingSource.value,
+    (source) => {
+      if (!source) dialog.unmount()
+    },
+    { flush: 'sync' },
+  )
+  try {
+    respond = async (url) =>
+      url.endsWith('/scan-roots') ? ok(ownedRoots) : selectionDirectory(url)
+    await dialog.mount()
+    dialog.ui.select('/TV')
+    const delayed = deferred()
+    let signal
+    respond = (url, config) => {
+      signal = config.signal
+      return delayed.promise
+    }
+    const saving = dialog.ui.save()
+    auth.logout()
+    assert.equal(view.ui.selectingSource.value, undefined)
+    assert.equal(signal.aborted, true)
+    await signIn({ id: 'user-b', username: 'bob', role: 'USER' })
+    delayed.resolve(failure(401, 'UNAUTHENTICATED'))
+    await saving
+    assert.equal(
+      dialog.events.some(([event]) => event === 'saved'),
+      false,
+    )
+    assert.deepEqual(view.ui.scanRoots.value, {})
+    assert.equal(view.ui.notice.value, '')
+    assert.equal(auth.user.username, 'bob')
+    assert.equal(auth.tokenPresent, true)
+  } finally {
+    stop()
+    dialog.unmount()
+    view.unmount()
   }
 })

@@ -8,6 +8,7 @@ const props = withDefaults(
     currentPath: string
     entries: DirectoryEntry[]
     loading?: boolean
+    busy?: boolean
     error?: string
     title?: string
     description?: string
@@ -17,6 +18,7 @@ const props = withDefaults(
   }>(),
   {
     loading: false,
+    busy: false,
     error: '',
     title: '浏览目录',
     description: '只读查看来源中的文件夹和文件。',
@@ -55,7 +57,7 @@ onBeforeUnmount(() => dialog.value?.close())
       <div class="directory-toolbar">
         <button
           class="secondary-action"
-          :disabled="currentPath === '/'"
+          :disabled="currentPath === '/' || loading || busy"
           @click="emit('navigate', currentPath.slice(0, currentPath.lastIndexOf('/')) || '/')"
         >
           返回上一级
@@ -69,13 +71,13 @@ onBeforeUnmount(() => dialog.value?.close())
         </div>
         <slot name="current-control" />
       </div>
-      <div class="directory-list" :aria-busy="loading">
+      <div class="directory-list" :aria-busy="loading || busy">
         <p v-if="loading" class="source-note" role="status">
           <span class="spinner" /> 正在读取目录…
         </p>
         <template v-else-if="!error">
           <div v-for="entry in directories" :key="entry.path" class="directory-row">
-            <button class="directory-open" @click="emit('navigate', entry.path)">
+            <button class="directory-open" :disabled="busy" @click="emit('navigate', entry.path)">
               <SourceIcon name="folder" />
               <span class="directory-copy">
                 <span>{{ entry.name }}</span>
@@ -95,13 +97,15 @@ onBeforeUnmount(() => dialog.value?.close())
         </template>
         <div v-else class="directory-error">
           <p class="source-note danger" role="alert">{{ error }}</p>
-          <button v-if="retryable" class="secondary-action" @click="emit('retry')">重试</button>
+          <button v-if="retryable" class="secondary-action" :disabled="busy" @click="emit('retry')">
+            重试
+          </button>
         </div>
       </div>
       <slot name="error" />
       <div class="directory-footer">
         <slot name="footer">
-          <p class="source-note">扫描范围设置尚未开放。</p>
+          <p class="source-note">选择影片文件夹可设置扫描范围，保存后不会立即扫描。</p>
           <button class="secondary-action" @click="emit('close')">关闭</button>
         </slot>
       </div>

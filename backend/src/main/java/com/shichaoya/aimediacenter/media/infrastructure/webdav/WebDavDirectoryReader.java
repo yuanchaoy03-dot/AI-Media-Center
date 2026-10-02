@@ -41,6 +41,17 @@ final class WebDavDirectoryReader {
 
     URI target() { return target; }
 
+    /** Depth:0 只能包含目标自身，沿用与浏览相同的来源路径、同源及资源类型边界。 */
+    void verifyCurrent(Element document) {
+        if (!isDav(document, "multistatus")) throw invalid();
+        var responses = children(document, "response");
+        if (responses.size() != 1) throw invalid();
+        var response = responses.getFirst();
+        var hrefs = children(response, "href");
+        if (hrefs.size() != 1 || !sourcePath(hrefs.getFirst().getTextContent().strip()).equals(path)) throw invalid();
+        if (!kind(response, true).equals("directory")) throw notFound();
+    }
+
     MediaDirectory read(Element document) {
         if (!isDav(document, "multistatus")) throw invalid();
         List<Element> responses = children(document, "response");

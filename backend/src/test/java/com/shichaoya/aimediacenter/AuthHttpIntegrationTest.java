@@ -59,7 +59,7 @@ class AuthHttpIntegrationTest {
     @BeforeEach void clear() {
         // 本测试会删除表中数据，先再次核对数据库名称，避免误清理普通开发库。
         assertTrue(db.queryForObject("SELECT DATABASE()", String.class).endsWith("_auth_test"));
-        db.update("DELETE FROM media_source"); db.update("DELETE FROM users");
+        db.update("DELETE FROM media_scan_root"); db.update("DELETE FROM media_source"); db.update("DELETE FROM users");
     }
     @AfterEach void cleanup() { clear(); }
 
@@ -299,6 +299,116 @@ class AuthHttpIntegrationTest {
 
     String dataOrMessage(HttpResponse<String> response) { return (String) json.readValue(response.body(), Map.class).get("message"); }
 
+    @Test void scanRootsPersistAfterLoginPreserveIdsAndEnabledAndEnforceIsolationBeforeWebDav() throws Exception {
+        String aliceToken = registerAndLogin("roots_alice"); String bobToken = registerAndLogin("roots_bob");
+        try (var dav = new TemporaryWebDavServer()) {
+            var input = dav.input("/dav/");
+            var source = data(check(call("/media-sources", input, aliceToken), 201, "OK"));
+            String sourceId = (String) source.get("id"); String endpoint = "/media-sources/" + sourceId + "/scan-roots";
+            assertEquals(List.of(), check(call(endpoint, null, aliceToken), 200, "OK").get("data"));
+            int requests = dav.directoryRequests.get();
+            check(call(endpoint, null, null), 401, "UNAUTHENTICATED");
+            check(put(endpoint, Map.of("paths", List.of("/empty")), null), 401, "UNAUTHENTICATED");
+            check(call(endpoint, null, bobToken), 404, "SOURCE_NOT_FOUND");
+            check(put(endpoint, Map.of("paths", List.of("/empty")), bobToken), 404, "SOURCE_NOT_FOUND");
+            db.update("UPDATE users SET role='ADMIN' WHERE username='roots_bob'");
+            check(call(endpoint, null, bobToken), 404, "SOURCE_NOT_FOUND");
+            check(put(endpoint, Map.of("paths", List.of("/empty")), bobToken), 404, "SOURCE_NOT_FOUND");
+            check(put("/media-sources/missing/scan-roots", Map.of("paths", List.of("/empty")), aliceToken), 404, "SOURCE_NOT_FOUND");
+            assertEquals(requests, dav.directoryRequests.get());
+
+            db.update("UPDATE media_source SET enabled=0 WHERE id=?", sourceId);
+            var savedResponse = put(endpoint, Map.of("paths", List.of("/电影 库 #?100%+/", "/empty/")), aliceToken);
+            var saved = rootData(check(savedResponse, 200, "OK"));
+            assertSourceFailurePrivate(savedResponse, input);
+            assertEquals(List.of("/empty", "/电影 库 #?100%+"), saved.stream().map(root -> root.get("path")).toList());
+            for (var root : saved) {
+                assertEquals(Set.of("id", "sourceId", "path", "enabled"), root.keySet()); assertEquals(sourceId, root.get("sourceId"));
+                assertEquals(true, root.get("enabled")); assertEquals(7, UUID.fromString((String) root.get("id")).version());
+            }
+            assertEquals(saved, check(call(endpoint, null, aliceToken), 200, "OK").get("data"));
+            String relogged = (String) data(check(call("/auth/login", Map.of("username", "roots_alice", "password", password), null), 200, "OK")).get("accessToken");
+            assertEquals(saved, check(call(endpoint, null, relogged), 200, "OK").get("data"));
+            String retainedId = (String) saved.getFirst().get("id");
+            db.update("UPDATE media_scan_root SET enabled=0 WHERE id=?", retainedId);
+            var replaced = rootData(check(put(endpoint, Map.of("paths", List.of("/empty", "/a", "/ab")), aliceToken), 200, "OK"));
+            assertEquals(List.of("/a", "/ab", "/empty"), replaced.stream().map(root -> root.get("path")).toList());
+            assertEquals(Map.of("id", retainedId, "sourceId", sourceId, "path", "/empty", "enabled", false), replaced.getLast());
+            assertEquals(0, db.queryForObject("SELECT COUNT(*) FROM media_scan_root WHERE id=?", Integer.class, saved.getLast().get("id")));
+            assertEquals(source.get("lastConnectionTestAt"), dataSource(aliceToken).get("lastConnectionTestAt"));
+            assertEquals(false, dataSource(aliceToken).get("enabled"));
+            requests = dav.directoryRequests.get(); dav.rejectCredentials.set(true);
+            assertEquals(List.of(), check(put(endpoint, Map.of("paths", List.of()), aliceToken), 200, "OK").get("data"));
+            assertEquals(requests, dav.directoryRequests.get());
+            assertEquals(List.of(), check(call(endpoint, null, aliceToken), 200, "OK").get("data"));
+            assertEquals(Map.of("media_scan_root", 0, "scan_task", 0, "media_resource", 0, "user_movie", 0), scanArtifactCounts());
+        }
+    }
+
+    @Test void scanRootValidationAndDatabaseFailuresRetainWholePreviousConfiguration() throws Exception {
+        String token = registerAndLogin("roots_failures");
+        try (var dav = new TemporaryWebDavServer()) {
+            var input = dav.input("/dav/");
+            String sourceId = (String) data(check(call("/media-sources", input, token), 201, "OK")).get("id");
+            String endpoint = "/media-sources/" + sourceId + "/scan-roots";
+            Object saved = check(put(endpoint, Map.of("paths", List.of("/empty")), token), 200, "OK").get("data");
+            int requests = dav.directoryRequests.get();
+            for (var invalid : List.of(Map.of(), Map.of("paths", List.of(), "enabled", false), Map.of("paths", List.of(), "sourceId", "other"),
+                    Map.of("paths", "/empty"), Map.of("paths", List.of(12)), Map.of("paths", List.of("/empty", "/empty/")),
+                    Map.of("paths", List.of("/a/b", "/a")), Map.of("paths", List.of("/", "/empty")), Map.of("paths", List.of("/../escape")))) {
+                check(put(endpoint, invalid, token), 400, "VALIDATION_FAILED");
+            }
+            check(call(endpoint + "?userId=other", null, token), 400, "VALIDATION_FAILED");
+            check(put(endpoint + "?userId=other", Map.of("paths", List.of()), token), 400, "VALIDATION_FAILED");
+            var getWithBody = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api" + endpoint))
+                    .header("Authorization", "Bearer " + token).method("GET", HttpRequest.BodyPublishers.ofString("unexpected")).build();
+            check(client.send(getWithBody, HttpResponse.BodyHandlers.ofString()), 400, "VALIDATION_FAILED");
+            assertEquals(requests, dav.directoryRequests.get());
+            for (var failure : Map.of("/missing", "SOURCE_DIRECTORY_NOT_FOUND", "/file.mkv", "SOURCE_DIRECTORY_NOT_FOUND", "/invalid", "SOURCE_DIRECTORY_INVALID").entrySet()) {
+                var response = put(endpoint, Map.of("paths", List.of("/a-valid-first", failure.getKey())), token);
+                check(response, failure.getValue().equals("SOURCE_DIRECTORY_NOT_FOUND") ? 404 : 422, failure.getValue());
+                assertSourceFailurePrivate(response, input);
+                assertEquals(saved, check(call(endpoint, null, token), 200, "OK").get("data"));
+            }
+            dav.rejectCredentials.set(true);
+            check(put(endpoint, Map.of("paths", List.of("/empty")), token), 422, "SOURCE_AUTH_FAILED");
+            assertEquals(saved, check(call(endpoint, null, token), 200, "OK").get("data")); dav.rejectCredentials.set(false);
+            // 删除旧根后新增失败，也必须整体回滚；故障仅作用于独立测试库。
+            db.execute("CREATE TRIGGER reject_scan_root_insert BEFORE INSERT ON media_scan_root FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='fixture failure'");
+            try {
+                check(put(endpoint, Map.of("paths", List.of("/new")), token), 500, "INTERNAL_ERROR");
+                assertEquals(saved, check(call(endpoint, null, token), 200, "OK").get("data"));
+            } finally { db.execute("DROP TRIGGER reject_scan_root_insert"); }
+            assertEquals(1, db.queryForObject("SELECT COUNT(*) FROM media_scan_root", Integer.class));
+        }
+    }
+
+    @Test void concurrentScanRootReplacementsStayWholeAndLongUnicodePathsDoNotNeedTruncatedIndexes() throws Exception {
+        String token = registerAndLogin("roots_concurrent");
+        try (var dav = new TemporaryWebDavServer()) {
+            String sourceId = (String) data(check(call("/media-sources", dav.input("/dav/"), token), 201, "OK")).get("id");
+            String endpoint = "/media-sources/" + sourceId + "/scan-roots";
+            try (var pool = Executors.newFixedThreadPool(2)) {
+                var start = new CountDownLatch(1);
+                Callable<HttpResponse<String>> first = () -> { start.await(); return put(endpoint, Map.of("paths", List.of("/A", "/a")), token); };
+                Callable<HttpResponse<String>> second = () -> { start.await(); return put(endpoint, Map.of("paths", List.of("/B", "/b")), token); };
+                var one = pool.submit(first); var two = pool.submit(second); start.countDown();
+                var firstResult = check(one.get(), 200, "OK").get("data"); var secondResult = check(two.get(), 200, "OK").get("data");
+                Object finalResult = check(call(endpoint, null, token), 200, "OK").get("data");
+                assertTrue(finalResult.equals(firstResult) || finalResult.equals(secondResult));
+                assertEquals(2, db.queryForObject("SELECT COUNT(*) FROM media_scan_root WHERE source_id=?", Integer.class, sourceId));
+            }
+            String longPath = "/" + "😀".repeat(2047);
+            byte[] hash = java.security.MessageDigest.getInstance("SHA-256").digest(longPath.getBytes(StandardCharsets.UTF_8));
+            db.update("INSERT INTO media_scan_root(id,source_id,path,path_hash,enabled,created_at,updated_at) VALUES(?,?,?,?,1,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))", BusinessIds.next(), sourceId, longPath, hash);
+            assertEquals(2048, db.queryForObject("SELECT CHAR_LENGTH(path) FROM media_scan_root WHERE source_id=? AND path_hash=?", Integer.class, sourceId, hash));
+            assertTrue(rootData(check(call(endpoint, null, token), 200, "OK")).stream().anyMatch(root -> longPath.equals(root.get("path"))));
+        }
+    }
+
+    @SuppressWarnings("unchecked") List<Map<String, Object>> rootData(Map<String, Object> response) { return (List<Map<String, Object>>) response.get("data"); }
+    @SuppressWarnings("unchecked") Map<String, Object> dataSource(String token) throws Exception { return ((List<Map<String, Object>>) check(call("/media-sources", null, token), 200, "OK").get("data")).getFirst(); }
+
     @Test void mvcProtocolErrorsKeepTheirStatusAfterJwtAuthentication() throws Exception {
         check(call("/auth/register", Map.of("username", "protocol_user", "password", password), null), 201, "OK");
         String token = (String) data(check(call("/auth/login", Map.of("username", "protocol_user", "password", password), null), 200, "OK")).get("accessToken");
@@ -338,6 +448,12 @@ class AuthHttpIntegrationTest {
         else builder.GET();
         return client.send(builder.build(), HttpResponse.BodyHandlers.ofString());
     }
+    HttpResponse<String> put(String path, Object body, String token) throws Exception {
+        var builder = HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port+"/api"+path)).header("Content-Type", "application/json")
+                .PUT(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body)));
+        if (token != null) builder.header("Authorization", "Bearer "+token);
+        return client.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+    }
     String registerAndLogin(String username) throws Exception {
         check(call("/auth/register", Map.of("username", username, "password", password), null), 201, "OK");
         return (String) data(check(call("/auth/login", Map.of("username", username, "password", password), null), 200, "OK")).get("accessToken");
@@ -374,7 +490,7 @@ class AuthHttpIntegrationTest {
                     String depth = exchange.getRequestHeaders().getFirst("Depth");
                     if (!exchange.getRequestMethod().equals("PROPFIND") || !("0".equals(depth) || "1".equals(depth))) {
                         status = 405; body = "Expected PROPFIND Depth: 0";
-                    } else if ("1".equals(depth) && path.startsWith("/dav/")) {
+                    } else if (path.startsWith("/dav/") && ("1".equals(depth) || !path.equals("/dav/"))) {
                         directoryRequests.incrementAndGet();
                         String expected = "Basic " + Base64.getEncoder().encodeToString((USERNAME + ":" + PASSWORD).getBytes(StandardCharsets.UTF_8));
                         if (rejectCredentials.get() || !expected.equals(exchange.getRequestHeaders().getFirst("Authorization"))) {
@@ -394,9 +510,9 @@ class AuthHttpIntegrationTest {
                             status = 207;
                             String encoded = exchange.getRequestURI().getRawPath();
                             body = directoryResource(encoded, !path.equals("/dav/file.mkv/"));
-                            if (path.equals("/dav/")) body += directoryResource("/dav/empty/", true)
+                            if ("1".equals(depth) && path.equals("/dav/")) body += directoryResource("/dav/empty/", true)
                                     + directoryResource("/dav/%E7%94%B5%E5%BD%B1%20%E5%BA%93%20%23%3F100%25+/", true) + directoryResource("/dav/video.mkv", false);
-                            else if (path.equals("/dav/电影 库 #?100%+/")) body += directoryResource(encoded + "notes%20%25%23%3F.txt", false);
+                            else if ("1".equals(depth) && path.equals("/dav/电影 库 #?100%+/")) body += directoryResource(encoded + "notes%20%25%23%3F.txt", false);
                             else if (path.equals("/dav/invalid/")) body += directoryResource("http://example.invalid/outside/", true);
                             body = "<d:multistatus xmlns:d=\"DAV:\">" + body + "</d:multistatus>";
                         }

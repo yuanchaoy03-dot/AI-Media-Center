@@ -81,10 +81,15 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   // 真实业务 service 使用此 Action 携带当前 Token，并获得同样的取消/失效/竞态保护。
-  function authenticatedRequest<T>(path: string, signal?: AbortSignal, body?: unknown): Promise<T> {
+  function authenticatedRequest<T>(
+    path: string,
+    signal?: AbortSignal,
+    body?: unknown,
+    method?: 'GET' | 'POST' | 'PUT',
+  ): Promise<T> {
     return sessionRequest(
       (currentSignal) =>
-        request<T>(path, { token: token ?? undefined, signal: currentSignal, body }),
+        request<T>(path, { token: token ?? undefined, signal: currentSignal, body, method }),
       signal,
       true,
     )

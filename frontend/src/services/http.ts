@@ -37,14 +37,19 @@ export class ApiError extends Error {
 // body? 等字段可以不传，signal 是调用方给的取消信号。
 export async function request<T>(
   path: string,
-  options: { body?: unknown; token?: string; signal?: AbortSignal } = {},
+  options: {
+    body?: unknown
+    token?: string
+    signal?: AbortSignal
+    method?: 'GET' | 'POST' | 'PUT'
+  } = {},
 ): Promise<T> {
   try {
-    // 当前封装：不传 body 就用 GET 读取数据，传了 body 就用 POST 提交数据。
+    // 默认保留原有 GET / POST 规则；整批替换等业务由调用方明确指定 method。
     const response = await apiClient
       .request<unknown>({
         url: path,
-        method: options.body === undefined ? 'GET' : 'POST',
+        method: options.method ?? (options.body === undefined ? 'GET' : 'POST'),
         headers: {
           // Content-Type 说明发出去的正文是 JSON；JWT 就在这里放进 Authorization 请求头。
           ...(options.body === undefined ? {} : { 'Content-Type': 'application/json' }),

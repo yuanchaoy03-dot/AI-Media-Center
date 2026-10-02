@@ -39,11 +39,11 @@ TypeScript 工程与 IDE 配置可参考 [Vue 官方指南](https://vuejs.org/gu
 - 侧栏按路由记录高亮，嵌套子路由会保留父级入口的选中态。电影、合集等详情路由应明确所属导航，不依靠路径字符串前缀猜测。
 - `/login`、`/register` 共用 `AuthForm.vue`，默认接入真实注册/登录。受保护路由验证身份后才展示个人页面；侧栏展示当前用户名，退出清除当前标签页登录态。
 - Token 仅保存在 `sessionStorage`。刷新先调用 `/api/auth/me`；网络失败保留 Token 并允许重试，401/账号禁用清除身份。未完成旧请求在退出、账号切换后不能回填数据。
-- `/media-sources` 接入本人空/非空来源查询、真实 WebDAV 连接测试、首次新增及已保存来源只读目录浏览；区分加载、失败、成功空状态与列表。新增加密保存后留在列表，刷新仍可见；“浏览目录”弹窗支持逐层查看目录和文件、返回上级及失败重试，关闭 / 导航 / 会话变化取消旧请求。扫描根保存、扫描、编辑删除和其他个人页面尚未接入，正常运行不显示示例收藏。
+- `/media-sources` 接入本人空/非空来源查询、真实 WebDAV 连接测试、首次新增、已保存来源只读目录浏览及影片文件夹选择 / 整批保存；区分加载、失败、成功空状态与列表。新增加密保存后留在列表，刷新仍可见；“浏览目录”弹窗支持逐层查看目录和文件、返回上级及失败重试。“选择 / 修改影片文件夹”复用同一目录布局，草稿取消不写入，保存后刷新仍保留，根查询失败不显示为未配置。关闭 / 导航 / 会话变化取消旧请求；扫描根独立启停、扫描、编辑删除和其他个人页面尚未接入，正常运行不显示示例收藏。
 
 Vite 开发服务器将 `/api` 代理到 `http://127.0.0.1:8080`；正式部署与构建预览需要提供同源 `/api` 反向代理。
 
-真实请求统一由 `src/services/http.ts` 的 `request<T>(path, options)` 调用 Axios instance：`baseURL: '/api'`、15 秒超时、`withCredentials: false`，原生 `signal` 透传。业务层只接收响应包裹的 `data` 或项目 `ApiError`；非 2xx 保留后端状态、错误码与字段错误，网络/超时/协议异常转换为 `REQUEST_FAILED`。Token 由认证 Store 按请求传入，公开注册/登录不注入旧身份；受保护请求经 Store 的 `authenticatedRequest` Action 处理退出取消与账号切换竞态。后端响应的 `Cache-Control: no-store` 继续负责禁止缓存，开发代理保持同源，无需新增 CORS。
+真实请求统一由 `src/services/http.ts` 的 `request<T>(path, options)` 调用 Axios instance：`baseURL: '/api'`、15 秒超时、`withCredentials: false`，原生 `signal` 透传。可选 `method` 支持扫描范围的 PUT；未指定时保留无正文 GET / 有正文 POST 的既有行为。业务层只接收响应包裹的 `data` 或项目 `ApiError`；非 2xx 保留后端状态、错误码与字段错误，网络/超时/协议异常转换为 `REQUEST_FAILED`。Token 由认证 Store 按请求传入，公开注册/登录不注入旧身份；受保护请求经 Store 的 `authenticatedRequest` Action 处理退出取消与账号切换竞态。后端响应的 `Cache-Control: no-store` 继续负责禁止缓存，开发代理保持同源，无需新增 CORS。
 
 已有片库/电影/合集/搜索和媒体来源完整 Mock 页面保留为显式开发预览。在 PowerShell 中执行 `$env:VITE_MOCK_PREVIEW = 'true'` 后运行 `npm run dev`；关闭预览需移除该环境变量并重启 Vite。此开关仅在开发模式生效，生产始终走真实路径。预览不调用认证接口、不创建登录态；即使 sessionStorage 留有 Token，也不展示身份恢复入口或调用 `/api/auth/me`，保留 Token 供切回正常模式后重新验证。媒体来源列表实现保存在 `MediaSourcesPreviewView.vue`。Mock 的刷新重置、模拟连接和扫描规则保持不变，预览中不要输入真实凭据。
 
@@ -76,6 +76,6 @@ Set-Location backend
 
 来源测试支持匿名 / Basic 认证、HTTP(S) 与地址自身目录验证，不跟随重定向；请填写最终 WebDAV 目录地址。默认总时限 8000ms，可用 `MEDIA_SOURCE_CONNECTION_TIMEOUT_MS` 设置 100–15000ms；完整认证兼容范围和限制见 [API.md](../docs/API.md#测试未保存的-webdav-连接--新增本人来源)。
 
-已保存来源的目录浏览也只经过 Spring Boot，使用 `Depth:1` 读取直接子项；目录 XML 上限 1 MiB、子项上限 2000，超限明确报错，不递归或截断成完整列表。浏览不会保存扫描范围或创建资源，真实来源目录不能通过开发 Mock 预览验收；契约见 [API 目录浏览](../docs/API.md#浏览本人已保存来源的目录)。
+已保存来源的目录浏览也只经过 Spring Boot，使用 `Depth:1` 读取直接子项；目录 XML 上限 1 MiB、子项上限 2000，超限明确报错，不递归或截断成完整列表。浏览不会保存扫描范围或创建资源，真实来源目录不能通过开发 Mock 预览验收；契约见 [API 目录浏览](../docs/API.md#浏览本人已保存来源的目录)。扫描范围另经 GET / PUT 查询与整批保存，保存时用有界 `Depth:0` 验证目标目录，刷新后回读 MySQL；取消不写入、保存不自动扫描，见 [API 扫描范围](../docs/API.md#查询--整批保存本人来源的扫描范围)。
 
 使用 History 模式部署时，静态服务器需要将非静态资源的前端路径回退到 `index.html`，使 `/library` 等地址支持直接访问和刷新；业务 API 不应走此回退。参见 [Vue Router History 模式说明](https://router.vuejs.org/guide/essentials/history-mode.html)。

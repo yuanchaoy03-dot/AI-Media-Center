@@ -5,6 +5,8 @@ import com.shichaoya.aimediacenter.common.web.ApiResponses;
 import com.shichaoya.aimediacenter.media.application.service.MediaSourceQueryService;
 import com.shichaoya.aimediacenter.media.application.service.MediaSourceCommandService;
 import com.shichaoya.aimediacenter.media.application.service.MediaSourceDirectoryService;
+import com.shichaoya.aimediacenter.media.application.service.MediaScanRootService;
+import com.shichaoya.aimediacenter.media.web.dto.MediaScanRootsRequest;
 import com.shichaoya.aimediacenter.media.web.dto.MediaSourceRequest;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -15,7 +17,7 @@ import java.util.Set;
 import com.shichaoya.aimediacenter.common.web.ApiException;
 
 /**
- * 媒体来源的 web 层：只读测试、新增完整连接、查询本人最小列表。
+ * 媒体来源的 web 层：只读测试、新增连接、本人列表/目录与扫描范围配置。
  * CurrentUser 来自 JWT 经 Spring Security 验证、再查 users 后建立的可信身份；
  * 客户端不能通过传入 userId 选择要查询的用户。
  */
@@ -24,9 +26,10 @@ public class MediaSourceController {
     private final MediaSourceQueryService sources;
     private final MediaSourceCommandService commands;
     private final MediaSourceDirectoryService directories;
+    private final MediaScanRootService scanRoots;
     public MediaSourceController(MediaSourceQueryService sources, MediaSourceCommandService commands,
-                                 MediaSourceDirectoryService directories) {
-        this.sources = sources; this.commands = commands; this.directories = directories;
+                                 MediaSourceDirectoryService directories, MediaScanRootService scanRoots) {
+        this.sources = sources; this.commands = commands; this.directories = directories; this.scanRoots = scanRoots;
     }
     @GetMapping("/api/media-sources")
     public Object list(@AuthenticationPrincipal CurrentUser user, HttpServletRequest request) {
@@ -55,5 +58,17 @@ public class MediaSourceController {
             throw ApiException.invalid();
         }
         return ApiResponses.success(request, directories.browse(user, sourceId, parameters.get("path")[0]));
+    }
+    @GetMapping("/api/media-sources/{sourceId}/scan-roots")
+    public Object scanRoots(@AuthenticationPrincipal CurrentUser user, @PathVariable String sourceId,
+                            HttpServletRequest request) {
+        ApiResponses.noQuery(request);
+        return ApiResponses.success(request, scanRoots.list(user, sourceId));
+    }
+    @PutMapping("/api/media-sources/{sourceId}/scan-roots")
+    public Object replaceScanRoots(@AuthenticationPrincipal CurrentUser user, @PathVariable String sourceId,
+                                   @RequestBody Map<String, Object> body, HttpServletRequest request) {
+        ApiResponses.noQuery(request);
+        return ApiResponses.success(request, scanRoots.replace(user, sourceId, MediaScanRootsRequest.parse(body).paths()));
     }
 }

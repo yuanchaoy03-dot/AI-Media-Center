@@ -5,14 +5,17 @@ import SourceIcon from '../components/media-source/SourceIcon.vue'
 import SourceDialog from '../components/media-source/SourceDialog.vue'
 import SourceMenu from '../components/media-source/SourceMenu.vue'
 import DirectoryBrowser from '../components/media-source/DirectoryBrowser.vue'
+import DirectorySelection from '../components/media-source/DirectorySelection.vue'
 import {
   createOwnedSource,
   getOwnedSourceDirectory,
+  getOwnedSourceScanRoots,
   getOwnedSources,
+  saveOwnedSourceScanRoots,
   testOwnedSourceConnection,
 } from '../services/ownedSourceService'
 import type { OwnedMediaSource } from '../services/ownedSourceService'
-import type { DirectoryEntry, SourceConnectionInput } from '../types/mediaSource'
+import type { DirectoryEntry, MediaScanRoot, SourceConnectionInput } from '../types/mediaSource'
 import { useAuthStore } from '../stores/auth'
 import '../assets/media-source.css'
 
@@ -29,15 +32,60 @@ const directoryPath = ref('/')
 const directoryEntries = ref<DirectoryEntry[]>([])
 const directoryLoading = ref(false)
 const directoryError = ref('')
+const selectingSource = ref<OwnedMediaSource>()
+const scanRoots = ref<
+  Record<string, { status: 'loading' | 'error' | 'ready'; roots: MediaScanRoot[]; error: string }>
+>({})
 let controller: AbortController | undefined
 let directoryController: AbortController | undefined
+const scanRootControllers = new Map<string, AbortController>()
+
+function cancelScanRootRequests() {
+  for (const current of scanRootControllers.values()) current.abort()
+  scanRootControllers.clear()
+}
+
+async function loadScanRoots(sourceId: string) {
+  scanRootControllers.get(sourceId)?.abort()
+  const current = new AbortController()
+  scanRootControllers.set(sourceId, current)
+  scanRoots.value[sourceId] = { status: 'loading', roots: [], error: '' }
+  try {
+    const roots = await getOwnedSourceScanRoots(sourceId, current.signal)
+    if (current.signal.aborted) return
+    scanRoots.value[sourceId] = { status: 'ready', roots, error: '' }
+  } catch (reason) {
+    if (current.signal.aborted) return
+    scanRoots.value[sourceId] = {
+      status: 'error',
+      roots: [],
+      error: reason instanceof Error ? reason.message : '影片文件夹读取失败，请重试。',
+    }
+  } finally {
+    if (scanRootControllers.get(sourceId) === current) scanRootControllers.delete(sourceId)
+  }
+}
+
+function folderSummary(sourceId: string) {
+  const selection = scanRoots.value[sourceId]
+  if (!selection || selection.status === 'loading') return '正在读取影片文件夹…'
+  if (selection.status === 'error') return '影片文件夹读取失败'
+  if (!selection.roots.length) return '未选择影片文件夹'
+  const paused = selection.roots.filter((root) => !root.enabled).length
+  return `已选择 ${selection.roots.length} 个影片文件夹${paused ? ` · ${paused} 个已暂停` : ''}`
+}
+
 async function load() {
   // 每次重试先取消上一轮请求；只有当前请求未被取消时，才更新成功或失败状态。
   controller?.abort()
+  cancelScanRootRequests()
+  closeDirectory()
+  closeSelection()
   const current = new AbortController()
   controller = current
   status.value = 'loading'
   sourceList.value = []
+  scanRoots.value = {}
   error.value = ''
   try {
     // 页面负责显示状态，service 负责取数据；signal 会一直传到 Axios。
@@ -45,6 +93,7 @@ async function load() {
     if (!current.signal.aborted) {
       sourceList.value = sources
       status.value = sources.length ? 'ready' : 'empty'
+      await Promise.all(sources.map((source) => loadScanRoots(source.id)))
     }
   } catch (reason) {
     if (current.signal.aborted) return
@@ -54,6 +103,7 @@ async function load() {
 }
 function addSource() {
   closeDirectory()
+  closeSelection()
   menuSource.value = undefined
   dialogOpen.value = true
 }
@@ -66,7 +116,7 @@ async function saveConnection(input: SourceConnectionInput, signal: AbortSignal)
 }
 async function saved() {
   dialogOpen.value = false
-  notice.value = '来源已添加，可以浏览目录。扫描范围设置与扫描功能尚未开放。'
+  notice.value = '来源已添加，可以选择影片文件夹。保存后不会立即扫描。'
   await load()
 }
 function openMenu(source: OwnedMediaSource, event: MouseEvent) {
@@ -98,9 +148,40 @@ function closeDirectory() {
   directoryError.value = ''
 }
 async function openDirectory(source: OwnedMediaSource) {
+  closeSelection()
+  closeDirectory()
   menuSource.value = undefined
   browsingSource.value = source
   await loadDirectory('/')
+}
+
+function closeSelection() {
+  selectingSource.value = undefined
+}
+
+function openSelection(source: OwnedMediaSource) {
+  closeDirectory()
+  menuSource.value = undefined
+  selectingSource.value = source
+}
+
+async function selectionDirectory(sourceId: string, path: string, signal: AbortSignal) {
+  return (await getOwnedSourceDirectory(sourceId, path, signal)).entries
+}
+
+function selectionLoaded(roots: MediaScanRoot[], sourceId: string) {
+  const source = selectingSource.value
+  if (!source || source.id !== sourceId) return
+  scanRootControllers.get(source.id)?.abort()
+  scanRootControllers.delete(source.id)
+  scanRoots.value[source.id] = { status: 'ready', roots, error: '' }
+}
+
+function selectionSaved(roots: MediaScanRoot[], sourceId: string) {
+  if (!selectingSource.value || selectingSource.value.id !== sourceId) return
+  selectionLoaded(roots, sourceId)
+  closeSelection()
+  notice.value = '影片文件夹已保存，尚未开始扫描。'
 }
 async function loadDirectory(path: string) {
   const source = browsingSource.value
@@ -129,8 +210,11 @@ watch(
   () => auth.epoch,
   () => {
     controller?.abort()
+    cancelScanRootRequests()
     closeDirectory()
+    closeSelection()
     sourceList.value = []
+    scanRoots.value = {}
     dialogOpen.value = false
     menuSource.value = undefined
     notice.value = ''
@@ -143,7 +227,9 @@ watch(
 onMounted(load)
 onBeforeUnmount(() => {
   controller?.abort()
+  cancelScanRootRequests()
   closeDirectory()
+  closeSelection()
 })
 </script>
 
@@ -200,8 +286,26 @@ onBeforeUnmount(() => {
                     : '尚未测试'
               }}</span
             >
-            <span class="source-config">未选择影片文件夹</span>
-            <button class="source-config-link" @click="openDirectory(source)">浏览目录 →</button>
+            <span class="source-config" :title="scanRoots[source.id]?.error || undefined">{{
+              folderSummary(source.id)
+            }}</span>
+            <div class="source-config-actions">
+              <button class="source-config-link" @click="openSelection(source)">
+                {{
+                  scanRoots[source.id]?.status === 'ready' && scanRoots[source.id]?.roots.length
+                    ? '修改影片文件夹 →'
+                    : '选择影片文件夹 →'
+                }}
+              </button>
+              <button class="source-config-link" @click="openDirectory(source)">浏览目录</button>
+              <button
+                v-if="scanRoots[source.id]?.status === 'error'"
+                class="source-config-link"
+                @click="loadScanRoots(source.id)"
+              >
+                重试
+              </button>
+            </div>
             <span class="source-footer"><span>0 部电影</span><span>上次扫描 · 尚未扫描</span></span>
             <button
               class="source-more"
@@ -260,6 +364,17 @@ onBeforeUnmount(() => {
       @navigate="loadDirectory"
       @retry="loadDirectory(directoryPath)"
     />
+    <DirectorySelection
+      v-if="selectingSource"
+      :key="selectingSource.id"
+      :source-id="selectingSource.id"
+      :load-roots="getOwnedSourceScanRoots"
+      :load-directory="selectionDirectory"
+      :save-roots="saveOwnedSourceScanRoots"
+      @close="closeSelection"
+      @loaded="selectionLoaded"
+      @saved="selectionSaved"
+    />
   </section>
 </template>
 
@@ -269,5 +384,16 @@ onBeforeUnmount(() => {
   border: 0;
   padding: 0;
   background: transparent;
+}
+.source-item {
+  grid-template-rows: auto auto auto minmax(28px, auto) auto;
+}
+.source-config-actions {
+  grid-column: 1 / -1;
+  grid-row: 4;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
 }
 </style>

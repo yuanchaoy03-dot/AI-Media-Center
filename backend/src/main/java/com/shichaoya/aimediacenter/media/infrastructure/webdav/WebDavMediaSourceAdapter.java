@@ -64,9 +64,26 @@ public class WebDavMediaSourceAdapter implements MediaSourceAdapter {
         catch (ApiException error) { throw error; }
         catch (Exception error) { throw WebDavDirectoryReader.invalid(); }
     }
+    @Override public void validateDirectories(SourceConnection connection, List<String> paths) {
+        // 默认整批 8 秒，配置上限 10 秒；32 个根也不能各自重新获得完整超时预算。
+        long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(Math.min(timeoutMs, 10000));
+        for (String path : paths) {
+            var reader = new WebDavDirectoryReader(connection.address(), path);
+            long remaining = TimeUnit.NANOSECONDS.toMillis(deadline - System.nanoTime());
+            if (remaining <= 0) throw timeout();
+            byte[] xml = request(connection, reader.target(), "0", MAX_BODY_BYTES, true, remaining);
+            try { reader.verifyCurrent(parseXml(xml)); }
+            catch (ApiException error) { throw error; }
+            catch (Exception error) { throw WebDavDirectoryReader.invalid(); }
+            if (System.nanoTime() >= deadline) throw timeout();
+        }
+    }
     private byte[] request(SourceConnection connection, URI target, String depth, int bodyLimit, boolean browsing) {
+        return request(connection, target, depth, bodyLimit, browsing, timeoutMs);
+    }
+    private byte[] request(SourceConnection connection, URI target, String depth, int bodyLimit, boolean browsing, long requestTimeoutMs) {
         rejectDangerousLiteralTarget(target);
-        var builder = HttpRequest.newBuilder(target).timeout(Duration.ofMillis(timeoutMs))
+        var builder = HttpRequest.newBuilder(target).timeout(Duration.ofMillis(requestTimeoutMs))
                 .header("Depth", depth).header("Content-Type", "application/xml; charset=utf-8")
                 .header("Accept", "application/xml, text/xml")
                 .method("PROPFIND", HttpRequest.BodyPublishers.ofString(PROPFIND, StandardCharsets.UTF_8));
@@ -77,7 +94,7 @@ public class WebDavMediaSourceAdapter implements MediaSourceAdapter {
         // HttpRequest.timeout 不足以单独保证慢响应体的终点；整个 sendAsync + 有界订阅统一截止。
         var pending = client.sendAsync(builder.build(), info -> new LimitedBodySubscriber(info.statusCode() == 207, bodyLimit, browsing));
         try {
-            var response = pending.get(timeoutMs, TimeUnit.MILLISECONDS);
+            var response = pending.get(requestTimeoutMs, TimeUnit.MILLISECONDS);
             int status = response.statusCode();
             if (status == 401 || status == 403) throw authFailed();
             if (status >= 300 && status < 400) {

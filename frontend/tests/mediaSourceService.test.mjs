@@ -322,14 +322,20 @@ test('legal siblings produce a frozen snapshot unaffected by selection reconcili
 })
 
 // Exercise the actual setup state without DOM/browser dependencies.
-async function directorySetup(service, presentation = false, props = {}) {
+async function directorySetup(service, presentation = false, props = {}, previewAdapter = false) {
   const { readFile } = await import('node:fs/promises')
   const { parse, compileScript } = await import('@vue/compiler-sfc')
   const ts = await import('typescript')
   const vue = await import('vue')
   const source = await readFile(
     new URL(
-      `../src/components/media-source/${presentation ? 'DirectoryBrowser' : 'DirectorySelectionPreview'}.vue`,
+      `../src/components/media-source/${
+        presentation
+          ? 'DirectoryBrowser'
+          : previewAdapter
+            ? 'DirectorySelectionPreview'
+            : 'DirectorySelection'
+      }.vue`,
       import.meta.url,
     ),
     'utf8',
@@ -344,17 +350,54 @@ async function directorySetup(service, presentation = false, props = {}) {
     if (name === 'vue') return { ...vue, onMounted() {}, onBeforeUnmount() {} }
     if (name.endsWith('/mediaSourceService')) return service
     if (name.endsWith('/scanRootPaths')) return paths
+    if (name.endsWith('/http')) return { ApiError: class ApiError extends Error {} }
     if (name.endsWith('.vue')) return {}
     throw new Error(`Unexpected import: ${name}`)
   }
   new Function('require', 'module', 'exports', code)(require, module, module.exports)
   const events = []
   const setup = module.exports.default.setup(
-    { sourceId: 'source-new', ...props },
+    {
+      sourceId: 'source-new',
+      loadRoots: (sourceId) =>
+        service.mediaSourceState.roots.filter((root) => root.sourceId === sourceId),
+      loadDirectory: (sourceId, path) => service.browseDirectory(sourceId, path),
+      saveRoots: (sourceId, selected) => {
+        service.saveScanRootSelection(sourceId, selected)
+        return service.mediaSourceState.roots.filter((root) => root.sourceId === sourceId)
+      },
+      ...props,
+    },
     { expose() {}, emit: (event) => events.push(event) },
   )
+  if (!presentation && !previewAdapter) await setup.initialize()
   return { setup, events, descriptor }
 }
+
+test('Preview selection adapter supplies Mock-only reads and writes with no scanning side effect', async () => {
+  const service = await fresh()
+  const { setup: adapter, descriptor } = await directorySetup(service, false, {}, true)
+  const signal = new AbortController().signal
+  assert.deepEqual(adapter.loadRoots('source-new', signal), [])
+  assert.equal(
+    adapter.loadDirectory('source-new', '/', signal).some((entry) => entry.path === '/Movies'),
+    true,
+  )
+  const tasks = JSON.stringify(service.mediaSourceState.tasks)
+  const saved = adapter.saveRoots('source-new', ['/Movies'], signal)
+  assert.deepEqual(
+    saved.map((root) => root.path),
+    ['/Movies'],
+  )
+  service.setRootEnabled('source-new', saved[0].id, false)
+  const retained = adapter.saveRoots('source-new', ['/Movies', '/TV'], signal)
+  assert.equal(retained[0].id, saved[0].id)
+  assert.equal(retained[0].enabled, false)
+  assert.equal(JSON.stringify(service.mediaSourceState.tasks), tasks)
+  assert.match(descriptor.template.content, /:load-roots="loadRoots"/)
+  assert.match(descriptor.template.content, /:load-directory="loadDirectory"/)
+  assert.match(descriptor.template.content, /:save-roots="saveRoots"/)
+})
 
 test('DirectoryBrowser actual draft: disabled roots selected, navigation independent, confirmation before replacement', async () => {
   const s = await fresh()
@@ -386,7 +429,7 @@ test('DirectoryBrowser actual draft: disabled roots selected, navigation indepen
   assert.equal(ui.selectionState(root.path).text, '')
   assert.equal(ui.selectionState(root.path).icon, 'check-circle')
   assert.equal(ui.selectionState(root.path).label, '已包含在所选上级文件夹中')
-  ui.currentPath.value = '/Movies/电影' // Covered directory remains browsable.
+  await ui.navigateDirectory('/Movies/电影') // Covered directory remains browsable.
   ui.select(root.path)
   assert.deepEqual(ui.draftSelectedPaths.value, ['/Movies'])
   ui.select('/Movies')
@@ -401,45 +444,50 @@ test('Directory preview keeps folders before files and only marks an empty direc
   const { setup: ui } = await directorySetup(s)
   const before = JSON.stringify(s.mediaSourceState)
   assert.equal(
-    ui.directories.value.some((entry) => entry.name === 'Movies'),
+    ui.entries.value.some((entry) => entry.kind === 'directory' && entry.name === 'Movies'),
     true,
   )
-  ui.currentPath.value = '/Movies'
+  await ui.navigateDirectory('/Movies')
   assert.equal(
-    ui.directories.value.some((entry) => entry.name === '电影'),
+    ui.entries.value.some((entry) => entry.kind === 'directory' && entry.name === '电影'),
     true,
   )
-  assert.deepEqual(ui.files.value, [])
-  ui.currentPath.value = '/Movies/电影'
   assert.deepEqual(
-    ui.directories.value.map((entry) => entry.name),
+    ui.entries.value.filter((entry) => entry.kind === 'file'),
+    [],
+  )
+  await ui.navigateDirectory('/Movies/电影')
+  assert.deepEqual(
+    ui.entries.value.filter((entry) => entry.kind === 'directory').map((entry) => entry.name),
     ['星际穿越'],
   )
   assert.deepEqual(
-    ui.files.value.map((entry) => entry.name),
+    ui.entries.value.filter((entry) => entry.kind === 'file').map((entry) => entry.name),
     ['README'],
   )
-  ui.currentPath.value = ui.directories.value[0].path
-  assert.deepEqual(ui.directories.value, [])
+  await ui.navigateDirectory(ui.entries.value.find((entry) => entry.kind === 'directory').path)
   assert.deepEqual(
-    ui.files.value.map((entry) => entry.name),
+    ui.entries.value.filter((entry) => entry.kind === 'directory'),
+    [],
+  )
+  assert.deepEqual(
+    ui.entries.value.filter((entry) => entry.kind === 'file').map((entry) => entry.name),
     ['Interstellar (2014).mkv', 'poster.jpg', 'backdrop.jpg', 'logo.png'],
   )
   const { setup: browser, descriptor } = await directorySetup(s, true, {
     currentPath: ui.currentPath.value,
-    entries: ui.directory.value.entries,
+    entries: ui.entries.value,
   })
-  assert.deepEqual(browser.files.value, ui.files.value)
-  assert.equal(browser.fileIcon(ui.files.value[0].name), 'video')
+  assert.deepEqual(browser.files.value, ui.entries.value)
+  assert.equal(browser.fileIcon(ui.entries.value[0].name), 'video')
   assert.equal(browser.fileIcon('EXAMPLE.MP4'), 'video')
   assert.equal(browser.fileIcon('poster.jpg'), 'file')
   assert.equal(ui.currentSelection.value.label, '选择 /Movies/电影/星际穿越 及里面的内容')
   ui.select(ui.currentPath.value)
   assert.deepEqual(ui.draftSelectedPaths.value, ['/Movies/电影/星际穿越'])
   assert.equal(JSON.stringify(s.mediaSourceState), before)
-  ui.currentPath.value = '/Downloads'
-  assert.deepEqual(ui.directories.value, [])
-  assert.deepEqual(ui.files.value, [])
+  await ui.navigateDirectory('/Downloads')
+  assert.deepEqual(ui.entries.value, [])
   assert.match(descriptor.template.content, /!entries\.length/)
   assert.match(descriptor.template.content, /这个文件夹是空的。/)
   assert.doesNotMatch(descriptor.template.content, /这里没有其他文件夹/)
@@ -448,8 +496,8 @@ test('Directory preview keeps folders before files and only marks an empty direc
 test('DirectoryBrowser dirty membership and save; root replacement uses explicit confirmation', async () => {
   const s = await fresh()
   const { setup: ui, events } = await directorySetup(s)
-  ui.save()
-  assert.deepEqual(events, [])
+  await ui.save()
+  assert.deepEqual(events, ['loaded'])
   ui.select('/Movies/电影')
   ui.select('/Movies/动画')
   assert.equal(ui.currentPath.value, '/')
@@ -462,8 +510,8 @@ test('DirectoryBrowser dirty membership and save; root replacement uses explicit
   assert.equal(ui.draftSelectedPaths.value.length, 2)
   ui.confirmReplacement()
   assert.deepEqual(ui.draftSelectedPaths.value, ['/'])
-  ui.save()
-  assert.deepEqual(events, ['saved'])
+  await ui.save()
+  assert.deepEqual(events, ['loaded', 'saved'])
   assert.deepEqual(
     s.mediaSourceState.roots
       .filter((root) => root.sourceId === 'source-new')
@@ -529,7 +577,7 @@ test('DirectoryBrowser template keeps navigation/toggle separate and accessible,
   assert.ok(navigation)
   assert.ok(directive(navigation, 'on', 'click'))
   assert.notEqual(directive(selection, 'on', 'click'), directive(navigation, 'on', 'click'))
-  assert.equal(directive(navigation, 'bind', 'disabled'), undefined)
+  assert.equal(directive(navigation, 'bind', 'disabled'), 'busy')
   assert.equal(
     navigation.props.some((prop) => prop.type === 6 && prop.name === 'disabled'),
     false,

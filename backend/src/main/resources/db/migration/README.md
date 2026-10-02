@@ -1,6 +1,6 @@
 # 数据库迁移学习说明
 
-本文件只用于阅读，不是 Flyway migration。实际结构以同目录的 [V1__create_users.sql](V1__create_users.sql)、[V2__create_media_source.sql](V2__create_media_source.sql) 与 [V3__add_media_source_connection_test_time.sql](V3__add_media_source_connection_test_time.sql) 为准。
+本文件只用于阅读，不是 Flyway migration。实际结构以同目录的 [V1__create_users.sql](V1__create_users.sql)、[V2__create_media_source.sql](V2__create_media_source.sql)、[V3__add_media_source_connection_test_time.sql](V3__add_media_source_connection_test_time.sql) 与 [V4__create_media_scan_root.sql](V4__create_media_scan_root.sql) 为准。
 
 ## Flyway migration 是什么
 
@@ -33,11 +33,21 @@ Migration 是按顺序改变数据库结构的脚本。文件名中的 `V1`、`V
 - `ON DELETE RESTRICT` 表示用户仍被来源引用时，不允许直接删除该用户，避免留下失去归属的来源。
 - `source_type` 的 `CHECK` 目前只允许 `WEBDAV`，`enabled` 的 `CHECK` 只允许 `0` 或 `1`。`connection_config_ciphertext` 由 Java 的 AES-256-GCM 加密后写入，完整地址和凭据不存明文；密钥只由后端配置提供。
 
-当前 `MediaSourceMapper` 支持单行新增、`WHERE user_id = #{userId}` 本人列表及 `user_id + sourceId` 本人单条查询，应用层解密本人行后投影脱敏 DTO 或进行只读 WebDAV 目录浏览；无来源返回空列表，非空返回真实来源。首次新增先完成 WebDAV 测试再写入，不建立扫描根或任务；目录浏览不写库。本切片不新增迁移，编辑、删除、扫描范围配置与扫描仍未实现。
+当前 `MediaSourceMapper` 支持单行新增、`WHERE user_id = #{userId}` 本人列表及 `user_id + sourceId` 本人单条查询，应用层解密本人行后投影脱敏 DTO 或进行只读 WebDAV 目录浏览；无来源返回空列表，非空返回真实来源。首次新增先完成 WebDAV 测试再写入，不建立扫描根或任务；目录浏览不写库。扫描范围由 V4 独立表和应用服务保存；来源编辑、删除与扫描仍未实现。
 
 ## V3：最近成功连接测试时间
 
 V3 在 `media_source` 增加可空的 `last_connection_test_at DATETIME(3)`，按 UTC 写入保存前成功测试的时间。旧记录保留 `NULL`，不伪造成功测试历史；新建来源必须先测试成功。它表示历史测试事实，不保证来源当前在线、已经扫描或资源可以播放。未修改已执行的 V1/V2。
+
+## V4：`media_scan_root` 扫描范围表
+
+关系为 `media_source` 1 : N `media_scan_root`，根通过来源继承用户归属。来源先通过本人查询，才能读取或保存该来源的根；外键和索引本身不能授权用户访问。
+
+- `id` 沿用 UUIDv7；`source_id` 引用来源并使用 `ON DELETE RESTRICT`，删除来源前必须先明确处理其根。
+- `path` 保存完整规范化来源内路径，支持 2048 个 Unicode 码点；`path_hash BINARY(32)` 保存其 UTF-8 字节的 SHA-256。`UNIQUE (source_id, path_hash)` 使用固定长度完整路径散列，避开 utf8mb4 长路径直接唯一索引的字节上限；应用层检查同散列不同原文并整体回滚。
+- `enabled TINYINT` 用 `CHECK` 限定 `0/1`，不使用显示宽度。`created_at`、`updated_at` 为 UTC 毫秒时间。
+- 整批保存先只读验证所有目录，再短事务锁来源行；保留路径的 ID/启用状态，新增根启用，取消根删除。空集合清空；网络或持久化失败保留完整旧配置。并发保存不会产生两个集合的混合状态。
+- 扫描任务、资源与片库关系仍未创建；独立测试库清理时先删除扫描根，再删除来源与用户，遵循外键引用顺序。V1/V2/V3 保持原样。
 
 ## 数据库约束和 Java 业务权限有什么区别
 

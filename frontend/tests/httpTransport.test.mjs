@@ -8,6 +8,30 @@ import axios from 'axios'
 // only this test adapter supplies it before delegating to Axios's HTTP adapter.
 const server = createServer((req, res) => {
   if (req.url === '/api/timeout' || req.url === '/api/cancel') return
+  if (req.url === '/api/scan-roots') {
+    let body = ''
+    req.setEncoding('utf8')
+    req.on('data', (chunk) => {
+      body += chunk
+    })
+    req.on('end', () => {
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(
+        JSON.stringify({
+          code: 'OK',
+          message: '',
+          data: {
+            method: req.method,
+            contentType: req.headers['content-type'],
+            authorization: req.headers.authorization,
+            body: JSON.parse(body),
+          },
+          requestId: 'test',
+        }),
+      )
+    })
+    return
+  }
   if (req.url === '/api/html') {
     res.writeHead(502, { 'Content-Type': 'text/html' })
     res.end('<h1>Bad Gateway</h1>')
@@ -46,6 +70,24 @@ test('real Axios HTTP preserves URL, unwraps data and maps rejected business/HTM
     (error) => error instanceof ApiError && error.status === 409 && error.code === 'USERNAME_TAKEN',
   )
   await assert.rejects(request('/html'), { status: 0, code: 'REQUEST_FAILED' })
+})
+
+test('explicit PUT reaches real HTTP with JSON, bearer and an empty or Unicode root selection', async () => {
+  for (const paths of [['/电影/中文 空格 &?#%🎬', '/TV'], []]) {
+    assert.deepEqual(
+      await request('/scan-roots', {
+        method: 'PUT',
+        body: { paths },
+        token: 'synthetic-put-token',
+      }),
+      {
+        method: 'PUT',
+        contentType: 'application/json',
+        authorization: 'Bearer synthetic-put-token',
+        body: { paths },
+      },
+    )
+  }
 })
 
 test('real Axios 15000ms timeout becomes REQUEST_FAILED', { timeout: 25000 }, async () => {
