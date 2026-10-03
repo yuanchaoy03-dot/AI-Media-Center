@@ -57,6 +57,7 @@ const {
   testOwnedSourceConnection,
 } = await import('../src/services/ownedSourceService.ts')
 const scanRootPaths = await import('../src/services/scanRootPaths.ts')
+const ownedScanService = await import('../src/services/ownedScanService.ts')
 const { request, ApiError } = await import('../src/services/http.ts')
 axios.defaults.adapter = originalAdapter
 const user = { id: 'user-a', username: 'alice', role: 'USER' }
@@ -79,6 +80,36 @@ const ownedRoots = [
   { id: 'root-a', sourceId: ownedSource.id, path: '/Movies', enabled: false },
   { id: 'root-b', sourceId: ownedSource.id, path: '/TV', enabled: true },
 ]
+const scanTask = {
+  id: 'scan-a',
+  sourceId: ownedSource.id,
+  status: 'pending',
+  rootPaths: ['/TV'],
+  discoveredCount: 0,
+  persistedCount: 0,
+  directoryCount: 0,
+  errorCode: null,
+  errorMessage: null,
+  createdAt: '2026-10-03T06:30:00Z',
+  startedAt: null,
+  finishedAt: null,
+}
+const mediaResource = {
+  id: 'resource-a',
+  sourceId: ownedSource.id,
+  path: '/TV/Movie.mkv',
+  name: 'Movie.mkv',
+  size: 1024,
+  modifiedAt: '2026-10-03T06:00:00Z',
+  recognitionStatus: 'unidentified',
+}
+const resourcesPage = (items = [mediaResource], page = 0, total = items.length) => ({
+  items,
+  total,
+  page,
+  pageSize: 50,
+})
+const flushRequests = () => new Promise((resolve) => setImmediate(resolve))
 const ok = (data, status = 200) => ({
   data: JSON.stringify({ code: 'OK', message: '', data, requestId: 'test' }),
   status,
@@ -684,6 +715,7 @@ async function componentSetup(path, props = {}, { preview = false, instance = pi
         testOwnedSourceConnection,
       }
     if (name.endsWith('/services/scanRootPaths')) return scanRootPaths
+    if (name.endsWith('/services/ownedScanService')) return ownedScanService
     if (name === './router') return { signOut: () => auth.logout() }
     if (name.endsWith('.vue') || name.endsWith('.css') || name.endsWith('.svg')) return {}
     throw new Error(`Unexpected import: ${name}`)
@@ -1063,7 +1095,7 @@ test('owned directory rejects malformed, credential-bearing, duplicate and non-d
   assert.equal(auth.tokenPresent, true)
 })
 
-test('real directory workflow opens from list and menu, enters folders, retries errors and shows an empty directory', async () => {
+test('real directory workflow opens from its dedicated action, enters folders, retries errors and shows an empty directory', async () => {
   await signIn()
   const view = await componentSetup('views/MediaSourcesView.vue')
   const entries = [
@@ -1100,10 +1132,6 @@ test('real directory workflow opens from list and menu, enters folders, retries 
     assert.deepEqual(view.ui.directoryEntries.value, entries)
     view.ui.closeDirectory()
     assert.equal(view.ui.browsingSource.value, undefined)
-    view.ui.menuSource.value = ownedSource
-    await view.ui.menuAction('scan')
-    assert.equal(view.ui.menuSource.value, undefined)
-    assert.equal(view.ui.browsingSource.value.id, ownedSource.id)
     assert.deepEqual(view.routes, [])
     assert.deepEqual(paths, ['/', '/Movies'])
   } finally {
@@ -2003,5 +2031,360 @@ test('account switching closes the selection and cancels its PUT before a late u
     stop()
     dialog.unmount()
     view.unmount()
+  }
+})
+
+test('owned scan service uses authenticated bodyless POST, persistent task GET and resource pagination', async () => {
+  await signIn()
+  const calls = []
+  respond = async (url, config) => {
+    calls.push([url, config.method, config.body, config.headers.Authorization])
+    if (url.includes('/resources?')) return ok(resourcesPage())
+    return config.method === 'post' ? ok(scanTask, 202) : ok([scanTask])
+  }
+  const signal = new AbortController().signal
+  assert.deepEqual(await ownedScanService.startOwnedSourceScan(ownedSource.id, signal), scanTask)
+  assert.deepEqual(await ownedScanService.getOwnedSourceScans(ownedSource.id, signal), [scanTask])
+  assert.deepEqual(
+    await ownedScanService.getOwnedSourceResources(ownedSource.id, 0, signal),
+    resourcesPage(),
+  )
+  assert.deepEqual(calls, [
+    [
+      `/api/media-sources/${ownedSource.id}/scans`,
+      'post',
+      undefined,
+      'Bearer synthetic-test-token',
+    ],
+    [`/api/media-sources/${ownedSource.id}/scans`, 'get', undefined, 'Bearer synthetic-test-token'],
+    [
+      `/api/media-sources/${ownedSource.id}/resources?page=0&pageSize=50`,
+      'get',
+      undefined,
+      'Bearer synthetic-test-token',
+    ],
+  ])
+  for (const [page, size] of [
+    [-1, 50],
+    [1.5, 50],
+    [0, 0],
+    [0, 101],
+  ]) {
+    await assert.rejects(
+      ownedScanService.getOwnedSourceResources(ownedSource.id, page, signal, size),
+      /响应异常/,
+    )
+  }
+  await assert.rejects(ownedScanService.startOwnedSourceScan(' ', signal), /响应异常/)
+  assert.equal(calls.length, 3)
+})
+
+test('owned scan DTOs reject foreign ownership, credentials, invalid states/counts/paths and malformed resources', async () => {
+  await signIn()
+  const signal = new AbortController().signal
+  for (const task of [
+    { ...scanTask, sourceId: 'someone-else' },
+    { ...scanTask, password: 'unexpected' },
+    { ...scanTask, status: 'unknown' },
+    { ...scanTask, status: 'running' },
+    { ...scanTask, status: 'completed' },
+    { ...scanTask, finishedAt: '2026-10-03T06:31:00Z' },
+    { ...scanTask, discoveredCount: -1 },
+    { ...scanTask, persistedCount: 1 },
+    { ...scanTask, directoryCount: 0.5 },
+    { ...scanTask, rootPaths: ['/TV', '/TV/nested'] },
+    { ...scanTask, rootPaths: ['/TV', '/TV'] },
+    { ...scanTask, rootPaths: [] },
+    { ...scanTask, rootPaths: ['/TV/../Movies'] },
+    { ...scanTask, createdAt: '2026-02-31T06:30:00Z' },
+    { ...scanTask, startedAt: '2026-10-03T14:30:00+08:00' },
+  ]) {
+    respond = async () => ok(task, 202)
+    await assert.rejects(ownedScanService.startOwnedSourceScan(ownedSource.id, signal), /响应异常/)
+  }
+  for (const tasks of [
+    [scanTask, scanTask],
+    Array.from({ length: 21 }, (_, i) => ({ ...scanTask, id: `task-${i}` })),
+  ]) {
+    respond = async () => ok(tasks)
+    await assert.rejects(ownedScanService.getOwnedSourceScans(ownedSource.id, signal), /响应异常/)
+  }
+  for (const resource of [
+    { ...mediaResource, sourceId: 'someone-else' },
+    { ...mediaResource, resourceUrl: 'https://example.com/private' },
+    { ...mediaResource, name: 'wrong.mkv' },
+    { ...mediaResource, path: '/TV/%2F.mkv' },
+    { ...mediaResource, size: -1 },
+    { ...mediaResource, size: Number.MAX_SAFE_INTEGER + 1 },
+    { ...mediaResource, modifiedAt: 'invalid' },
+    { ...mediaResource, recognitionStatus: 'identified' },
+  ]) {
+    respond = async () => ok(resourcesPage([resource]))
+    await assert.rejects(
+      ownedScanService.getOwnedSourceResources(ownedSource.id, 0, signal),
+      /响应异常/,
+    )
+  }
+  for (const page of [
+    resourcesPage([mediaResource, mediaResource]),
+    { ...resourcesPage(), page: 1 },
+    { ...resourcesPage(), total: 0 },
+  ]) {
+    respond = async () => ok(page)
+    await assert.rejects(
+      ownedScanService.getOwnedSourceResources(ownedSource.id, 0, signal),
+      /响应异常/,
+    )
+  }
+  respond = async () => ok(resourcesPage([{ ...mediaResource, size: null, modifiedAt: null }]))
+  const result = await ownedScanService.getOwnedSourceResources(ownedSource.id, 0, signal)
+  assert.equal(result.items[0].size, null)
+})
+
+test('scan polling restores persisted tasks, waits for each request, stops at completion and preserves unknown file facts', async (t) => {
+  await signIn()
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const view = await componentSetup('views/MediaSourcesView.vue')
+  const running = {
+    ...scanTask,
+    status: 'running',
+    startedAt: scanTask.createdAt,
+    directoryCount: 1,
+    discoveredCount: 2,
+    persistedCount: 2,
+  }
+  const delayed = deferred()
+  let reads = 0
+  respond = async (url) => {
+    if (url === '/api/media-sources') return ok([ownedSource])
+    if (url.endsWith('/scan-roots')) return ok(ownedRoots)
+    reads++
+    if (reads === 2) return delayed.promise
+    return ok([
+      reads < 3 ? running : { ...running, status: 'completed', finishedAt: '2026-10-03T06:31:00Z' },
+    ])
+  }
+  try {
+    await view.mount()
+    assert.equal(reads, 1)
+    assert.equal(view.ui.recentScans.value[0].status, 'running')
+    assert.equal(view.ui.scanSummary(ownedSource.id), '本次入库 2 个文件')
+    t.mock.timers.tick(1500)
+    await flushRequests()
+    assert.equal(reads, 2)
+    t.mock.timers.tick(10000)
+    await flushRequests()
+    assert.equal(reads, 2)
+    delayed.resolve(ok([running]))
+    await flushRequests()
+    t.mock.timers.tick(1500)
+    await flushRequests()
+    assert.equal(reads, 3)
+    assert.equal(view.ui.recentScans.value[0].status, 'completed')
+    t.mock.timers.tick(10000)
+    await flushRequests()
+    assert.equal(reads, 3)
+  } finally {
+    view.unmount()
+  }
+})
+
+test('poll errors preserve persisted running state and require retry without claiming a failed scan', async (t) => {
+  await signIn()
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const view = await componentSetup('views/MediaSourcesView.vue')
+  const running = { ...scanTask, status: 'running', startedAt: scanTask.createdAt }
+  let reads = 0
+  respond = async (url) => {
+    if (url === '/api/media-sources') return ok([ownedSource])
+    if (url.endsWith('/scan-roots')) return ok(ownedRoots)
+    reads++
+    return reads === 1 ? ok([running]) : failure(503, 'UNAVAILABLE')
+  }
+  try {
+    await view.mount()
+    t.mock.timers.tick(1500)
+    await flushRequests()
+    assert.equal(view.ui.scans.value[ownedSource.id].status, 'error')
+    assert.equal(view.ui.recentScans.value[0].status, 'running')
+    t.mock.timers.tick(10000)
+    await flushRequests()
+    assert.equal(reads, 2)
+    respond = async () =>
+      ok([
+        {
+          ...running,
+          status: 'failed',
+          errorCode: 'SCAN_INTERRUPTED',
+          errorMessage: '扫描已中断，请重试。',
+          finishedAt: '2026-10-03T06:32:00Z',
+        },
+      ])
+    await view.ui.loadScans(ownedSource.id)
+    assert.equal(view.ui.recentScans.value[0].status, 'failed')
+    assert.equal(view.ui.recentScans.value[0].errorCode, 'SCAN_INTERRUPTED')
+  } finally {
+    view.unmount()
+  }
+})
+
+test('source menu launches a real scan, isolates repeated submits and deduplicates an existing running task', async () => {
+  await signIn()
+  const view = await componentSetup('views/MediaSourcesView.vue')
+  const delayed = deferred()
+  let posts = 0
+  respond = async (url, config) => {
+    if (config.method === 'post') {
+      posts++
+      return delayed.promise
+    }
+    return ok([scanTask])
+  }
+  try {
+    view.ui.menuSource.value = ownedSource
+    const starting = view.ui.menuAction('scan')
+    await flushRequests()
+    assert.equal(posts, 1)
+    assert.equal(view.ui.scanStarting.value[ownedSource.id], true)
+    assert.equal(view.ui.menuSource.value, undefined)
+    assert.equal(view.ui.browsingSource.value, undefined)
+    await view.ui.startScan(ownedSource)
+    assert.equal(posts, 1)
+    delayed.resolve(ok(scanTask, 202))
+    await starting
+    await flushRequests()
+    assert.equal(view.ui.scanStarting.value[ownedSource.id], false)
+    assert.equal(view.ui.recentScans.value.length, 1)
+    await view.ui.startScan(ownedSource)
+    await flushRequests()
+    assert.equal(posts, 2)
+    assert.equal(view.ui.recentScans.value.length, 1)
+  } finally {
+    view.unmount()
+  }
+})
+
+test('scan submit transport failure reports uncertain acceptance and requery recovers the saved task', async () => {
+  await signIn()
+  const view = await componentSetup('views/MediaSourcesView.vue')
+  try {
+    respond = async () => {
+      throw new AxiosError('timeout', 'ECONNABORTED')
+    }
+    await view.ui.startScan(ownedSource)
+    assert.match(view.ui.scanNotices.value[ownedSource.id], /结果尚不确定/)
+    assert.equal(view.ui.recentScans.value.length, 0)
+    respond = async () => ok([scanTask])
+    await view.ui.loadScans(ownedSource.id)
+    assert.equal(view.ui.scanNotices.value[ownedSource.id], '')
+    assert.equal(view.ui.recentScans.value[0].id, scanTask.id)
+  } finally {
+    view.unmount()
+  }
+})
+
+test('resources paginate, retry and cancel stale page/source/dialog responses', async () => {
+  await signIn()
+  const view = await componentSetup('views/MediaSourcesView.vue')
+  const otherSource = { ...ownedSource, id: 'source-b', name: '另一个来源' }
+  const completed = {
+    ...scanTask,
+    status: 'completed',
+    startedAt: scanTask.createdAt,
+    finishedAt: '2026-10-03T06:31:00Z',
+  }
+  view.ui.sourceList.value = [ownedSource, otherSource]
+  const delayed = deferred()
+  let oldSignal
+  try {
+    respond = async () => ok(resourcesPage([mediaResource], 0, 51))
+    await view.ui.openResults(completed)
+    assert.equal(view.ui.resourceResult.value.total, 51)
+    respond = (url, config) => {
+      oldSignal = config.signal
+      return delayed.promise
+    }
+    const oldPage = view.ui.loadResources(1)
+    await flushRequests()
+    respond = async () => failure(502, 'RESOURCE_UNAVAILABLE')
+    await view.ui.loadResources(0)
+    assert.equal(oldSignal.aborted, true)
+    assert.equal(view.ui.resourceError.value, '测试错误')
+    respond = async () => ok(resourcesPage([mediaResource], 0, 51))
+    await view.ui.loadResources()
+    assert.equal(view.ui.resourceError.value, '')
+    assert.equal(view.ui.resourceResult.value.page, 0)
+    delayed.resolve(ok(resourcesPage([{ ...mediaResource, id: 'old-page' }], 1, 51)))
+    await oldPage
+    assert.equal(view.ui.resourceResult.value.items[0].id, mediaResource.id)
+    const oldSource = deferred()
+    respond = (url, config) => {
+      oldSignal = config.signal
+      return oldSource.promise
+    }
+    const reloading = view.ui.loadResources()
+    respond = async () => ok(resourcesPage([{ ...mediaResource, sourceId: otherSource.id }]))
+    await view.ui.openResults({ ...completed, id: 'scan-b', sourceId: otherSource.id })
+    assert.equal(oldSignal.aborted, true)
+    oldSource.resolve(ok(resourcesPage()))
+    await reloading
+    assert.equal(view.ui.resourceResult.value.items[0].sourceId, otherSource.id)
+    const closing = deferred()
+    respond = (url, config) => {
+      oldSignal = config.signal
+      return closing.promise
+    }
+    const reading = view.ui.loadResources()
+    view.ui.closeResults()
+    assert.equal(oldSignal.aborted, true)
+    closing.resolve(ok(resourcesPage()))
+    await reading
+    assert.equal(view.ui.resultSource.value, undefined)
+    assert.equal(view.ui.resourceResult.value, undefined)
+  } finally {
+    view.unmount()
+  }
+})
+
+test('unmount and account switch cancel scan timers, pending submit and resources without old-response refill', async (t) => {
+  for (const action of ['unmount', 'logout']) {
+    await signIn()
+    t.mock.timers.enable({ apis: ['setTimeout'] })
+    const view = await componentSetup('views/MediaSourcesView.vue')
+    view.ui.sourceList.value = [ownedSource]
+    respond = async () => ok([scanTask])
+    await view.ui.loadScans(ownedSource.id)
+    const delayed = deferred()
+    const requests = []
+    respond = (url, config) => {
+      requests.push(config.signal)
+      return delayed.promise
+    }
+    const submitting = view.ui.startScan(ownedSource)
+    const reading = view.ui.openResults(scanTask)
+    await flushRequests()
+    assert.equal(requests.length, 2)
+    if (action === 'unmount') view.unmount()
+    else auth.logout()
+    assert.equal(
+      requests.every((signal) => signal.aborted),
+      true,
+    )
+    if (action === 'logout') await signIn({ id: 'user-b', username: 'bob', role: 'USER' })
+    delayed.resolve(ok(scanTask, 202))
+    await Promise.all([submitting, reading])
+    assert.equal(view.ui.resultSource.value, undefined)
+    assert.equal(view.ui.resourceResult.value, undefined)
+    if (action === 'logout') assert.deepEqual(view.ui.scans.value, {})
+    let calls = 0
+    respond = async () => {
+      calls++
+      return ok([])
+    }
+    t.mock.timers.tick(10000)
+    await flushRequests()
+    assert.equal(calls, 0)
+    view.unmount()
+    t.mock.timers.reset()
   }
 })

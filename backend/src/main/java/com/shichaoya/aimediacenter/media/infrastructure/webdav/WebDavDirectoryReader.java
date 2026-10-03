@@ -2,6 +2,7 @@ package com.shichaoya.aimediacenter.media.infrastructure.webdav;
 
 import com.shichaoya.aimediacenter.common.web.ApiException;
 import com.shichaoya.aimediacenter.media.domain.MediaDirectory;
+import com.shichaoya.aimediacenter.media.domain.MediaFileDirectory;
 import com.shichaoya.aimediacenter.media.domain.SourceDirectoryPath;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -12,6 +13,11 @@ import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.format.ResolverStyle;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -53,10 +59,16 @@ final class WebDavDirectoryReader {
     }
 
     MediaDirectory read(Element document) {
+        var result = readFiles(document);
+        return new MediaDirectory(result.path(), result.entries().stream()
+                .map(entry -> new MediaDirectory.Entry(entry.name(), entry.path(), entry.kind())).toList());
+    }
+
+    MediaFileDirectory readFiles(Element document) {
         if (!isDav(document, "multistatus")) throw invalid();
         List<Element> responses = children(document, "response");
         if (responses.isEmpty() || responses.size() > MAX_ENTRIES + 1) throw invalid();
-        List<MediaDirectory.Entry> entries = new ArrayList<>();
+        List<MediaFileDirectory.Entry> entries = new ArrayList<>();
         Set<String> seen = new HashSet<>();
         boolean currentFound = false;
         for (Element response : responses) {
@@ -72,13 +84,48 @@ final class WebDavDirectoryReader {
                 currentFound = true;
             } else {
                 if (entries.size() == MAX_ENTRIES) throw invalid();
-                entries.add(new MediaDirectory.Entry(relative.substring(relative.lastIndexOf('/') + 1), relative, kind));
+                entries.add(new MediaFileDirectory.Entry(relative.substring(relative.lastIndexOf('/') + 1), relative, kind,
+                        contentLength(response), modifiedAt(response)));
             }
         }
         if (!currentFound) throw invalid();
-        entries.sort(Comparator.comparing((MediaDirectory.Entry entry) -> !entry.kind().equals("directory"))
-                .thenComparing(MediaDirectory.Entry::name));
-        return new MediaDirectory(path, entries);
+        entries.sort(Comparator.comparing((MediaFileDirectory.Entry entry) -> !entry.kind().equals("directory"))
+                .thenComparing(MediaFileDirectory.Entry::name));
+        return new MediaFileDirectory(path, entries);
+    }
+
+    /** 只采纳唯一、成功的可选属性；不支持、格式错误或重复声明都不伪造事实。 */
+    private static String optionalProperty(Element response, String name) {
+        String value = null;
+        int count = 0;
+        for (Element propstat : children(response, "propstat")) {
+            var statuses = children(propstat, "status");
+            if (statuses.size() != 1 || statusCode(statuses.getFirst()) != 200) continue;
+            for (Element prop : children(propstat, "prop")) {
+                for (Element property : children(prop, name)) {
+                    count++;
+                    for (Node child = property.getFirstChild(); child != null; child = child.getNextSibling()) {
+                        if (child instanceof Element) return null;
+                    }
+                    value = property.getTextContent().strip();
+                }
+            }
+        }
+        return count == 1 ? value : null;
+    }
+
+    private static Long contentLength(Element response) {
+        String value = optionalProperty(response, "getcontentlength");
+        if (value == null || !value.matches("[0-9]+")) return null;
+        try { return Long.valueOf(value); }
+        catch (NumberFormatException error) { return null; }
+    }
+
+    private static Instant modifiedAt(Element response) {
+        String value = optionalProperty(response, "getlastmodified");
+        if (value == null) return null;
+        try { return ZonedDateTime.parse(value, DateTimeFormatter.RFC_1123_DATE_TIME.withResolverStyle(ResolverStyle.STRICT)).toInstant(); }
+        catch (DateTimeParseException error) { return null; }
     }
 
     private String sourcePath(String href) {

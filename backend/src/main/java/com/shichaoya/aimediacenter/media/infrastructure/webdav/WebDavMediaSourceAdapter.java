@@ -4,6 +4,7 @@ import com.shichaoya.aimediacenter.common.web.ApiException;
 import com.shichaoya.aimediacenter.media.application.port.MediaSourceAdapter;
 import com.shichaoya.aimediacenter.media.domain.SourceConnection;
 import com.shichaoya.aimediacenter.media.domain.MediaDirectory;
+import com.shichaoya.aimediacenter.media.domain.MediaFileDirectory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.w3c.dom.Element;
@@ -45,6 +46,10 @@ public class WebDavMediaSourceAdapter implements MediaSourceAdapter {
             <?xml version="1.0" encoding="utf-8"?>
             <d:propfind xmlns:d="DAV:"><d:prop><d:resourcetype/></d:prop></d:propfind>
             """;
+    private static final String SCAN_PROPFIND = """
+            <?xml version="1.0" encoding="utf-8"?>
+            <d:propfind xmlns:d="DAV:"><d:prop><d:resourcetype/><d:getcontentlength/><d:getlastmodified/></d:prop></d:propfind>
+            """;
     private final HttpClient client;
     private final int timeoutMs;
     public WebDavMediaSourceAdapter(@Value("${app.media-source.connection-timeout-ms:8000}") int timeoutMs) {
@@ -62,6 +67,23 @@ public class WebDavMediaSourceAdapter implements MediaSourceAdapter {
         byte[] xml = request(connection, reader.target(), "1", MAX_DIRECTORY_BYTES, true);
         try { return reader.read(parseXml(xml)); }
         catch (ApiException error) { throw error; }
+        catch (Exception error) { throw WebDavDirectoryReader.invalid(); }
+    }
+    @Override public MediaFileDirectory scanDirectory(SourceConnection connection, String path, long deadlineNanos) {
+        long started = System.nanoTime();
+        long remainingNanos = Math.min(deadlineNanos - started, TimeUnit.MILLISECONDS.toNanos(Math.min(timeoutMs, 8000)));
+        if (remainingNanos <= 0) throw timeout();
+        long operationDeadline = started + remainingNanos;
+        var reader = new WebDavDirectoryReader(connection.address(), path);
+        long remainingMs = TimeUnit.NANOSECONDS.toMillis(operationDeadline - System.nanoTime());
+        if (remainingMs <= 0) throw timeout();
+        byte[] xml = request(connection, reader.target(), "1", MAX_DIRECTORY_BYTES, true, remainingMs, SCAN_PROPFIND);
+        try {
+            if (operationDeadline - System.nanoTime() <= 0) throw timeout();
+            var result = reader.readFiles(parseXml(xml));
+            if (operationDeadline - System.nanoTime() <= 0) throw timeout();
+            return result;
+        } catch (ApiException error) { throw error; }
         catch (Exception error) { throw WebDavDirectoryReader.invalid(); }
     }
     @Override public void validateDirectories(SourceConnection connection, List<String> paths) {
@@ -82,11 +104,15 @@ public class WebDavMediaSourceAdapter implements MediaSourceAdapter {
         return request(connection, target, depth, bodyLimit, browsing, timeoutMs);
     }
     private byte[] request(SourceConnection connection, URI target, String depth, int bodyLimit, boolean browsing, long requestTimeoutMs) {
+        return request(connection, target, depth, bodyLimit, browsing, requestTimeoutMs, PROPFIND);
+    }
+    private byte[] request(SourceConnection connection, URI target, String depth, int bodyLimit, boolean browsing,
+                           long requestTimeoutMs, String properties) {
         rejectDangerousLiteralTarget(target);
         var builder = HttpRequest.newBuilder(target).timeout(Duration.ofMillis(requestTimeoutMs))
                 .header("Depth", depth).header("Content-Type", "application/xml; charset=utf-8")
                 .header("Accept", "application/xml, text/xml")
-                .method("PROPFIND", HttpRequest.BodyPublishers.ofString(PROPFIND, StandardCharsets.UTF_8));
+                .method("PROPFIND", HttpRequest.BodyPublishers.ofString(properties, StandardCharsets.UTF_8));
         if (!connection.username().isEmpty()) {
             String basic = Base64.getEncoder().encodeToString((connection.username() + ":" + connection.password()).getBytes(StandardCharsets.UTF_8));
             builder.header("Authorization", "Basic " + basic);

@@ -1,11 +1,20 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import SourceIcon from '../components/media-source/SourceIcon.vue'
 import SourceDialog from '../components/media-source/SourceDialog.vue'
 import SourceMenu from '../components/media-source/SourceMenu.vue'
 import DirectoryBrowser from '../components/media-source/DirectoryBrowser.vue'
 import DirectorySelection from '../components/media-source/DirectorySelection.vue'
+import OwnedScanTaskList from '../components/media-source/OwnedScanTaskList.vue'
+import OwnedScanResults from '../components/media-source/OwnedScanResults.vue'
+import {
+  getOwnedSourceScans,
+  getOwnedSourceResources,
+  startOwnedSourceScan,
+} from '../services/ownedScanService'
+import type { OwnedScanTask, OwnedResourcePage } from '../services/ownedScanService'
+import { ApiError } from '../services/http'
 import {
   createOwnedSource,
   getOwnedSourceDirectory,
@@ -39,6 +48,186 @@ const scanRoots = ref<
 let controller: AbortController | undefined
 let directoryController: AbortController | undefined
 const scanRootControllers = new Map<string, AbortController>()
+const scans = ref<
+  Record<string, { status: 'loading' | 'error' | 'ready'; tasks: OwnedScanTask[]; error: string }>
+>({})
+const scanStarting = ref<Record<string, boolean>>({})
+const scanNotices = ref<Record<string, string>>({})
+const scanControllers = new Map<string, AbortController>()
+const scanTimers = new Map<string, ReturnType<typeof setTimeout>>()
+const resultSource = ref<OwnedMediaSource>()
+const selectedTask = ref<OwnedScanTask>()
+const resourcePage = ref(0)
+const resourceResult = ref<OwnedResourcePage>()
+const resourceLoading = ref(false)
+const resourceError = ref('')
+let resourceController: AbortController | undefined
+const recentScans = computed(() =>
+  Object.values(scans.value)
+    .flatMap((source) => source.tasks)
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+    .slice(0, 20),
+)
+const resultTask = computed(
+  () =>
+    selectedTask.value &&
+    (scans.value[selectedTask.value.sourceId]?.tasks.find(
+      (task) => task.id === selectedTask.value?.id,
+    ) ||
+      selectedTask.value),
+)
+
+function clearScanTimer(sourceId: string) {
+  clearTimeout(scanTimers.get(sourceId))
+  scanTimers.delete(sourceId)
+}
+function cancelScanRequests() {
+  for (const sourceId of scanTimers.keys()) clearScanTimer(sourceId)
+  for (const current of scanControllers.values()) current.abort()
+  scanControllers.clear()
+}
+function closeResults() {
+  resourceController?.abort()
+  resultSource.value = undefined
+  selectedTask.value = undefined
+  resourceResult.value = undefined
+  resourceLoading.value = false
+  resourceError.value = ''
+  resourcePage.value = 0
+}
+async function loadResources(page = resourcePage.value) {
+  const source = resultSource.value
+  if (!source) return
+  resourceController?.abort()
+  const current = new AbortController()
+  resourceController = current
+  resourcePage.value = page
+  resourceResult.value = undefined
+  resourceError.value = ''
+  resourceLoading.value = true
+  try {
+    const result = await getOwnedSourceResources(source.id, page, current.signal)
+    if (current.signal.aborted) return
+    resourceResult.value = result
+  } catch (reason) {
+    if (current.signal.aborted) return
+    resourceError.value = reason instanceof Error ? reason.message : '资源读取失败，请重试。'
+  } finally {
+    if (!current.signal.aborted) resourceLoading.value = false
+  }
+}
+async function openResults(task: OwnedScanTask) {
+  const source = sourceList.value.find((item) => item.id === task.sourceId)
+  if (!source) return
+  closeDirectory()
+  closeSelection()
+  closeResults()
+  menuSource.value = undefined
+  resultSource.value = source
+  selectedTask.value = task
+  await loadResources(0)
+}
+function latestScan(sourceId: string) {
+  return scans.value[sourceId]?.tasks[0]
+}
+function scanSummary(sourceId: string) {
+  const sourceScans = scans.value[sourceId]
+  if (!sourceScans || sourceScans.status === 'loading') return '正在读取扫描记录…'
+  if (sourceScans.status === 'error') return '扫描记录读取失败'
+  const latest = latestScan(sourceId)
+  return latest ? `本次入库 ${latest.persistedCount} 个文件` : '尚未扫描'
+}
+function scanTime(sourceId: string) {
+  const latest = latestScan(sourceId)
+  if (!latest) return ''
+  const labels = {
+    pending: '等待扫描',
+    running: '扫描中',
+    completed: '扫描完成',
+    failed: '扫描未完成',
+  }
+  return `${labels[latest.status]} · ${new Date(latest.createdAt).toLocaleString('zh-CN')}`
+}
+async function loadScans(sourceId: string) {
+  if (scanStarting.value[sourceId]) return
+  clearScanTimer(sourceId)
+  scanControllers.get(sourceId)?.abort()
+  const current = new AbortController()
+  scanControllers.set(sourceId, current)
+  const previous = scans.value[sourceId]?.tasks ?? []
+  scans.value[sourceId] = {
+    status: previous.length ? 'ready' : 'loading',
+    tasks: previous,
+    error: '',
+  }
+  try {
+    const tasks = await getOwnedSourceScans(sourceId, current.signal)
+    if (current.signal.aborted) return
+    const finished = tasks.some(
+      (task) =>
+        (task.status === 'completed' || task.status === 'failed') &&
+        previous.some(
+          (old) => old.id === task.id && (old.status === 'pending' || old.status === 'running'),
+        ),
+    )
+    scans.value[sourceId] = { status: 'ready', tasks, error: '' }
+    scanNotices.value[sourceId] = ''
+    if (finished && resultSource.value?.id === sourceId) void loadResources()
+    // 每次请求结束后才安排下一次；没有活动任务时停止，失败保留最后结果并提供重查。
+    if (tasks.some((task) => task.status === 'pending' || task.status === 'running')) {
+      scanTimers.set(
+        sourceId,
+        setTimeout(() => {
+          void loadScans(sourceId)
+        }, 1500),
+      )
+    }
+  } catch (reason) {
+    if (current.signal.aborted) return
+    scans.value[sourceId] = {
+      status: 'error',
+      tasks: previous,
+      error: reason instanceof Error ? reason.message : '扫描记录读取失败，请重试。',
+    }
+  } finally {
+    if (scanControllers.get(sourceId) === current) scanControllers.delete(sourceId)
+  }
+}
+async function startScan(source: OwnedMediaSource) {
+  menuSource.value = undefined
+  if (scanStarting.value[source.id]) return
+  clearScanTimer(source.id)
+  scanControllers.get(source.id)?.abort()
+  const current = new AbortController()
+  scanControllers.set(source.id, current)
+  scanStarting.value[source.id] = true
+  scanNotices.value[source.id] = ''
+  try {
+    const task = await startOwnedSourceScan(source.id, current.signal)
+    if (current.signal.aborted) return
+    const previous = scans.value[source.id]?.tasks ?? []
+    scans.value[source.id] = {
+      status: 'ready',
+      tasks: [task, ...previous.filter((old) => old.id !== task.id)].slice(0, 20),
+      error: '',
+    }
+    notice.value = '扫描已接受，仅处理开始时已启用的影片文件夹。文件暂以未识别资源保存。'
+  } catch (reason) {
+    if (current.signal.aborted) return
+    scanNotices.value[source.id] =
+      reason instanceof ApiError && reason.status === 0
+        ? '扫描请求结果尚不确定，请重新查询扫描记录确认。'
+        : reason instanceof Error
+          ? reason.message
+          : '扫描请求未被接受，请重试。'
+  } finally {
+    if (scanControllers.get(source.id) === current) {
+      scanControllers.delete(source.id)
+      scanStarting.value[source.id] = false
+      if (!current.signal.aborted && !scanNotices.value[source.id]) void loadScans(source.id)
+    }
+  }
+}
 
 function cancelScanRootRequests() {
   for (const current of scanRootControllers.values()) current.abort()
@@ -79,6 +268,8 @@ async function load() {
   // 每次重试先取消上一轮请求；只有当前请求未被取消时，才更新成功或失败状态。
   controller?.abort()
   cancelScanRootRequests()
+  cancelScanRequests()
+  closeResults()
   closeDirectory()
   closeSelection()
   const current = new AbortController()
@@ -86,6 +277,9 @@ async function load() {
   status.value = 'loading'
   sourceList.value = []
   scanRoots.value = {}
+  scans.value = {}
+  scanStarting.value = {}
+  scanNotices.value = {}
   error.value = ''
   try {
     // 页面负责显示状态，service 负责取数据；signal 会一直传到 Axios。
@@ -93,7 +287,9 @@ async function load() {
     if (!current.signal.aborted) {
       sourceList.value = sources
       status.value = sources.length ? 'ready' : 'empty'
-      await Promise.all(sources.map((source) => loadScanRoots(source.id)))
+      await Promise.all(
+        sources.flatMap((source) => [loadScanRoots(source.id), loadScans(source.id)]),
+      )
     }
   } catch (reason) {
     if (current.signal.aborted) return
@@ -102,6 +298,7 @@ async function load() {
   }
 }
 function addSource() {
+  closeResults()
   closeDirectory()
   closeSelection()
   menuSource.value = undefined
@@ -136,7 +333,7 @@ function unavailable(action: 'detail' | 'edit' | 'remove') {
 async function menuAction(action: 'detail' | 'scan' | 'edit' | 'remove') {
   const source = menuSource.value
   if (action === 'scan') {
-    if (source) await openDirectory(source)
+    if (source) await startScan(source)
   } else unavailable(action)
 }
 function closeDirectory() {
@@ -148,6 +345,7 @@ function closeDirectory() {
   directoryError.value = ''
 }
 async function openDirectory(source: OwnedMediaSource) {
+  closeResults()
   closeSelection()
   closeDirectory()
   menuSource.value = undefined
@@ -160,6 +358,7 @@ function closeSelection() {
 }
 
 function openSelection(source: OwnedMediaSource) {
+  closeResults()
   closeDirectory()
   menuSource.value = undefined
   selectingSource.value = source
@@ -211,10 +410,15 @@ watch(
   () => {
     controller?.abort()
     cancelScanRootRequests()
+    cancelScanRequests()
+    closeResults()
     closeDirectory()
     closeSelection()
     sourceList.value = []
     scanRoots.value = {}
+    scans.value = {}
+    scanStarting.value = {}
+    scanNotices.value = {}
     dialogOpen.value = false
     menuSource.value = undefined
     notice.value = ''
@@ -228,6 +432,8 @@ onMounted(load)
 onBeforeUnmount(() => {
   controller?.abort()
   cancelScanRootRequests()
+  cancelScanRequests()
+  closeResults()
   closeDirectory()
   closeSelection()
 })
@@ -299,6 +505,13 @@ onBeforeUnmount(() => {
               </button>
               <button class="source-config-link" @click="openDirectory(source)">浏览目录</button>
               <button
+                class="source-config-link"
+                :disabled="scanStarting[source.id] || !source.enabled"
+                @click="startScan(source)"
+              >
+                {{ scanStarting[source.id] ? '正在提交扫描…' : '扫描' }}
+              </button>
+              <button
                 v-if="scanRoots[source.id]?.status === 'error'"
                 class="source-config-link"
                 @click="loadScanRoots(source.id)"
@@ -306,7 +519,25 @@ onBeforeUnmount(() => {
                 重试
               </button>
             </div>
-            <span class="source-footer"><span>0 部电影</span><span>上次扫描 · 尚未扫描</span></span>
+            <span class="source-footer"
+              ><span>{{ scanSummary(source.id) }}</span
+              ><span>{{ scanTime(source.id) }}</span></span
+            >
+            <div
+              v-if="scanNotices[source.id] || scans[source.id]?.status === 'error'"
+              class="source-scan-feedback"
+            >
+              <p class="source-note" role="alert">
+                {{ scanNotices[source.id] || scans[source.id]?.error }}
+              </p>
+              <button
+                class="source-config-link"
+                :disabled="scanStarting[source.id]"
+                @click="loadScans(source.id)"
+              >
+                重新查询扫描记录
+              </button>
+            </div>
             <button
               class="source-more"
               :aria-label="`${source.name}更多操作`"
@@ -328,6 +559,33 @@ onBeforeUnmount(() => {
           <button class="primary-action" @click="addSource">添加媒体来源</button>
         </div>
       </section>
+      <section
+        v-if="status === 'empty' || status === 'ready'"
+        class="sources-section"
+        aria-labelledby="recent-scans-title"
+      >
+        <h2 id="recent-scans-title" class="section-title">最近扫描</h2>
+        <OwnedScanTaskList
+          v-if="recentScans.length"
+          :tasks="recentScans"
+          :sources="sourceList"
+          @select="openResults"
+        />
+        <p
+          v-else-if="Object.values(scans).some((source) => source.status === 'loading')"
+          class="source-note"
+          role="status"
+        >
+          正在读取扫描记录…
+        </p>
+        <p
+          v-else-if="Object.values(scans).some((source) => source.status === 'error')"
+          class="source-note"
+        >
+          部分扫描记录暂时无法读取，请在对应来源重试。
+        </p>
+        <p v-else class="source-note">尚未扫描。选择影片文件夹后，可以主动开始扫描。</p>
+      </section>
       <section v-if="status === 'empty' || status === 'ready'" class="sources-section">
         <div class="section-heading-row">
           <h2 class="section-title">最近入库</h2>
@@ -335,14 +593,16 @@ onBeforeUnmount(() => {
             >查看全部<SourceIcon name="caret-right"
           /></RouterLink>
         </div>
-        <p class="source-note">添加来源并扫描后，影片会出现在这里。</p>
+        <p class="source-note">
+          扫描文件暂以未识别资源保存，可以在最近扫描中查看。影片识别与个人片库尚未开放。
+        </p>
       </section>
       <p v-if="notice" class="source-note" role="status">{{ notice }}</p>
     </div>
     <SourceMenu
       v-if="menuSource && trigger"
       :trigger="trigger"
-      scan-label="浏览目录"
+      scan-label="扫描"
       @close="menuSource = undefined"
       @action="menuAction"
     />
@@ -375,6 +635,20 @@ onBeforeUnmount(() => {
       @loaded="selectionLoaded"
       @saved="selectionSaved"
     />
+    <OwnedScanResults
+      v-if="resultSource"
+      :source-name="resultSource.name"
+      :task="resultTask"
+      :result="resourceResult"
+      :page="resourcePage"
+      :loading="resourceLoading"
+      :error="resourceError"
+      :scan-error="scans[resultSource.id]?.error || ''"
+      @close="closeResults"
+      @page="loadResources"
+      @retry="loadResources()"
+      @retry-task="loadScans(resultSource.id)"
+    />
   </section>
 </template>
 
@@ -395,5 +669,11 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
   align-items: center;
   gap: 12px;
+}
+.source-scan-feedback {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 8px;
+  padding-top: 8px;
 }
 </style>

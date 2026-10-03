@@ -39,7 +39,7 @@ TypeScript 工程与 IDE 配置可参考 [Vue 官方指南](https://vuejs.org/gu
 - 侧栏按路由记录高亮，嵌套子路由会保留父级入口的选中态。电影、合集等详情路由应明确所属导航，不依靠路径字符串前缀猜测。
 - `/login`、`/register` 共用 `AuthForm.vue`，默认接入真实注册/登录。受保护路由验证身份后才展示个人页面；侧栏展示当前用户名，退出清除当前标签页登录态。
 - Token 仅保存在 `sessionStorage`。刷新先调用 `/api/auth/me`；网络失败保留 Token 并允许重试，401/账号禁用清除身份。未完成旧请求在退出、账号切换后不能回填数据。
-- `/media-sources` 接入本人空/非空来源查询、真实 WebDAV 连接测试、首次新增、已保存来源只读目录浏览及影片文件夹选择 / 整批保存；区分加载、失败、成功空状态与列表。新增加密保存后留在列表，刷新仍可见；“浏览目录”弹窗支持逐层查看目录和文件、返回上级及失败重试。“选择 / 修改影片文件夹”复用同一目录布局，草稿取消不写入，保存后刷新仍保留，根查询失败不显示为未配置。关闭 / 导航 / 会话变化取消旧请求；扫描根独立启停、扫描、编辑删除和其他个人页面尚未接入，正常运行不显示示例收藏。
+- `/media-sources` 接入本人空/非空来源查询、真实 WebDAV 连接测试、首次新增、已保存来源只读目录浏览及影片文件夹选择 / 整批保存；区分加载、失败、成功空状态与列表。新增加密保存后留在列表，刷新仍可见；“浏览目录”弹窗支持逐层查看目录和文件、返回上级及失败重试。“选择 / 修改影片文件夹”复用同一目录布局，草稿取消不写入，保存后刷新仍保留，根查询失败不显示为未配置。关闭 / 导航 / 会话变化取消旧请求；来源页可主动扫描、查询持久任务与分页未识别资源，刷新回读；扫描根独立启停、编辑删除、影片识别和其他个人页面尚未接入，正常运行不显示示例收藏。
 
 Vite 开发服务器将 `/api` 代理到 `http://127.0.0.1:8080`；正式部署与构建预览需要提供同源 `/api` 反向代理。
 
@@ -47,7 +47,7 @@ Vite 开发服务器将 `/api` 代理到 `http://127.0.0.1:8080`；正式部署�
 
 已有片库/电影/合集/搜索和媒体来源完整 Mock 页面保留为显式开发预览。在 PowerShell 中执行 `$env:VITE_MOCK_PREVIEW = 'true'` 后运行 `npm run dev`；关闭预览需移除该环境变量并重启 Vite。此开关仅在开发模式生效，生产始终走真实路径。预览不调用认证接口、不创建登录态；即使 sessionStorage 留有 Token，也不展示身份恢复入口或调用 `/api/auth/me`，保留 Token 供切回正常模式后重新验证。媒体来源列表实现保存在 `MediaSourcesPreviewView.vue`。Mock 的刷新重置、模拟连接和扫描规则保持不变，预览中不要输入真实凭据。
 
-前端回归：在本目录使用 Node.js 24 运行 `npm test`（`node --test tests/*.test.mjs`），覆盖会话恢复/失效/竞态、错误与空状态区分及原有 Mock 目录扫描规则。`authStore.test.mjs` 执行真实 Pinia Action 与 App/AuthForm/正式来源页 setup，仅替换 Axios adapter、DOM 生命周期和导航；`authRouting.test.mjs` 执行真实路由守卫、会话监听及 main 插件注册，使用 memory history 检查初始化、刷新和 Mock Preview。`httpTransport.test.mjs` 使用本机随机端口与真实 Axios HTTP adapter，检查 URL、错误解析、取消和实际 15 秒超时，因此整套测试约需 15 秒。组件 setup 回归不渲染 DOM；这些前端测试不访问 MySQL，不替代浏览器验收或下面的 Spring Boot 集成测试。单独类型检查使用 `npx vue-tsc -b`；代码质量与格式检查使用上方独立脚本，不替代回归测试。
+前端回归：在本目录使用 Node.js 24 运行 `npm test`（`node --test tests/*.test.mjs`），覆盖会话恢复/失效/竞态、错误与空状态区分、真实扫描传输 / 轮询 / 资源分页 / 取消隔离及原有 Mock 目录扫描规则。`authStore.test.mjs` 执行真实 Pinia Action 与 App/AuthForm/正式来源页 setup，仅替换 Axios adapter、DOM 生命周期和导航；`authRouting.test.mjs` 执行真实路由守卫、会话监听及 main 插件注册，使用 memory history 检查初始化、刷新和 Mock Preview。`httpTransport.test.mjs` 使用本机随机端口与真实 Axios HTTP adapter，检查 URL、错误解析、取消和实际 15 秒超时，因此整套测试约需 15 秒。组件 setup 回归不渲染 DOM；这些前端测试不访问 MySQL，不替代浏览器验收或下面的 Spring Boot 集成测试。单独类型检查使用 `npx vue-tsc -b`；代码质量与格式检查使用上方独立脚本，不替代回归测试。
 
 ## 共享状态与请求分工
 

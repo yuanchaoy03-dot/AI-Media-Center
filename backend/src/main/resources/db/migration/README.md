@@ -1,6 +1,6 @@
 # 数据库迁移学习说明
 
-本文件只用于阅读，不是 Flyway migration。实际结构以同目录的 [V1__create_users.sql](V1__create_users.sql)、[V2__create_media_source.sql](V2__create_media_source.sql)、[V3__add_media_source_connection_test_time.sql](V3__add_media_source_connection_test_time.sql) 与 [V4__create_media_scan_root.sql](V4__create_media_scan_root.sql) 为准。
+本文件只用于阅读，不是 Flyway migration。实际结构以同目录的 [V1__create_users.sql](V1__create_users.sql)、[V2__create_media_source.sql](V2__create_media_source.sql)、[V3__add_media_source_connection_test_time.sql](V3__add_media_source_connection_test_time.sql) 、[V4__create_media_scan_root.sql](V4__create_media_scan_root.sql) 与 [V5__create_scan_task_and_media_resource.sql](V5__create_scan_task_and_media_resource.sql) 为准。
 
 ## Flyway migration 是什么
 
@@ -33,7 +33,7 @@ Migration 是按顺序改变数据库结构的脚本。文件名中的 `V1`、`V
 - `ON DELETE RESTRICT` 表示用户仍被来源引用时，不允许直接删除该用户，避免留下失去归属的来源。
 - `source_type` 的 `CHECK` 目前只允许 `WEBDAV`，`enabled` 的 `CHECK` 只允许 `0` 或 `1`。`connection_config_ciphertext` 由 Java 的 AES-256-GCM 加密后写入，完整地址和凭据不存明文；密钥只由后端配置提供。
 
-当前 `MediaSourceMapper` 支持单行新增、`WHERE user_id = #{userId}` 本人列表及 `user_id + sourceId` 本人单条查询，应用层解密本人行后投影脱敏 DTO 或进行只读 WebDAV 目录浏览；无来源返回空列表，非空返回真实来源。首次新增先完成 WebDAV 测试再写入，不建立扫描根或任务；目录浏览不写库。扫描范围由 V4 独立表和应用服务保存；来源编辑、删除与扫描仍未实现。
+当前 `MediaSourceMapper` 支持单行新增、`WHERE user_id = #{userId}` 本人列表及 `user_id + sourceId` 本人单条查询，应用层解密本人行后投影脱敏 DTO 或进行只读 WebDAV 目录浏览；无来源返回空列表，非空返回真实来源。首次新增先完成 WebDAV 测试再写入，不建立扫描根或任务；目录浏览不写库。扫描范围由 V4 独立表和应用服务保存；主动扫描及资源持久化见 V5；来源编辑与删除仍未实现。
 
 ## V3：最近成功连接测试时间
 
@@ -47,7 +47,15 @@ V3 在 `media_source` 增加可空的 `last_connection_test_at DATETIME(3)`，�
 - `path` 保存完整规范化来源内路径，支持 2048 个 Unicode 码点；`path_hash BINARY(32)` 保存其 UTF-8 字节的 SHA-256。`UNIQUE (source_id, path_hash)` 使用固定长度完整路径散列，避开 utf8mb4 长路径直接唯一索引的字节上限；应用层检查同散列不同原文并整体回滚。
 - `enabled TINYINT` 用 `CHECK` 限定 `0/1`，不使用显示宽度。`created_at`、`updated_at` 为 UTC 毫秒时间。
 - 整批保存先只读验证所有目录，再短事务锁来源行；保留路径的 ID/启用状态，新增根启用，取消根删除。空集合清空；网络或持久化失败保留完整旧配置。并发保存不会产生两个集合的混合状态。
-- 扫描任务、资源与片库关系仍未创建；独立测试库清理时先删除扫描根，再删除来源与用户，遵循外键引用顺序。V1/V2/V3 保持原样。
+- 本表不代表已创建资源或个人片库；V5 单独落实主动任务 / 未识别资源。V1/V2/V3 保持原样。
+
+## V5：主动任务与未识别资源
+
+`scan_task` 保存本次启用根快照、真实状态、发现 / 持久化 / 目录计数和脱敏失败原因；生成列 `active_source_id` 在活动状态取来源 ID，唯一约束保证同来源最多一个活动任务。后台采用单实例有界执行器，重启将未结束任务标为中断，不自动续跑。
+
+`media_resource` 通过来源继承归属，以“来源 + 完整规范路径散列”唯一；原路径保留，应用层防散列碰撞。重复扫描更新文件事实并保留 ID，大小和 UTC 修改时间未知为空；当前仅允许 `UNIDENTIFIED`，未建立 Movie 关系。资源和对应任务进度逐文件短事务提交，失败不删除此前成果；分页计数 / 列表采用一致读快照。正式字段与约束由 [数据库设计文档](../../../../../../docs/03-数据库设计文档.md)维护。
+
+本版不标记历史资源缺失，也不生成临时播放地址。独立测试库清理顺序为资源 → 任务 → 扫描根 → 来源 → 用户；V1–V4 保持原样。
 
 ## 数据库约束和 Java 业务权限有什么区别
 

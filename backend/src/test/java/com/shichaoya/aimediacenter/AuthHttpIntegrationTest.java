@@ -59,6 +59,7 @@ class AuthHttpIntegrationTest {
     @BeforeEach void clear() {
         // 本测试会删除表中数据，先再次核对数据库名称，避免误清理普通开发库。
         assertTrue(db.queryForObject("SELECT DATABASE()", String.class).endsWith("_auth_test"));
+        db.update("DELETE FROM media_resource"); db.update("DELETE FROM scan_task");
         db.update("DELETE FROM media_scan_root"); db.update("DELETE FROM media_source"); db.update("DELETE FROM users");
     }
     @AfterEach void cleanup() { clear(); }
@@ -439,6 +440,174 @@ class AuthHttpIntegrationTest {
         check(call("/auth/login", Map.of("username", "unicode_user", "password", unicode), null), 200, "OK");
         check(call("/auth/login", Map.of("username", "unicode_user", "password", "😀".repeat(127)+"😁"), null), 401, "INVALID_CREDENTIALS");
         check(call("/auth/register", Map.of("username", "too_long", "password", unicode+"x"), null), 400, "VALIDATION_FAILED");
+    }
+
+    @Test void realScanPersistsFileFactsIdempotentlyAndRejectsOtherUsersBeforeNetwork() throws Exception {
+        String owner = registerAndLogin("scan_owner"), other = registerAndLogin("scan_other");
+        try (var dav = new ScanWebDavServer()) {
+            String sourceId = (String) data(check(call("/media-sources", dav.input(), owner), 201, "OK")).get("id");
+            String scans = "/media-sources/" + sourceId + "/scans", resources = "/media-sources/" + sourceId + "/resources";
+            String rootApi = "/media-sources/" + sourceId + "/scan-roots";
+            check(put(rootApi, Map.of("paths", List.of("/selected", "/other")), owner), 200, "OK");
+            db.update("UPDATE media_scan_root SET enabled=0 WHERE source_id=? AND path='/other'", sourceId);
+            int before = dav.requests.get();
+            for (String role : List.of("USER", "ADMIN")) {
+                db.update("UPDATE users SET role=? WHERE username='scan_other'", role);
+                check(postEmpty(scans, other), 404, "SOURCE_NOT_FOUND");
+                check(call(scans, null, other), 404, "SOURCE_NOT_FOUND");
+                check(call(resources, null, other), 404, "SOURCE_NOT_FOUND");
+            }
+            assertEquals(before, dav.requests.get());
+            check(call(scans, null, null), 401, "UNAUTHENTICATED");
+            check(call(scans, Map.of("rootPaths", List.of("/other")), owner), 400, "VALIDATION_FAILED");
+            var started = data(check(postEmpty(scans, owner), 202, "OK"));
+            var completed = awaitScan(scans, (String) started.get("id"), owner);
+            assertEquals("completed", completed.get("status"));
+            assertEquals(List.of("/selected"), completed.get("rootPaths"));
+            assertEquals(3, completed.get("discoveredCount")); assertEquals(3, completed.get("persistedCount"));
+            assertEquals(2, completed.get("directoryCount"));
+            assertEquals(0, dav.outsideRequests.get());
+            var page = data(check(call(resources + "?page=0&pageSize=2", null, owner), 200, "OK"));
+            assertEquals(3, ((Number) page.get("total")).intValue());
+            assertEquals(2, ((List<?>) page.get("items")).size());
+            var all = data(check(call(resources, null, owner), 200, "OK"));
+            var files = objectList(all.get("items"));
+            assertEquals(Set.of("/selected/one.mkv", "/selected/电影 #100%.mp4", "/selected/sub/three.MOV"),
+                    files.stream().map(row -> (String) row.get("path")).collect(java.util.stream.Collectors.toSet()));
+            for (var file : files) {
+                assertEquals("unidentified", file.get("recognitionStatus"));
+                assertEquals(7, UUID.fromString((String) file.get("id")).version());
+                assertEquals(1024, ((Number) file.get("size")).intValue());
+                assertEquals("2024-01-01T00:00:00Z", file.get("modifiedAt"));
+            }
+            var previousIds = files.stream().map(file -> file.get("id")).collect(java.util.stream.Collectors.toSet());
+            String againId = (String) data(check(postEmpty(scans, owner), 202, "OK")).get("id");
+            assertNotEquals(started.get("id"), againId);
+            assertEquals("completed", awaitScan(scans, againId, owner).get("status"));
+            String reLogin = (String) data(check(call("/auth/login", Map.of("username", "scan_owner", "password", password), null), 200, "OK")).get("accessToken");
+            var reloaded = objectList(data(check(call(resources, null, reLogin), 200, "OK")).get("items"));
+            assertEquals(previousIds, reloaded.stream().map(file -> file.get("id")).collect(java.util.stream.Collectors.toSet()));
+            assertEquals(3, db.queryForObject("SELECT COUNT(*) FROM media_resource", Integer.class));
+            for (String query : List.of("?page=-1", "?pageSize=101", "?page=1.1", "?page=0&page=1", "?userId=other"))
+                check(call(resources + query, null, owner), 400, "VALIDATION_FAILED");
+            assertEquals(List.of(), check(call("/media-sources", null, other), 200, "OK").get("data"));
+        }
+    }
+
+    @Test void activeScanFreezesRootsAndConcurrentStartsReturnOneTask() throws Exception {
+        String owner = registerAndLogin("scan_snapshot");
+        try (var dav = new ScanWebDavServer()) {
+            String sourceId = (String) data(check(call("/media-sources", dav.input(), owner), 201, "OK")).get("id");
+            String scans = "/media-sources/" + sourceId + "/scans", roots = "/media-sources/" + sourceId + "/scan-roots";
+            check(put(roots, Map.of("paths", List.of("/selected")), owner), 200, "OK");
+            dav.block.set(true);
+            String taskId = (String) data(check(postEmpty(scans, owner), 202, "OK")).get("id");
+            try {
+                assertTrue(dav.entered.await(2, TimeUnit.SECONDS));
+                try (var callers = Executors.newVirtualThreadPerTaskExecutor()) {
+                    var one = callers.submit(() -> postEmpty(scans, owner));
+                    var two = callers.submit(() -> postEmpty(scans, owner));
+                    assertEquals(taskId, data(check(one.get(), 202, "OK")).get("id"));
+                    assertEquals(taskId, data(check(two.get(), 202, "OK")).get("id"));
+                }
+                check(put(roots, Map.of("paths", List.of("/other")), owner), 200, "OK");
+            } finally { dav.release.countDown(); }
+            var finished = awaitScan(scans, taskId, owner);
+            assertEquals("completed", finished.get("status")); assertEquals(List.of("/selected"), finished.get("rootPaths"));
+            assertEquals(1, db.queryForObject("SELECT COUNT(*) FROM scan_task", Integer.class));
+            assertEquals(3, db.queryForObject("SELECT COUNT(*) FROM media_resource", Integer.class));
+            assertEquals(0, dav.outsideRequests.get());
+        }
+    }
+
+    @Test void failedScanKeepsPreviouslyDiscoveredResourcesAndPrivateErrors() throws Exception {
+        String owner = registerAndLogin("scan_failure");
+        try (var dav = new ScanWebDavServer()) {
+            var input = dav.input();
+            String sourceId = (String) data(check(call("/media-sources", input, owner), 201, "OK")).get("id");
+            String scans = "/media-sources/" + sourceId + "/scans";
+            check(put("/media-sources/" + sourceId + "/scan-roots", Map.of("paths", List.of("/selected")), owner), 200, "OK");
+            String taskId = (String) data(check(postEmpty(scans, owner), 202, "OK")).get("id");
+            assertEquals("completed", awaitScan(scans, taskId, owner).get("status"));
+            dav.failChild.set(true);
+            String failedId = (String) data(check(postEmpty(scans, owner), 202, "OK")).get("id");
+            var failed = awaitScan(scans, failedId, owner);
+            assertEquals("failed", failed.get("status")); assertNotNull(failed.get("errorCode"));
+            assertNotNull(failed.get("errorMessage")); assertNotNull(failed.get("finishedAt"));
+            assertSourceFailurePrivate(call(scans, null, owner), input);
+            assertEquals(3, db.queryForObject("SELECT COUNT(*) FROM media_resource", Integer.class));
+        }
+    }
+
+    @Test void disabledSourceOrMissingEnabledRootsCannotCreateScans() throws Exception {
+        String owner = registerAndLogin("scan_validation");
+        try (var dav = new ScanWebDavServer()) {
+            String sourceId = (String) data(check(call("/media-sources", dav.input(), owner), 201, "OK")).get("id");
+            String scans = "/media-sources/" + sourceId + "/scans";
+            int requests = dav.requests.get();
+            check(postEmpty(scans, owner), 409, "SCAN_ROOTS_REQUIRED");
+            check(postEmpty(scans + "?userId=other", owner), 400, "VALIDATION_FAILED");
+            db.update("UPDATE media_source SET enabled=0 WHERE id=?", sourceId);
+            check(postEmpty(scans, owner), 409, "SOURCE_DISABLED");
+            assertEquals(requests, dav.requests.get());
+            assertEquals(0, db.queryForObject("SELECT COUNT(*) FROM scan_task", Integer.class));
+        }
+    }
+
+    HttpResponse<String> postEmpty(String path, String token) throws Exception {
+        var request = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api" + path))
+                .header("Authorization", "Bearer " + token).POST(HttpRequest.BodyPublishers.noBody()).build();
+        return client.send(request, HttpResponse.BodyHandlers.ofString());
+    }
+    Map<String, Object> awaitScan(String path, String id, String token) throws Exception {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(8);
+        while (System.nanoTime() < deadline) {
+            var tasks = objectList(check(call(path, null, token), 200, "OK").get("data"));
+            for (var task : tasks) if (id.equals(task.get("id")) && Set.of("completed", "failed").contains(task.get("status"))) return task;
+            Thread.sleep(20);
+        }
+        throw new AssertionError("Scan did not finish within test deadline");
+    }
+    @SuppressWarnings("unchecked") List<Map<String, Object>> objectList(Object value) { return (List<Map<String, Object>>) value; }
+
+    static final class ScanWebDavServer implements AutoCloseable {
+        final HttpServer server;
+        final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
+        final AtomicInteger requests = new AtomicInteger(), outsideRequests = new AtomicInteger();
+        final AtomicBoolean block = new AtomicBoolean(), failChild = new AtomicBoolean();
+        final CountDownLatch entered = new CountDownLatch(1), release = new CountDownLatch(1);
+        ScanWebDavServer() throws Exception {
+            server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0); server.setExecutor(executor);
+            server.createContext("/", exchange -> {
+                try (exchange) {
+                    exchange.getRequestBody().readAllBytes(); requests.incrementAndGet();
+                    String path = exchange.getRequestURI().getPath(), raw = exchange.getRequestURI().getRawPath();
+                    String depth = exchange.getRequestHeaders().getFirst("Depth");
+                    String expected = "Basic " + Base64.getEncoder().encodeToString("scan-dav-user:scan-dav-secret".getBytes(StandardCharsets.UTF_8));
+                    int status = 207; String body;
+                    if (!expected.equals(exchange.getRequestHeaders().getFirst("Authorization"))) { status = 401; body = "scan-dav-secret"; }
+                    else if (failChild.get() && path.equals("/dav/selected/sub/")) { status = 503; body = "scan-dav-secret"; }
+                    else {
+                        body = node(raw, true);
+                        if ("1".equals(depth) && path.equals("/dav/selected/")) {
+                            if (block.get()) { entered.countDown(); try { release.await(5, TimeUnit.SECONDS); } catch (InterruptedException e) { Thread.currentThread().interrupt(); } }
+                            body += node(raw + "one.mkv", false) + node(raw + "%E7%94%B5%E5%BD%B1%20%23100%25.mp4", false)
+                                    + node(raw + "notes.txt", false) + node(raw + "sub/", true);
+                        } else if ("1".equals(depth) && path.equals("/dav/selected/sub/")) body += node(raw + "three.MOV", false);
+                        else if ("1".equals(depth) && path.equals("/dav/other/")) { outsideRequests.incrementAndGet(); body += node(raw + "outside.mkv", false); }
+                        body = "<d:multistatus xmlns:d=\"DAV:\">" + body + "</d:multistatus>";
+                    }
+                    byte[] bytes = body.getBytes(StandardCharsets.UTF_8); exchange.sendResponseHeaders(status, bytes.length); exchange.getResponseBody().write(bytes);
+                }
+            }); server.start();
+        }
+        Map<String, String> input() { return Map.of("name", "扫描测试来源", "address", "http://127.0.0.1:" + server.getAddress().getPort() + "/dav/", "username", "scan-dav-user", "password", "scan-dav-secret"); }
+        static String node(String href, boolean directory) {
+            return "<d:response><d:href>" + href + "</d:href><d:propstat><d:prop><d:resourcetype>"
+                    + (directory ? "<d:collection/>" : "") + "</d:resourcetype><d:getcontentlength>1024</d:getcontentlength>"
+                    + "<d:getlastmodified>Mon, 01 Jan 2024 00:00:00 GMT</d:getlastmodified></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>";
+        }
+        @Override public void close() { release.countDown(); server.stop(0); executor.close(); }
     }
 
     HttpResponse<String> call(String path, Object body, String token) throws Exception {
