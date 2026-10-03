@@ -19,6 +19,7 @@ import java.io.ByteArrayOutputStream;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.http.HttpClient;
+import java.net.http.HttpConnectTimeoutException;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpTimeoutException;
@@ -71,17 +72,21 @@ public class WebDavMediaSourceAdapter implements MediaSourceAdapter {
     }
     @Override public MediaFileDirectory scanDirectory(SourceConnection connection, String path, long deadlineNanos) {
         long started = System.nanoTime();
-        long remainingNanos = Math.min(deadlineNanos - started, TimeUnit.MILLISECONDS.toNanos(Math.min(timeoutMs, 8000)));
-        if (remainingNanos <= 0) throw timeout();
+        long scanRemainingNanos = deadlineNanos - started;
+        long requestBudgetNanos = TimeUnit.MILLISECONDS.toNanos(Math.min(timeoutMs, 8000));
+        // 按先到的截止分类；请求毫秒预算向下取整时也不能把任务截止误报为连接超时。
+        boolean scanDeadlineFirst = scanRemainingNanos <= requestBudgetNanos;
+        long remainingNanos = Math.min(scanRemainingNanos, requestBudgetNanos);
+        if (remainingNanos <= 0) throw timeout(scanDeadlineFirst);
         long operationDeadline = started + remainingNanos;
         var reader = new WebDavDirectoryReader(connection.address(), path);
         long remainingMs = TimeUnit.NANOSECONDS.toMillis(operationDeadline - System.nanoTime());
-        if (remainingMs <= 0) throw timeout();
-        byte[] xml = request(connection, reader.target(), "1", MAX_DIRECTORY_BYTES, true, remainingMs, SCAN_PROPFIND);
+        if (remainingMs <= 0) throw timeout(scanDeadlineFirst);
+        byte[] xml = request(connection, reader.target(), "1", MAX_DIRECTORY_BYTES, true, remainingMs, SCAN_PROPFIND, scanDeadlineFirst);
         try {
-            if (operationDeadline - System.nanoTime() <= 0) throw timeout();
+            if (operationDeadline - System.nanoTime() <= 0) throw timeout(scanDeadlineFirst);
             var result = reader.readFiles(parseXml(xml));
-            if (operationDeadline - System.nanoTime() <= 0) throw timeout();
+            if (operationDeadline - System.nanoTime() <= 0) throw timeout(scanDeadlineFirst);
             return result;
         } catch (ApiException error) { throw error; }
         catch (Exception error) { throw WebDavDirectoryReader.invalid(); }
@@ -104,10 +109,10 @@ public class WebDavMediaSourceAdapter implements MediaSourceAdapter {
         return request(connection, target, depth, bodyLimit, browsing, timeoutMs);
     }
     private byte[] request(SourceConnection connection, URI target, String depth, int bodyLimit, boolean browsing, long requestTimeoutMs) {
-        return request(connection, target, depth, bodyLimit, browsing, requestTimeoutMs, PROPFIND);
+        return request(connection, target, depth, bodyLimit, browsing, requestTimeoutMs, PROPFIND, false);
     }
     private byte[] request(SourceConnection connection, URI target, String depth, int bodyLimit, boolean browsing,
-                           long requestTimeoutMs, String properties) {
+                           long requestTimeoutMs, String properties, boolean scanDeadlineFirst) {
         rejectDangerousLiteralTarget(target);
         var builder = HttpRequest.newBuilder(target).timeout(Duration.ofMillis(requestTimeoutMs))
                 .header("Depth", depth).header("Content-Type", "application/xml; charset=utf-8")
@@ -132,14 +137,18 @@ public class WebDavMediaSourceAdapter implements MediaSourceAdapter {
             return response.body();
         } catch (TimeoutException error) {
             pending.cancel(true);
-            throw timeout();
+            throw timeout(scanDeadlineFirst);
         } catch (InterruptedException error) {
             pending.cancel(true);
             Thread.currentThread().interrupt();
             throw connectionFailed();
         } catch (ExecutionException error) {
             Throwable cause = error.getCause();
-            if (cause instanceof HttpTimeoutException) throw timeout();
+            // 新建连接另有更早的截止，不能因目录请求使用任务预算而一律改报整体超时。
+            if (cause instanceof HttpConnectTimeoutException) {
+                throw timeout(scanDeadlineFirst && requestTimeoutMs <= Math.min(timeoutMs, 3000));
+            }
+            if (cause instanceof HttpTimeoutException) throw timeout(scanDeadlineFirst);
             if (cause instanceof ApiException known) throw known;
             throw connectionFailed();
         }
@@ -253,6 +262,9 @@ public class WebDavMediaSourceAdapter implements MediaSourceAdapter {
     }
     private static ApiException timeout() {
         return new ApiException(504, "SOURCE_CONNECTION_TIMEOUT", "来源连接超时，请检查网络后重试。");
+    }
+    private static ApiException timeout(boolean scanDeadlineFirst) {
+        return scanDeadlineFirst ? new ApiException(504, "SCAN_TIMEOUT", "扫描超过整体时间上限，请缩小范围后重试。") : timeout();
     }
     private static ApiException unsafeAddress() {
         return new ApiException(400, "VALIDATION_FAILED", "请检查输入内容。", java.util.Map.of("address", "此来源地址不能用于 WebDAV 连接。"));

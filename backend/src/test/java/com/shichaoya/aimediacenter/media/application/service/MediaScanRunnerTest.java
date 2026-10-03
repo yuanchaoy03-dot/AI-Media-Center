@@ -9,6 +9,8 @@ import com.shichaoya.aimediacenter.media.infrastructure.persistence.MediaResourc
 import com.shichaoya.aimediacenter.media.infrastructure.persistence.MediaScanTaskMapper;
 import com.shichaoya.aimediacenter.media.infrastructure.persistence.MediaSourceRow;
 import com.shichaoya.aimediacenter.media.infrastructure.security.SourceConnectionEncryption;
+import com.shichaoya.aimediacenter.media.infrastructure.webdav.WebDavMediaSourceAdapter;
+import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,6 +18,8 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
 import tools.jackson.databind.json.JsonMapper;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -23,6 +27,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -178,6 +183,43 @@ class MediaScanRunnerTest {
         });
         shortBudget.scan("task", source, List.of("/a"));
         verify(tasks).finish("task", "FAILED", 0, 0, 0, "SCAN_TIMEOUT", "扫描超过整体时间上限，请缩小范围后重试。");
+        verifyNoInteractions(resources);
+    }
+
+    @Test void realHttpTimeoutPersistsTheErrorForTheBudgetThatExpiresFirst() throws Exception {
+        for (boolean overallDeadline : List.of(true, false)) {
+            var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+            var httpExecutor = Executors.newVirtualThreadPerTaskExecutor();
+            server.setExecutor(httpExecutor);
+            server.createContext("/", exchange -> {
+                try (exchange) {
+                    exchange.getRequestBody().readAllBytes();
+                    exchange.sendResponseHeaders(207, 0);
+                    exchange.getResponseBody().write("<d:".getBytes(StandardCharsets.UTF_8));
+                    exchange.getResponseBody().flush();
+                    try { Thread.sleep(1500); }
+                    catch (InterruptedException error) { Thread.currentThread().interrupt(); }
+                }
+            });
+            server.start();
+            try {
+                var httpConnection = new SourceConnection("http://127.0.0.1:" + server.getAddress().getPort() + "/dav/", "", "");
+                var httpSource = new MediaSourceRow("source", "alice", "来源", "WEBDAV",
+                        encryption.encrypt(httpConnection, "alice", "source"), true, null, source.createdAt());
+                var httpRunner = new MediaScanRunner(tasks, resources, encryption,
+                        new WebDavMediaSourceAdapter(overallDeadline ? 2000 : 100),
+                        new MediaScanLimits(1, 1, 10, 10, 100, 4, overallDeadline ? 1 : 30), transactions);
+                runners.add(httpRunner);
+                String taskId = overallDeadline ? "overall-deadline" : "connection-timeout";
+                httpRunner.scan(taskId, httpSource, List.of("/a"));
+                verify(tasks).finish(taskId, "FAILED", 0, 0, 0,
+                        overallDeadline ? "SCAN_TIMEOUT" : "SOURCE_CONNECTION_TIMEOUT",
+                        overallDeadline ? "扫描超过整体时间上限，请缩小范围后重试。" : "来源连接超时，请检查网络后重试。");
+            } finally {
+                server.stop(0);
+                httpExecutor.shutdownNow();
+            }
+        }
         verifyNoInteractions(resources);
     }
 

@@ -8,10 +8,13 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import java.net.InetSocketAddress;
+import java.net.http.HttpClient;
+import java.net.http.HttpConnectTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -20,6 +23,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import static com.shichaoya.aimediacenter.media.infrastructure.webdav.WebDavDirectoryBrowserTest.listing;
 import static com.shichaoya.aimediacenter.media.infrastructure.webdav.WebDavDirectoryBrowserTest.resource;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 class WebDavDirectoryScannerTest {
     private HttpServer server;
@@ -85,6 +89,56 @@ class WebDavDirectoryScannerTest {
         assertNull(scan().entries().getFirst().size());
     }
 
+    @Test void deniedOptionalFactsBeforeOrAfterResourceTypeDoNotPreventScanning() {
+        for (String deniedStatus : List.of("401 Unauthorized", "403 Forbidden")) {
+            for (boolean before : List.of(true, false)) {
+                String current = withPropstat(resource("/dav/", true),
+                        "<d:getcontentlength/><d:getlastmodified/>", deniedStatus, before);
+                String deniedSize = withPropstat(withFacts("/dav/denied-size.mkv", "512", "Wed, 02 Oct 2024 10:11:12 GMT")
+                        .replace("<d:getcontentlength>512</d:getcontentlength>", ""),
+                        "<d:getcontentlength/>", deniedStatus, before);
+                String deniedTime = withPropstat(withFacts("/dav/denied-time.mkv", "512", "Wed, 02 Oct 2024 10:11:12 GMT")
+                        .replace("<d:getlastmodified>Wed, 02 Oct 2024 10:11:12 GMT</d:getlastmodified>", ""),
+                        "<d:getlastmodified/>", deniedStatus, before);
+                xml.set(listing(current, deniedSize, deniedTime));
+
+                var result = scan();
+                assertEquals("/", result.path());
+                assertEquals(List.of(new MediaFileDirectory.Entry("denied-size.mkv", "/denied-size.mkv", "file", null,
+                                Instant.parse("2024-10-02T10:11:12Z")),
+                        new MediaFileDirectory.Entry("denied-time.mkv", "/denied-time.mkv", "file", 512L, null)), result.entries());
+            }
+        }
+    }
+
+    @Test void requiredResourceAndHttpAuthenticationFailuresRemainFatal() {
+        for (String deniedStatus : List.of("401 Unauthorized", "403 Forbidden")) {
+            assertError(Integer.parseInt(deniedStatus.substring(0, 3)), "fixture-private", "SOURCE_AUTH_FAILED");
+            for (boolean currentDenied : List.of(true, false)) {
+                String current = resource("/dav/", true), file = resource("/dav/movie.mkv", false);
+                String responseDenied = (currentDenied ? current : file).replace("</d:href>",
+                        "</d:href><d:status>HTTP/1.1 " + deniedStatus + "</d:status>");
+                assertError(207, listing(currentDenied ? responseDenied : current, currentDenied ? file : responseDenied),
+                        "SOURCE_AUTH_FAILED");
+                String typeDenied = (currentDenied ? current : file).replace("200 OK", deniedStatus);
+                assertError(207, listing(currentDenied ? typeDenied : current, currentDenied ? file : typeDenied),
+                        "SOURCE_AUTH_FAILED");
+            }
+        }
+    }
+
+    @Test void deniedOptionalFactsCannotReplaceMissingResourceType() {
+        for (String deniedStatus : List.of("401 Unauthorized", "403 Forbidden")) {
+            String current = resource("/dav/", true), file = resource("/dav/movie.mkv", false);
+            String missingCurrentType = withPropstat(current.replace("<d:resourcetype><d:collection/></d:resourcetype>", ""),
+                    "<d:getcontentlength/><d:getlastmodified/>", deniedStatus, true);
+            assertError(207, listing(missingCurrentType, file), "SOURCE_DIRECTORY_INVALID");
+            String missingFileType = withPropstat(file.replace("<d:resourcetype></d:resourcetype>", ""),
+                    "<d:getcontentlength/><d:getlastmodified/>", deniedStatus, false);
+            assertError(207, listing(current, missingFileType), "SOURCE_DIRECTORY_INVALID");
+        }
+    }
+
     @Test void encodedRootsAndRelativeHrefsPreserveTheSameSourceLocator() {
         String rootAddress = address.replace("/dav/", "/dav%20root%25/");
         String child = "/电影 #?100%+";
@@ -126,7 +180,7 @@ class WebDavDirectoryScannerTest {
 
     @Test void expiredDeadlineStopsBeforeAnyRequestAndSlowBodiesCannotReturnEmptyOrPartialResults() {
         var error = assertThrows(ApiException.class, () -> adapter.scanDirectory(new SourceConnection(address, "", ""), "/", System.nanoTime() - 1));
-        assertEquals("SOURCE_CONNECTION_TIMEOUT", error.code()); assertEquals(0, requests.get());
+        assertEquals("SCAN_TIMEOUT", error.code()); assertEquals(504, error.status()); assertEquals(0, requests.get());
         server.removeContext("/");
         server.createContext("/", exchange -> {
             try (exchange) {
@@ -137,8 +191,51 @@ class WebDavDirectoryScannerTest {
         });
         long started = System.nanoTime();
         error = assertThrows(ApiException.class, () -> adapter.scanDirectory(new SourceConnection(address, "", ""), "/", deadline(200)));
-        assertEquals("SOURCE_CONNECTION_TIMEOUT", error.code()); assertEquals(504, error.status());
+        assertEquals("SCAN_TIMEOUT", error.code()); assertEquals(504, error.status());
         assertTrue(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started) < 900);
+    }
+
+    @Test void subMillisecondOverallBudgetStopsBeforeAnyRequest() {
+        var error = assertThrows(ApiException.class, () -> adapter.scanDirectory(new SourceConnection(address, "", ""), "/",
+                System.nanoTime() + TimeUnit.MICROSECONDS.toNanos(500)));
+        assertEquals("SCAN_TIMEOUT", error.code()); assertEquals(504, error.status()); assertEquals(0, requests.get());
+    }
+
+    @Test void perRequestTimeoutRemainsConnectionTimeoutWhenOverallBudgetIsAvailable() {
+        server.removeContext("/");
+        server.createContext("/", exchange -> {
+            try (exchange) {
+                exchange.getRequestBody().readAllBytes(); exchange.sendResponseHeaders(207, 0);
+                exchange.getResponseBody().write("<d:".getBytes(StandardCharsets.UTF_8)); exchange.getResponseBody().flush();
+                try { Thread.sleep(1000); } catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); }
+            }
+        });
+        long started = System.nanoTime(), overallDeadline = deadline(5000);
+        var error = assertThrows(ApiException.class, () -> new WebDavMediaSourceAdapter(100)
+                .scanDirectory(new SourceConnection(address, "", ""), "/", overallDeadline));
+        assertEquals("SOURCE_CONNECTION_TIMEOUT", error.code()); assertEquals(504, error.status());
+        assertTrue(System.nanoTime() < overallDeadline);
+        assertTrue(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started) < 900);
+    }
+
+    @Test void connectionTimeoutUsesItsOwnBudgetUnlessOverallDeadlineExpiresEarlier() {
+        var client = mock(HttpClient.class);
+        var builder = mock(HttpClient.Builder.class, RETURNS_SELF);
+        when(builder.build()).thenReturn(client);
+        when(client.<byte[]>sendAsync(any(), any())).thenReturn(CompletableFuture.failedFuture(
+                new HttpConnectTimeoutException("fixture-private")));
+        try (var factory = mockStatic(HttpClient.class)) {
+            factory.when(HttpClient::newBuilder).thenReturn(builder);
+            var connectionAdapter = new WebDavMediaSourceAdapter(8000);
+            var connection = new SourceConnection(address, "", "");
+            var independent = assertThrows(ApiException.class, () -> connectionAdapter.scanDirectory(connection, "/", deadline(4000)));
+            assertEquals("SOURCE_CONNECTION_TIMEOUT", independent.code()); assertEquals(504, independent.status());
+            var overall = assertThrows(ApiException.class, () -> connectionAdapter.scanDirectory(connection, "/", deadline(1000)));
+            assertEquals("SCAN_TIMEOUT", overall.code()); assertEquals(504, overall.status());
+            assertFalse(independent.getMessage().contains("fixture-private"));
+            assertFalse(overall.getMessage().contains("fixture-private"));
+        }
+        assertEquals(0, requests.get());
     }
 
     @Test void sequentialDirectoryReadsShareTheCallerDeadline() {
@@ -156,7 +253,7 @@ class WebDavDirectoryScannerTest {
         var error = assertThrows(ApiException.class, () -> {
             for (String path : List.of("/a", "/b", "/c", "/d")) adapter.scanDirectory(new SourceConnection(address, "", ""), path, deadline);
         });
-        assertEquals("SOURCE_CONNECTION_TIMEOUT", error.code()); assertTrue(requests.get() < 4);
+        assertEquals("SCAN_TIMEOUT", error.code()); assertEquals(504, error.status()); assertTrue(requests.get() < 4);
         assertTrue(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started) < 950);
     }
 
@@ -170,5 +267,10 @@ class WebDavDirectoryScannerTest {
     private static String withFacts(String href, String size, String modified) {
         return resource(href, false).replace("</d:prop>", "<d:getcontentlength>" + size + "</d:getcontentlength><d:getlastmodified>"
                 + modified + "</d:getlastmodified></d:prop>");
+    }
+    private static String withPropstat(String response, String properties, String status, boolean before) {
+        String propstat = "<d:propstat><d:prop>" + properties + "</d:prop><d:status>HTTP/1.1 " + status + "</d:status></d:propstat>";
+        return before ? response.replace("<d:propstat>", propstat + "<d:propstat>")
+                : response.replace("</d:response>", propstat + "</d:response>");
     }
 }

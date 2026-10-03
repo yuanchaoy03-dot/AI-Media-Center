@@ -194,9 +194,10 @@ final class WebDavDirectoryReader {
             var statuses = children(propstat, "status");
             if (statuses.size() != 1) throw invalid();
             int status = statusCode(statuses.getFirst());
-            if (status == 401 || status == 403) throw authFailed();
             for (Element prop : children(propstat, "prop")) {
                 for (Element type : children(prop, "resourcetype")) {
+                    // 资源类型是必需属性；大小、修改时间等可选属性的权限失败只保留空值。
+                    if (status == 401 || status == 403) throw authFailed();
                     if (status == 404 && current) throw notFound();
                     if (status != 200 || kind != null) throw invalid();
                     var collections = children(type, "collection");
