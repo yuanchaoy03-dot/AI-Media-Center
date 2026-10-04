@@ -37,6 +37,29 @@ class MediaFileNameParserTest {
         assertCandidate("Raw.2016.mkv", null, "Raw", 2016, null);
     }
 
+    @Test void normalizesUnicodeWhitespaceInFileAndDirectoryCandidates() {
+        for (var space : List.of("\u00a0", "\u202f", "\u2007", "\u3000", "\ufeff")) {
+            assertCandidate(space + "Film" + space + "(2020).mkv", null, "Film", 2020, null);
+            assertCandidate("Film" + space + "Journey.2020.mkv", null, "Film Journey", 2020, null);
+            assertCandidate("video.mkv", space + "Film" + space + "(2020)" + space + "Extended" + space + "Cut",
+                    "Film", 2020, "Extended Cut");
+            assertCandidate("Film.2020.mkv", space + "Extended" + space + "Cut" + space,
+                    "Film", 2020, "Extended Cut");
+        }
+    }
+
+    @Test void technicalSuffixesBeforeTheYearCannotBecomeMovieTitlesOrBlockDirectoryFallback() {
+        assertCandidate("1080p.x265.2020.mkv", null, null, null, null);
+        assertCandidate("1080p.x265.2020.mkv", "Film.2019", "Film", 2019, null);
+        assertCandidate("[YTS] 1080p.x265.2020.mkv", "Film.2019.Final.Cut", "Film", 2019, "Final Cut");
+        assertCandidate("Film.1080p.2020.mkv", null, "Film", 2020, null);
+        assertCandidate("Film.[Extended.Cut].1080p.2020.x265.mkv", null, "Film", 2020, "Extended Cut");
+        assertCandidate("Film.1080p.2020.Final.Cut.mkv", null, "Film", 2020, "Final Cut");
+        assertCandidate("Film.1080p.1999.2020.mkv", null, "Film", null, null);
+        assertCandidate("[YTS.1080p] Film.2020.mkv", null, "Film", 2020, null);
+        assertCandidate("[YTS.1080p] Film.2020.Final.Cut.2160p.mkv", null, "Film", 2020, "Final Cut");
+    }
+
     @Test void extractsAllSupportedEditionLabelsBeforeCleaningSearchTitles() {
         for (var edition : List.of("Theatrical Cut", "Director's Cut", "Extended Cut", "Final Cut", "IMAX",
                 "Special Edition", "Unrated", "Uncut", "Anniversary Edition")) {

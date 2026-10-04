@@ -2163,6 +2163,9 @@ test('resource name candidates require the complete bounded DTO and do not repla
     { ...candidate, title: '' },
     { ...candidate, title: '   ' },
     { ...candidate, title: ' Movie ' },
+    { ...candidate, title: '\u00a0Movie' },
+    { ...candidate, title: 'Movie\u202f' },
+    { ...candidate, title: '\ufeffMovie' },
     { ...candidate, title: 42 },
     { ...candidate, title: null },
     { ...candidate, year: 1887 },
@@ -2205,6 +2208,35 @@ test('resource name candidates require the complete bounded DTO and do not repla
     const result = await ownedScanService.getOwnedSourceResources(ownedSource.id, 0, signal)
     assert.deepEqual(result.items[0], resource)
   }
+})
+
+test('normalized candidates accept Unicode whitespace in file facts without failing the resource page', async () => {
+  await signIn()
+  const signal = new AbortController().signal
+  const items = [mediaResource]
+  for (const [index, whitespace] of ['\u00a0', '\u202f', '\ufeff', '\u2003'].entries()) {
+    const names = [
+      `Film${whitespace}(2020).mkv`,
+      `${whitespace}Film.2020.mkv`,
+      `${whitespace}Film${whitespace}(2020)${whitespace}.mkv`,
+      'video.mkv',
+    ]
+    for (const [nameIndex, name] of names.entries()) {
+      const directory =
+        name === 'video.mkv' ? `/TV/${whitespace}Film${whitespace}(2020)${whitespace}` : '/TV'
+      items.push({
+        ...mediaResource,
+        id: `unicode-resource-${index}-${nameIndex}`,
+        path: `${directory}/${name}`,
+        name,
+        nameCandidate: { title: 'Film', year: 2020, editionLabel: null },
+      })
+    }
+  }
+  respond = async () => ok(resourcesPage(items))
+  const result = await ownedScanService.getOwnedSourceResources(ownedSource.id, 0, signal)
+  assert.deepEqual(result.items, items)
+  assert.equal(result.total, items.length)
 })
 
 test('scan result candidate text distinguishes parsed names, partial labels and unavailable names', async () => {

@@ -87,8 +87,10 @@ public final class MediaFileNameParser {
         }
 
         int titleEnd = years.size() == 1 ? years.getFirst().start() : name.length();
+        var leadingGroup = LEADING_GROUP.matcher(name);
         var technical = TECHNICAL.matcher(name);
-        if (technical.find() && (years.isEmpty() || technical.start() > years.getFirst().start())) {
+        // 跳过完整发行组后清理技术后缀，年份在后缀之前或之后都不能让噪声成为片名。
+        if (technical.find(leadingGroup.find() ? leadingGroup.end() : 0)) {
             titleEnd = Math.min(titleEnd, technical.start());
         }
         var title = new StringBuilder(name.substring(0, titleEnd));
@@ -118,7 +120,7 @@ public final class MediaFileNameParser {
 
     private static String text(String value) {
         return value == null ? "" : value.replace('.', ' ').replace('_', ' ').replace('\u2019', '\'')
-                .replaceAll("\\s+", " ").strip();
+                .replaceAll("(?U)[\\s\\uFEFF]+", " ").strip();
     }
 
     private static String clean(String value) {

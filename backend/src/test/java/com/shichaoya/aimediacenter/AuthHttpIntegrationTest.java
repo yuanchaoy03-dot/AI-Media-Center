@@ -472,7 +472,8 @@ class AuthHttpIntegrationTest {
             assertEquals(2, ((List<?>) page.get("items")).size());
             var all = data(check(call(resources, null, owner), 200, "OK"));
             var files = objectList(all.get("items"));
-            assertEquals(Set.of("/selected/" + ScanWebDavServer.RELEASE_NAME, "/selected/电影 #100%.mp4", "/selected/sub/three.MOV"),
+            assertEquals(Set.of("/selected/" + ScanWebDavServer.RELEASE_NAME, "/selected/电影 #100%.mp4",
+                            "/selected/sub/" + ScanWebDavServer.UNICODE_SPACE_NAME),
                     files.stream().map(row -> (String) row.get("path")).collect(java.util.stream.Collectors.toSet()));
             for (var file : files) {
                 assertEquals("unidentified", file.get("recognitionStatus"));
@@ -482,6 +483,11 @@ class AuthHttpIntegrationTest {
                     assertEquals("Example Saga Sequel", candidate.get("title"));
                     assertEquals(2004, candidate.get("year"));
                     assertEquals("Uncut", candidate.get("editionLabel"));
+                } else if (ScanWebDavServer.UNICODE_SPACE_NAME.equals(file.get("name"))) {
+                    assertEquals("/selected/sub/" + ScanWebDavServer.UNICODE_SPACE_NAME, file.get("path"));
+                    assertEquals("Example Whitespace Movie", candidate.get("title"));
+                    assertEquals(2021, candidate.get("year"));
+                    assertEquals("Extended Cut", candidate.get("editionLabel"));
                 } else {
                     assertEquals(((String) file.get("name")).replaceFirst("(?i)\\.(mkv|mp4|mov)$", ""), candidate.get("title"));
                     assertNull(candidate.get("year")); assertNull(candidate.get("editionLabel"));
@@ -497,6 +503,7 @@ class AuthHttpIntegrationTest {
             String reLogin = (String) data(check(call("/auth/login", Map.of("username", "scan_owner", "password", password), null), 200, "OK")).get("accessToken");
             var reloaded = objectList(data(check(call(resources, null, reLogin), 200, "OK")).get("items"));
             assertEquals(previousIds, reloaded.stream().map(file -> file.get("id")).collect(java.util.stream.Collectors.toSet()));
+            assertEquals(new HashSet<>(files), new HashSet<>(reloaded));
             assertEquals(3, db.queryForObject("SELECT COUNT(*) FROM media_resource", Integer.class));
             for (String query : List.of("?page=-1", "?pageSize=101", "?page=1.1", "?page=0&page=1", "?userId=other"))
                 check(call(resources + query, null, owner), 400, "VALIDATION_FAILED");
@@ -583,6 +590,8 @@ class AuthHttpIntegrationTest {
     static final class ScanWebDavServer implements AutoCloseable {
         // 保留开发库实际发行命名结构，片名和发行组脱敏。
         static final String RELEASE_NAME = "Example.Saga.Sequel.Uncut.2004.2160p.BluRay.REMUX.DV.HDR.HEVC.TrueHD.7.1.Atmos-GROUP.mkv";
+        // 合法路径保留 NBSP、窄 NBSP、全角空格和 FEFF；仅派生命名候选规范化空白。
+        static final String UNICODE_SPACE_NAME = "\u00a0\ufeffExample\u202fWhitespace\u3000Movie\u00a0.2021.[Extended\u00a0Cut].1080p.MOV";
         final HttpServer server;
         final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
         final AtomicInteger requests = new AtomicInteger(), outsideRequests = new AtomicInteger();
@@ -605,7 +614,8 @@ class AuthHttpIntegrationTest {
                             if (block.get()) { entered.countDown(); try { release.await(5, TimeUnit.SECONDS); } catch (InterruptedException e) { Thread.currentThread().interrupt(); } }
                             body += node(raw + RELEASE_NAME, false) + node(raw + "%E7%94%B5%E5%BD%B1%20%23100%25.mp4", false)
                                     + node(raw + "notes.txt", false) + node(raw + "sub/", true);
-                        } else if ("1".equals(depth) && path.equals("/dav/selected/sub/")) body += node(raw + "three.MOV", false);
+                        } else if ("1".equals(depth) && path.equals("/dav/selected/sub/"))
+                            body += node(raw + URLEncoder.encode(UNICODE_SPACE_NAME, StandardCharsets.UTF_8).replace("+", "%20"), false);
                         else if ("1".equals(depth) && path.equals("/dav/other/")) { outsideRequests.incrementAndGet(); body += node(raw + "outside.mkv", false); }
                         body = "<d:multistatus xmlns:d=\"DAV:\">" + body + "</d:multistatus>";
                     }
