@@ -102,6 +102,7 @@ const mediaResource = {
   size: 1024,
   modifiedAt: '2026-10-03T06:00:00Z',
   recognitionStatus: 'unidentified',
+  nameCandidate: { title: 'Movie', year: null, editionLabel: null },
 }
 const resourcesPage = (items = [mediaResource], page = 0, total = items.length) => ({
   items,
@@ -2139,6 +2140,105 @@ test('owned scan DTOs reject foreign ownership, credentials, invalid states/coun
   respond = async () => ok(resourcesPage([{ ...mediaResource, size: null, modifiedAt: null }]))
   const result = await ownedScanService.getOwnedSourceResources(ownedSource.id, 0, signal)
   assert.equal(result.items[0].size, null)
+})
+
+test('resource name candidates require the complete bounded DTO and do not replace file facts', async () => {
+  await signIn()
+  const signal = new AbortController().signal
+  const candidate = { title: '某部电影', year: 2020, editionLabel: 'Extended Cut' }
+  const withoutCandidate = { ...mediaResource }
+  delete withoutCandidate.nameCandidate
+  respond = async () => ok(resourcesPage([withoutCandidate]))
+  await assert.rejects(
+    ownedScanService.getOwnedSourceResources(ownedSource.id, 0, signal),
+    /响应异常/,
+  )
+  for (const nameCandidate of [
+    null,
+    [],
+    'Movie',
+    {},
+    { title: 'Movie', year: null },
+    { ...candidate, confidence: 0.9 },
+    { ...candidate, title: '' },
+    { ...candidate, title: '   ' },
+    { ...candidate, title: ' Movie ' },
+    { ...candidate, title: 42 },
+    { ...candidate, title: null },
+    { ...candidate, year: 1887 },
+    { ...candidate, year: 2100 },
+    { ...candidate, year: 2020.5 },
+    { ...candidate, year: '2020' },
+    { ...candidate, editionLabel: '' },
+    { ...candidate, editionLabel: 'extended cut' },
+    { ...candidate, editionLabel: 'Extended Cut ' },
+    { ...candidate, editionLabel: 42 },
+  ]) {
+    respond = async () => ok(resourcesPage([{ ...mediaResource, nameCandidate }]))
+    await assert.rejects(
+      ownedScanService.getOwnedSourceResources(ownedSource.id, 0, signal),
+      /响应异常/,
+      JSON.stringify(nameCandidate),
+    )
+  }
+  const accepted = [
+    candidate,
+    { title: null, year: null, editionLabel: null },
+    { title: '2001', year: null, editionLabel: null },
+    { title: '最早年份', year: 1888, editionLabel: null },
+    { title: '年份上界', year: 2099, editionLabel: null },
+    ...[
+      'Theatrical Cut',
+      "Director's Cut",
+      'Extended Cut',
+      'Final Cut',
+      'IMAX',
+      'Special Edition',
+      'Unrated',
+      'Uncut',
+      'Anniversary Edition',
+    ].map((editionLabel) => ({ title: null, year: null, editionLabel })),
+  ]
+  for (const nameCandidate of accepted) {
+    const resource = { ...mediaResource, nameCandidate }
+    respond = async () => ok(resourcesPage([resource]))
+    const result = await ownedScanService.getOwnedSourceResources(ownedSource.id, 0, signal)
+    assert.deepEqual(result.items[0], resource)
+  }
+})
+
+test('scan result candidate text distinguishes parsed names, partial labels and unavailable names', async () => {
+  const dialog = await componentSetup('components/media-source/OwnedScanResults.vue', {
+    sourceName: ownedSource.name,
+    page: 0,
+    loading: false,
+    error: '',
+    scanError: '',
+  })
+  try {
+    assert.equal(
+      dialog.ui.nameCandidateLabel({ title: '某部电影', year: 2020, editionLabel: 'Extended Cut' }),
+      '名称解析候选：某部电影 · 2020 · Extended Cut',
+    )
+    assert.equal(
+      dialog.ui.nameCandidateLabel({ title: '2001', year: null, editionLabel: null }),
+      '名称解析候选：2001',
+    )
+    assert.equal(
+      dialog.ui.nameCandidateLabel({ title: '某部电影', year: 2020, editionLabel: 'Uncut' }),
+      '名称解析候选：某部电影 · 2020 · Uncut',
+    )
+    assert.equal(
+      dialog.ui.nameCandidateLabel({ title: null, year: null, editionLabel: 'IMAX' }),
+      '名称解析候选：IMAX',
+    )
+    assert.equal(
+      dialog.ui.nameCandidateLabel({ title: null, year: null, editionLabel: null }),
+      '名称暂无法解析',
+    )
+  } finally {
+    dialog.unmount()
+  }
 })
 
 test('scan polling restores persisted tasks, waits for each request, stops at completion and preserves unknown file facts', async (t) => {

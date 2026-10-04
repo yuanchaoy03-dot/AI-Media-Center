@@ -26,7 +26,36 @@ export interface OwnedMediaResource {
   size: number | null
   modifiedAt: string | null
   recognitionStatus: 'unidentified'
+  nameCandidate: OwnedMediaNameCandidate
 }
+
+export interface OwnedMediaNameCandidate {
+  title: string | null
+  year: number | null
+  editionLabel:
+    | 'Theatrical Cut'
+    | "Director's Cut"
+    | 'Extended Cut'
+    | 'Final Cut'
+    | 'IMAX'
+    | 'Special Edition'
+    | 'Unrated'
+    | 'Uncut'
+    | 'Anniversary Edition'
+    | null
+}
+
+const editionLabels: readonly string[] = [
+  'Theatrical Cut',
+  "Director's Cut",
+  'Extended Cut',
+  'Final Cut',
+  'IMAX',
+  'Special Edition',
+  'Unrated',
+  'Uncut',
+  'Anniversary Edition',
+]
 
 export interface OwnedResourcePage {
   items: OwnedMediaResource[]
@@ -83,6 +112,26 @@ function path(value: unknown): value is string {
 
 function count(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+}
+
+function readNameCandidate(value: unknown): OwnedMediaNameCandidate {
+  const candidate = object(value, ['title', 'year', 'editionLabel'])
+  if (
+    !(candidate.title === null || id(candidate.title)) ||
+    !(
+      candidate.year === null ||
+      (count(candidate.year) &&
+        candidate.year >= 1888 &&
+        candidate.year <= 2099 &&
+        candidate.title !== null)
+    ) ||
+    !(
+      candidate.editionLabel === null ||
+      (typeof candidate.editionLabel === 'string' && editionLabels.includes(candidate.editionLabel))
+    )
+  )
+    return invalid()
+  return candidate as unknown as OwnedMediaNameCandidate
 }
 
 function readTask(value: unknown, sourceId: string): OwnedScanTask {
@@ -198,6 +247,7 @@ export async function getOwnedSourceResources(
       'size',
       'modifiedAt',
       'recognitionStatus',
+      'nameCandidate',
     ])
     if (
       !id(resource.id) ||
@@ -211,7 +261,10 @@ export async function getOwnedSourceResources(
       resource.recognitionStatus !== 'unidentified'
     )
       return invalid()
-    return resource as unknown as OwnedMediaResource
+    return {
+      ...resource,
+      nameCandidate: readNameCandidate(resource.nameCandidate),
+    } as unknown as OwnedMediaResource
   })
   if (
     new Set(items.map((item) => item.id)).size !== items.length ||

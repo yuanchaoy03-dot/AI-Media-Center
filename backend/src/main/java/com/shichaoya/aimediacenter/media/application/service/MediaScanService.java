@@ -3,6 +3,7 @@ package com.shichaoya.aimediacenter.media.application.service;
 import com.shichaoya.aimediacenter.common.id.BusinessIds;
 import com.shichaoya.aimediacenter.common.security.CurrentUser;
 import com.shichaoya.aimediacenter.common.web.ApiException;
+import com.shichaoya.aimediacenter.media.domain.MediaFileNameParser;
 import com.shichaoya.aimediacenter.media.domain.SourceDirectoryPath;
 import com.shichaoya.aimediacenter.media.infrastructure.persistence.MediaResourceMapper;
 import com.shichaoya.aimediacenter.media.infrastructure.persistence.MediaScanRootMapper;
@@ -84,7 +85,8 @@ public class MediaScanService {
             long total = resources.countOwned(user.id(), sourceId);
             var items = resources.findOwnedPage(user.id(), sourceId, pageSize, (long) page * pageSize).stream()
                     .map(row -> new MediaResource(row.id(), row.sourceId(), row.path(), row.name(), row.size(),
-                            instant(row.modifiedAt()), "unidentified")).toList();
+                            instant(row.modifiedAt()), "unidentified",
+                            MediaFileNameParser.parse(row.name(), parentDirectoryName(row.path())))).toList();
             return new MediaResourcePage(items, total, page, pageSize);
         });
         if (result == null) throw ApiException.internal();
@@ -93,6 +95,11 @@ public class MediaScanService {
 
     private void requireOwned(CurrentUser user, String sourceId) {
         if (sources.findOwned(user.id(), sourceId) == null) throw sourceNotFound();
+    }
+
+    private static String parentDirectoryName(String path) {
+        int end = path.lastIndexOf('/');
+        return end <= 0 ? "" : path.substring(path.lastIndexOf('/', end - 1) + 1, end);
     }
 
     private static List<String> validatedRoots(String sourceId, List<MediaScanRootRow> rows) {

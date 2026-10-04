@@ -278,7 +278,7 @@ GET 不接受查询参数或请求体。PUT 不接受查询参数，JSON 正文�
 
 #### 主动扫描 / 本人未识别资源
 
-状态：`implemented`；实现日期：2026-10-03。仅实现文件发现与资源入库，任务完成不代表影片识别或个人片库完成。
+状态：`implemented`；文件发现与资源入库实现于 2026-10-03，名称候选查询与展示补充于 2026-10-04。任务完成不代表影片识别或个人片库完成。
 
 | 操作 | 请求 | 成功响应 `data` |
 | --- | --- | --- |
@@ -289,6 +289,10 @@ GET 不接受查询参数或请求体。PUT 不接受查询参数，JSON 正文�
 任务字段为 `id`、`sourceId`、`status`（`pending/running/completed/failed`）、本次启用根的 `rootPaths` 快照、`discoveredCount`、`persistedCount`、`directoryCount`、可空 `errorCode/errorMessage`、UTC `createdAt`、可空 `startedAt/finishedAt`。计数分别表示本次发现的视频文件、已持久化的视频文件和已完整读取的目录；重复扫描已存在资源也计入本次持久化数，不能解读为新增电影数。未知总量不返回百分比，不模拟匹配 / 刮削进度。
 
 资源字段为 `id`、`sourceId`、来源内稳定 `path`、`name`、可空非负 `size`（字节）、可空 UTC `modifiedAt`、`recognitionStatus: unidentified`。它们是 WebDAV 文件事实；缺失、不支持、属性权限拒绝或无效的可选事实保留空值，不由文件名猜测。仅大小或修改时间的 `propstat` 返回 401/403 不阻断扫描；HTTP、资源自身或必需的 `resourcetype` 返回 401/403 仍为 `SOURCE_AUTH_FAILED`。来源内路径不是远程播放地址；响应不含连接配置、密码、认证头或临时定位。本切片未建立 Movie 关联，资源不能冒充个人片库影片。
+
+每个资源另含必需的 `nameCandidate: {title,year,editionLabel}`，三项均可为空；非空 `title` 为非空白候选片名，`year` 为 1888–2099 的整数且只随有效片名返回，`editionLabel` 为 Theatrical Cut、Director's Cut、Extended Cut、Final Cut、IMAX、Special Edition、Unrated、Uncut 或 Anniversary Edition 九种标签中的一个；Uncut 与 Unrated 分别保留，不互相映射。它们由 Spring Boot 纯 Java 逻辑在查询时从原文件名与最近父目录名派生，不写回数据库、不改变识别状态或文件事实、不触发扫描、TMDB 或 ffprobe；全空也作为完整对象返回。已有资源刷新查询即可得到候选。
+
+解析先保留有明确上下文的版本标签，再清理常见技术 / 发行后缀并提取片名、年份；保留数字片名，多个可能年份或多个版本标签时对应值为空。文件内版本通常要求位于年份之后或被明确括号包围，并有有效片名前缀。年份之前的 Uncut 仅在同时满足以下条件时提取：Uncut 不是首词，其前有有效片名且不只是冠词（the / a / an），紧邻唯一有效年份且中间只有分隔符，年份之后有已知技术 / 发行标记；条件不足时保留在标题。文件名优先，只有无有效片名或通用文件名时才使用父目录内完整的片名 + 年份候选，不单独借用目录年份。目录版本仅在候选来自该目录、片名 / 年份相容或目录明确为独立版本标签时补充；文件名明确版本优先。未带年份且未被括号包围的版本词、未知标签与无法确认的命名仍保守处理，不保证识别任意发行组或复杂目录命名。Vue 在原文件信息下展示“名称解析候选”，全空显示“名称暂无法解析”；这些信息供后续识别使用，不表示已确认影片。
 
 - 资源分页 `page` 默认为 `0`，`pageSize` 默认为 `50`，范围 `1–100`；`page` 须为非负整数。重复 / 未知参数、非整数及越界值返回 `400 VALIDATION_FAILED`。计数与本页列表使用同一只读一致快照；超出结果范围返回空 `items`，`total` 仍为该来源资源总数。列表是来源全部已发现资源，不是某个任务新增资源的快照。
 - `USER` 和 `ADMIN` 都先按可信 CurrentUser 校验本人来源；他人或不存在来源统一 `404 SOURCE_NOT_FOUND`，不解密、不访问 WebDAV。来源必须启用，全部根须规范且互不包含，再冻结已启用根；停用根、未选目录及后来修改的配置不扩大本轮范围。没有启用根返回 `409 SCAN_ROOTS_REQUIRED`，停用来源为 `409 SOURCE_DISABLED`，损坏根配置为 `409 SCAN_ROOTS_INVALID`。

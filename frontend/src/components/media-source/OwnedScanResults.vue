@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
-import type { OwnedResourcePage, OwnedScanTask } from '../../services/ownedScanService'
+import type {
+  OwnedMediaNameCandidate,
+  OwnedResourcePage,
+  OwnedScanTask,
+} from '../../services/ownedScanService'
 import SourceIcon from './SourceIcon.vue'
 
 defineProps<{
@@ -25,6 +29,12 @@ function sizeLabel(size: number | null) {
   if (size < 1024) return `${size} B`
   const unit = size < 1024 ** 2 ? 1 : size < 1024 ** 3 ? 2 : 3
   return `${(size / 1024 ** unit).toFixed(1)} ${['B', 'KiB', 'MiB', 'GiB'][unit]}`
+}
+function nameCandidateLabel(candidate: OwnedMediaNameCandidate) {
+  const parts = [candidate.title, candidate.year?.toString(), candidate.editionLabel].filter(
+    Boolean,
+  )
+  return parts.length ? `名称解析候选：${parts.join(' · ')}` : '名称暂无法解析'
 }
 onMounted(() => dialog.value?.showModal())
 onBeforeUnmount(() => dialog.value?.close())
@@ -104,6 +114,9 @@ onBeforeUnmount(() => dialog.value?.close())
                     : '修改时间未知'
                 }}</small
               >
+              <small class="resource-name-candidate">{{
+                nameCandidateLabel(resource.nameCandidate)
+              }}</small>
             </div>
           </div>
           <p v-if="!result.items.length" class="source-note">
@@ -184,6 +197,10 @@ onBeforeUnmount(() => dialog.value?.close())
 }
 .resource-file code {
   font-size: 12px;
+}
+.resource-name-candidate {
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .directory-list {
   min-height: 80px;

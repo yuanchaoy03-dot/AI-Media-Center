@@ -472,10 +472,20 @@ class AuthHttpIntegrationTest {
             assertEquals(2, ((List<?>) page.get("items")).size());
             var all = data(check(call(resources, null, owner), 200, "OK"));
             var files = objectList(all.get("items"));
-            assertEquals(Set.of("/selected/one.mkv", "/selected/电影 #100%.mp4", "/selected/sub/three.MOV"),
+            assertEquals(Set.of("/selected/" + ScanWebDavServer.RELEASE_NAME, "/selected/电影 #100%.mp4", "/selected/sub/three.MOV"),
                     files.stream().map(row -> (String) row.get("path")).collect(java.util.stream.Collectors.toSet()));
             for (var file : files) {
                 assertEquals("unidentified", file.get("recognitionStatus"));
+                var candidate = (Map<?, ?>) file.get("nameCandidate");
+                assertEquals(Set.of("title", "year", "editionLabel"), candidate.keySet());
+                if (ScanWebDavServer.RELEASE_NAME.equals(file.get("name"))) {
+                    assertEquals("Example Saga Sequel", candidate.get("title"));
+                    assertEquals(2004, candidate.get("year"));
+                    assertEquals("Uncut", candidate.get("editionLabel"));
+                } else {
+                    assertEquals(((String) file.get("name")).replaceFirst("(?i)\\.(mkv|mp4|mov)$", ""), candidate.get("title"));
+                    assertNull(candidate.get("year")); assertNull(candidate.get("editionLabel"));
+                }
                 assertEquals(7, UUID.fromString((String) file.get("id")).version());
                 assertEquals(1024, ((Number) file.get("size")).intValue());
                 assertEquals("2024-01-01T00:00:00Z", file.get("modifiedAt"));
@@ -571,6 +581,8 @@ class AuthHttpIntegrationTest {
     @SuppressWarnings("unchecked") List<Map<String, Object>> objectList(Object value) { return (List<Map<String, Object>>) value; }
 
     static final class ScanWebDavServer implements AutoCloseable {
+        // 保留开发库实际发行命名结构，片名和发行组脱敏。
+        static final String RELEASE_NAME = "Example.Saga.Sequel.Uncut.2004.2160p.BluRay.REMUX.DV.HDR.HEVC.TrueHD.7.1.Atmos-GROUP.mkv";
         final HttpServer server;
         final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
         final AtomicInteger requests = new AtomicInteger(), outsideRequests = new AtomicInteger();
@@ -591,7 +603,7 @@ class AuthHttpIntegrationTest {
                         body = node(raw, true);
                         if ("1".equals(depth) && path.equals("/dav/selected/")) {
                             if (block.get()) { entered.countDown(); try { release.await(5, TimeUnit.SECONDS); } catch (InterruptedException e) { Thread.currentThread().interrupt(); } }
-                            body += node(raw + "one.mkv", false) + node(raw + "%E7%94%B5%E5%BD%B1%20%23100%25.mp4", false)
+                            body += node(raw + RELEASE_NAME, false) + node(raw + "%E7%94%B5%E5%BD%B1%20%23100%25.mp4", false)
                                     + node(raw + "notes.txt", false) + node(raw + "sub/", true);
                         } else if ("1".equals(depth) && path.equals("/dav/selected/sub/")) body += node(raw + "three.MOV", false);
                         else if ("1".equals(depth) && path.equals("/dav/other/")) { outsideRequests.incrementAndGet(); body += node(raw + "outside.mkv", false); }
