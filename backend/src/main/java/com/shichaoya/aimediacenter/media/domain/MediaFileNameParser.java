@@ -75,7 +75,7 @@ public final class MediaFileNameParser {
                         && matchingBrackets(name.charAt(matcher.start() - 1), name.charAt(matcher.end()));
                 boolean uncutBeforeYear = edition.label().equals("Uncut") && years.size() == 1
                         && matcher.end() < years.getFirst().start()
-                        && name.substring(matcher.end(), years.getFirst().start()).matches("[\\s\\[\\](){}-]+")
+                        && name.substring(matcher.end(), years.getFirst().start()).matches("[\\s\\[\\](){}（）-]+")
                         && TECHNICAL.matcher(name).find(years.getFirst().start() + 4);
                 String prefix = clean(name.substring(0, matcher.start()));
                 // Uncut 在紧邻唯一年份且有技术后缀时可作为版本；首词/仅冠词前缀仍保留为标题。
@@ -135,7 +135,8 @@ public final class MediaFileNameParser {
     }
 
     private static boolean matchingBrackets(char start, char end) {
-        return start == '[' && end == ']' || start == '(' && end == ')' || start == '{' && end == '}';
+        return start == '[' && end == ']' || start == '(' && end == ')' || start == '{' && end == '}'
+                || start == '（' && end == '）';
     }
 
     public record NameCandidate(String title, Integer year, String editionLabel) {}

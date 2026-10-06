@@ -532,16 +532,19 @@ class AuthHttpIntegrationTest {
         String owner = registerAndLogin("candidate_review");
         try (var dav = new TemporaryWebDavServer()) {
             String sourceId = (String) data(check(call("/media-sources", dav.input("/dav/"), owner), 201, "OK")).get("id");
-            record CandidateCase(String name, String title, Integer year) {}
+            record CandidateCase(String name, String title, Integer year, String edition) {}
             var cases = List.of(
-                    new CandidateCase("Example1.UHD.2160p.BluRay.REMUX.mkv", "Example1", null),
-                    new CandidateCase("Example.Title.PROPER.2020.1080p.mkv", "Example Title", 2020),
-                    new CandidateCase("Example.Title.REPACK.2020.1080p.mkv", "Example Title", 2020),
-                    new CandidateCase("Example Title（2011）.mkv", "Example Title", 2011),
-                    new CandidateCase("[YTS.2020] Film.2021.1080p.mkv", "Film", 2021),
-                    new CandidateCase("[YTS(IMAX)] Film.2021.1080p.mkv", "Film", 2021),
-                    new CandidateCase("[YTS.2020] 1917.2019.1080p.mkv", "1917", 2019),
-                    new CandidateCase("Film.mkv\u00a0\u202f\u2007\ufeff", "Film", null));
+                    new CandidateCase("Example1.UHD.2160p.BluRay.REMUX.mkv", "Example1", null, null),
+                    new CandidateCase("Example.Title.PROPER.2020.1080p.mkv", "Example Title", 2020, null),
+                    new CandidateCase("Example.Title.REPACK.2020.1080p.mkv", "Example Title", 2020, null),
+                    new CandidateCase("Example Title（2011）.mkv", "Example Title", 2011, null),
+                    new CandidateCase("[YTS.2020] Film.2021.1080p.mkv", "Film", 2021, null),
+                    new CandidateCase("[YTS(IMAX)] Film.2021.1080p.mkv", "Film", 2021, null),
+                    new CandidateCase("[YTS.2020] 1917.2019.1080p.mkv", "1917", 2019, null),
+                    new CandidateCase("Film.mkv\u00a0\u202f\u2007\ufeff", "Film", null, null),
+                    new CandidateCase("Film.Uncut.（2020）.2160p.mkv", "Film", 2020, "Uncut"),
+                    new CandidateCase("Film.（Extended Cut）.1080p.mkv", "Film", null, "Extended Cut"),
+                    new CandidateCase("Film.（Extended Cut）.（IMAX）.1080p.mkv", "Film", null, null));
             for (var item : cases) {
                 String path = "/" + item.name();
                 mediaResources.insert(new MediaResourceRow(BusinessIds.next(), sourceId, path,
@@ -557,7 +560,7 @@ class AuthHttpIntegrationTest {
                 assertEquals("unidentified", file.get("recognitionStatus"));
                 var candidate = (Map<?, ?>) file.get("nameCandidate");
                 assertEquals(item.title(), candidate.get("title")); assertEquals(item.year(), candidate.get("year"));
-                assertNull(candidate.get("editionLabel"));
+                assertEquals(item.edition(), candidate.get("editionLabel"));
             }
             // BINARY path_hash 的 byte[] 必须按内容比较，避免 Map.equals 按对象身份误判。
             var after = db.queryForList("SELECT * FROM media_resource ORDER BY id");

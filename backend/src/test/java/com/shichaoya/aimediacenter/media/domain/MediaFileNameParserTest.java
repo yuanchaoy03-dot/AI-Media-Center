@@ -58,6 +58,45 @@ class MediaFileNameParserTest {
         assertCandidate("F1Example2025.mkv", null, "F1Example2025", null, null);
     }
 
+    @Test void extractsPreYearUncutAcrossAsciiAndFullwidthYearParentheses() {
+        for (var brackets : List.of("()", "（）")) {
+            String year = brackets.charAt(0) + "2020" + brackets.charAt(1);
+            assertCandidate("Film.Uncut." + year + ".2160p.mkv", null, "Film", 2020, "Uncut");
+            assertCandidate("1917.Uncut." + year + ".2160p.mkv", null, "1917", 2020, "Uncut");
+            assertCandidate("Film\u3000Uncut\u3000" + year + "\u30002160p.mkv", null, "Film", 2020, "Uncut");
+            assertCandidate("video.mkv", "Film.Uncut." + year + ".2160p", "Film", 2020, "Uncut");
+            assertCandidate("Film.2021.mkv", "Film.Uncut." + year + ".2160p", "Film", 2021, null);
+        }
+    }
+
+    @Test void extractsAllEditionLabelsInsideMatchingFullwidthParentheses() {
+        for (var edition : List.of("Theatrical Cut", "Director's Cut", "Extended Cut", "Final Cut", "IMAX",
+                "Special Edition", "Unrated", "Uncut", "Anniversary Edition")) {
+            assertCandidate("Film.（" + edition + "）.1080p.mkv", null, "Film", null, edition);
+            assertEquals(MediaFileNameParser.parse("Film.(" + edition + ").1080p.mkv", null),
+                    MediaFileNameParser.parse("Film.（" + edition + "）.1080p.mkv", null));
+        }
+        assertCandidate("Film.（Extended.Cut）.1080p.mkv", null, "Film", null, "Extended Cut");
+        assertCandidate("video.mkv", "Film.（Extended Cut）.（2020）", "Film", 2020, "Extended Cut");
+        assertCandidate("Film.（Extended Cut）.1080p.mkv", "Film.2020.Final.Cut", "Film", null, "Extended Cut");
+    }
+
+    @Test void fullwidthParenthesesPreserveTitleEvidenceAndAmbiguityGuards() {
+        assertCandidate("Uncut.（2020）.2160p.mkv", null, "Uncut", 2020, null);
+        for (var article : List.of("The", "A", "An")) {
+            assertCandidate(article + ".Uncut.（2020）.2160p.mkv", null, article + " Uncut", 2020, null);
+        }
+        assertCandidate("Uncut.Gems.（2019）.2160p.mkv", null, "Uncut Gems", 2019, null);
+        assertCandidate("Film.Uncut.（2020）.mkv", null, "Film Uncut", 2020, null);
+        assertCandidate("Film.Unrated.（2020）.2160p.mkv", null, "Film Unrated", 2020, null);
+        assertCandidate("Film.Uncut.（1999）.（2020）.2160p.mkv", null, "Film Uncut 1999 2020", null, null);
+        assertCandidate("Film.（Extended Cut）.（IMAX）.1080p.mkv", "Final Cut", "Film", null, null);
+        assertCandidate("Film.（Extended Cut).1080p.mkv", null, "Film Extended Cut", null, null);
+        assertCandidate("Film.(Extended Cut）.1080p.mkv", null, "Film Extended Cut", null, null);
+        assertCandidate("（Extended Cut）.1080p.mkv", null, "Extended Cut", null, null);
+        assertCandidate("1080p.（Extended Cut）.2020.mkv", "Film.2019.Uncut", "Film", 2019, "Uncut");
+    }
+
     @Test void ignoresAllMetadataInKnownLeadingReleaseGroupsBeforeParsingMovieEvidence() {
         assertCandidate("[YTS.2020] Film.2021.1080p.mkv", null, "Film", 2021, null);
         assertCandidate("[YTS.2020] 1917.2019.1080p.mkv", null, "1917", 2019, null);
