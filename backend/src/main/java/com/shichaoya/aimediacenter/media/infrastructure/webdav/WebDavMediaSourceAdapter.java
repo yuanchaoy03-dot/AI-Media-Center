@@ -43,6 +43,7 @@ import java.util.concurrent.TimeoutException;
 public class WebDavMediaSourceAdapter implements MediaSourceAdapter {
     private static final int MAX_BODY_BYTES = 128 * 1024;
     private static final int MAX_DIRECTORY_BYTES = 1024 * 1024;
+    private static final int MAX_XML_ELEMENT_DEPTH = 64;
     private static final String PROPFIND = """
             <?xml version="1.0" encoding="utf-8"?>
             <d:propfind xmlns:d="DAV:"><d:prop><d:resourcetype/></d:prop></d:propfind>
@@ -198,6 +199,8 @@ public class WebDavMediaSourceAdapter implements MediaSourceAdapter {
         var factory = DocumentBuilderFactory.newInstance();
         factory.setNamespaceAware(true);
         factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
+        // 大小上限不能阻止深层嵌套耗尽 DOM getTextContent 的调用栈。
+        factory.setAttribute("jdk.xml.maxElementDepth", MAX_XML_ELEMENT_DEPTH);
         factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
         factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
         factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);

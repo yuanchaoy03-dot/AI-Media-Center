@@ -48,7 +48,7 @@ public final class MediaFileNameParser {
                 String wholeLabel = wholeEdition(text(parentDirectoryName));
                 // Final Cut 等也可能是片名，不能把与候选标题相同的目录名当版本。
                 if (wholeLabel != null && selected.title() != null
-                        && !text(selected.title()).equalsIgnoreCase(text(wholeLabel))) editionLabel = wholeLabel;
+                        && !wholeLabel.equals(wholeEdition(text(selected.title())))) editionLabel = wholeLabel;
             }
         }
         return new NameCandidate(selected.title(), selected.year(), editionLabel);
@@ -99,7 +99,9 @@ public final class MediaFileNameParser {
                 .sorted((left, right) -> Integer.compare(right.start(), left.start()))
                 .forEach(span -> title.replace(span.start(), span.end(), " "));
         String candidateTitle = clean(title.toString());
-        Integer candidateYear = candidateTitle != null && years.size() == 1 ? years.getFirst().value() : null;
+        // 纯技术噪声没有片名证据，不把其版本标签或歧义带入目录兜底。
+        if (candidateTitle == null) return new ParsedName(null, null, null, false);
+        Integer candidateYear = years.size() == 1 ? years.getFirst().value() : null;
         return new ParsedName(candidateTitle, candidateYear, labels.size() == 1 ? labels.iterator().next() : null,
                 labels.size() > 1);
     }

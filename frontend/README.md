@@ -72,6 +72,12 @@ Set-Location backend
 
 可选的私人 WebDAV 长期联调配置也放在同一本地文件中，变量为 `WEBDAV_DEV_ADDRESS`、`WEBDAV_DEV_USERNAME`、`WEBDAV_DEV_PASSWORD`。后续真实来源联调先加载该文件，从环境变量读取连接，检查时只报告变量是否存在，不输出实际值；真实地址、账号和密码不写入代码、fixture 或文档。这些变量仅供显式联调使用，当前应用不会自动读取它们或创建媒体来源，默认自动回归仍使用下述临时服务与独立测试库。
 
+用户确认的真实测试目录清单保存在 [test-data/webdav/movie-directories.json](../test-data/webdav/movie-directories.json)，按网盘记录来源内父路径、保留的一级目录名、排除相对路径和扫描根展开规则；核对日期与验证范围以该文件为准。清单只供显式真实联调参考，不自动创建来源、配置扫描范围或执行扫描，也不作为默认自动回归的远程依赖。它记录目录存在与用户选择，不代表目录内视频已经识别或可播放；网盘内容变化后需重新核对。
+
+使用时，普通扫描根为 `basePath + '/' + includedDirectoryNames` 中的对应名称；某名称存在于 `scanRootExpansions` 时，须改用 `basePath + '/' + 名称 + '/' + 子目录名`，不选择该父目录。例如“蜘蛛侠”展开为 11 个子目录，以避开“暗影蜘蛛侠”。`excludedRelativePaths` 相对于 `basePath`，仅记录本清单的选择规则；当前扫描递归遍历所选根，不支持提交排除路径，不能直接扫描两处“影视资源”父目录来实现排除。
+
+展开后共 40 个候选扫描根（百度网盘 34 个、迅雷云盘 6 个）。实际扫描经正式页面 / Spring Boot 执行；同一来源最多 32 个根，需按测试目的选择子集或分批。保存范围是整批替换，上一批任务结束后再保存下一批，不把后续保存当作增量追加；契约见 [API 扫描范围](../docs/API.md#查询--整批保存本人来源的扫描范围)。
+
 `AuthHttpIntegrationTest` 使用真实 MySQL 和随机 HTTP 端口，同时启动本机临时 WebDAV HTTP 服务验证首次新增。运行前准备独立、可丢弃且名称以 `_auth_test` 结尾的数据库，设置 `AUTH_TEST_DB_URL`、`AUTH_TEST_DB_USERNAME`、`AUTH_TEST_DB_PASSWORD` 后执行 `.\mvnw.cmd test`；测试自行生成临时签名与加密密钥，清理该测试库的用户和来源。未设置测试 URL 时明确跳过，不能把普通 package 成功视为已执行集成测试。不要指向开发库或生产库。
 
 来源测试支持匿名 / Basic 认证、HTTP(S) 与地址自身目录验证，不跟随重定向；请填写最终 WebDAV 目录地址。默认总时限 8000ms，可用 `MEDIA_SOURCE_CONNECTION_TIMEOUT_MS` 设置 100–15000ms；完整认证兼容范围和限制见 [API.md](../docs/API.md#测试未保存的-webdav-连接--新增本人来源)。

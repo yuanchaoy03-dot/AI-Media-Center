@@ -103,6 +103,17 @@ class MediaFileNameParserTest {
         assertCandidate("[YTS.1080p] Film.2020.Final.Cut.2160p.mkv", null, "Film", 2020, "Final Cut");
     }
 
+    @Test void technicalOnlyFilenamesCannotSupplyEditionEvidenceOrBlockDirectoryEditions() {
+        assertCandidate("1080p.2020.Final.Cut.mkv", null, null, null, null);
+        assertCandidate("1080p.[Extended.Cut].mkv", null, null, null, null);
+        assertCandidate("1080p.2020.Final.Cut.mkv", "Film.2019", "Film", 2019, null);
+        assertCandidate("1080p.[Extended.Cut].2020.mkv", "Film.2019.Uncut", "Film", 2019, "Uncut");
+        assertCandidate("1080p.2020.Uncut.Unrated.mkv", "Film.2019.Final.Cut", "Film", 2019, "Final Cut");
+        // 技术后缀前仍有有效片名时，保留文件名的明确版本及其优先级。
+        assertCandidate("Film.1080p.2020.Final.Cut.mkv", "Film.2020.Uncut", "Film", 2020, "Final Cut");
+        assertCandidate("Film.1080p.[Extended.Cut].mkv", null, "Film", null, "Extended Cut");
+    }
+
     @Test void extractsAllSupportedEditionLabelsBeforeCleaningSearchTitles() {
         for (var edition : List.of("Theatrical Cut", "Director's Cut", "Extended Cut", "Final Cut", "IMAX",
                 "Special Edition", "Unrated", "Uncut", "Anniversary Edition")) {
@@ -118,6 +129,14 @@ class MediaFileNameParserTest {
         assertCandidate("Unrated.2016.mkv", null, "Unrated", 2016, null);
         assertCandidate("IMAX.mkv", null, "IMAX", null, null);
         assertCandidate("Film.Extended.Cut.mkv", null, "Film Extended Cut", null, null);
+    }
+
+    @Test void hyphenatedEditionTitleWordsDoNotBecomeDirectoryVersions() {
+        assertCandidate("Final-Cut.2022.mkv", "Final-Cut", "Final-Cut", 2022, null);
+        assertCandidate("Final-Cut.2022.mkv", "Final Cut", "Final-Cut", 2022, null);
+        assertCandidate("Final.Cut.2022.mkv", "Final-Cut", "Final Cut", 2022, null);
+        assertCandidate("Film.2020.mkv", "Final-Cut", "Film", 2020, "Final Cut");
+        assertCandidate("Film.2020.Final-Cut.mkv", "Film.2020", "Film", 2020, "Final Cut");
     }
 
     @Test void filenameVersionWinsAndAmbiguousLocalLabelsStayEmpty() {

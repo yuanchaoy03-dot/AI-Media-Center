@@ -195,6 +195,22 @@ class WebDavDirectoryScannerTest {
         assertError(207, "<!DOCTYPE d:multistatus [<!ENTITY secret SYSTEM 'http://127.0.0.1/secret'>]>" + listing(resource("/dav/", true)), "SOURCE_DIRECTORY_INVALID");
     }
 
+    @Test void deepHrefOrStatusReturnsADirectoryErrorForEveryDirectoryOperation() {
+        var connection = new SourceConnection(address, "", "");
+        for (String value : List.of("/dav/", "HTTP/1.1 200 OK")) {
+            String body = listing(resource("/dav/", true)).replace(value,
+                    "<x>".repeat(12000) + value + "</x>".repeat(12000));
+            assertTrue(body.getBytes(StandardCharsets.UTF_8).length < 128 * 1024);
+            xml.set(body);
+            for (Runnable operation : List.<Runnable>of(() -> adapter.browseDirectory(connection, "/"),
+                    () -> adapter.validateDirectories(connection, List.of("/")), () -> scan())) {
+                var error = assertThrows(ApiException.class, operation::run);
+                assertEquals("SOURCE_DIRECTORY_INVALID", error.code());
+                assertEquals(422, error.status());
+            }
+        }
+    }
+
     @Test void mapsHttpAndPropstatErrorsWithoutExposingPrivateUpstreamDetailsOrFollowingRedirects() {
         assertError(404, "fixture-private", "SOURCE_DIRECTORY_NOT_FOUND");
         assertError(401, "fixture-private", "SOURCE_AUTH_FAILED");

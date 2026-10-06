@@ -126,6 +126,11 @@ class WebDavMediaSourceAdapterTest {
         assertResponseError(207, DIRECTORY.replace("?>", "?><!DOCTYPE foo [<!ENTITY secret SYSTEM 'file:///should-not-be-read'>]>"), "SOURCE_NOT_WEBDAV");
         assertResponseError(207, DIRECTORY + " ".repeat(129 * 1024), "SOURCE_NOT_WEBDAV");
     }
+    @Test void rejectsDeeplyNestedHrefBelowTheConnectionBodySizeLimit() {
+        String body = DIRECTORY.replace("/dav/", "<x>".repeat(12000) + "/dav/" + "</x>".repeat(12000));
+        assertTrue(body.getBytes(StandardCharsets.UTF_8).length < 128 * 1024);
+        assertResponseError(207, body, "SOURCE_NOT_WEBDAV");
+    }
     @Test void boundsSlowResponseBodyAfterHeadersArrive() {
         server.createContext("/dav/", exchange -> {
             exchange.sendResponseHeaders(207, 0); exchange.getResponseBody().write("<d:".getBytes(StandardCharsets.UTF_8));

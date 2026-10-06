@@ -461,6 +461,41 @@ class MediaScanRunnerTest {
         verify(tasks, never()).start("rejected");
     }
 
+    @Test void realDeepXmlTerminatesTheTaskInsteadOfLeavingItRunning() throws Exception {
+        String body = "<d:multistatus xmlns:d=\"DAV:\"><d:response><d:href>"
+                + "<x>".repeat(12000) + "/dav/a/" + "</x>".repeat(12000)
+                + "</d:href><d:propstat><d:prop><d:resourcetype><d:collection/></d:resourcetype></d:prop>"
+                + "<d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response></d:multistatus>";
+        assertTrue(body.getBytes(StandardCharsets.UTF_8).length < 128 * 1024);
+        var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        var httpExecutor = Executors.newVirtualThreadPerTaskExecutor();
+        server.setExecutor(httpExecutor);
+        server.createContext("/", exchange -> {
+            try (exchange) {
+                exchange.getRequestBody().readAllBytes();
+                byte[] content = body.getBytes(StandardCharsets.UTF_8);
+                exchange.sendResponseHeaders(207, content.length);
+                exchange.getResponseBody().write(content);
+            }
+        });
+        server.start();
+        try {
+            var httpConnection = new SourceConnection("http://127.0.0.1:" + server.getAddress().getPort() + "/dav/", "", "");
+            var httpSource = new MediaSourceRow("source", "alice", "来源", "WEBDAV",
+                    encryption.encrypt(httpConnection, "alice", "source"), true, null, source.createdAt());
+            var httpRunner = new MediaScanRunner(tasks, resources, encryption, new WebDavMediaSourceAdapter(2000),
+                    new MediaScanLimits(1, 1, 10, 10, 100, 4, 30), transactions);
+            runners.add(httpRunner);
+            assertDoesNotThrow(() -> httpRunner.scan("deep-xml", httpSource, List.of("/a")));
+            verify(tasks).finish("deep-xml", "FAILED", 0, 0, 0,
+                    "SOURCE_DIRECTORY_INVALID", "来源未返回有效、完整的目录，扫描已停止。");
+            verifyNoInteractions(resources);
+        } finally {
+            server.stop(0);
+            httpExecutor.shutdownNow();
+        }
+    }
+
     @Test void startupRecoversUnfinishedTasks() {
         runner.recoverInterrupted();
         verify(tasks).failInterrupted();
