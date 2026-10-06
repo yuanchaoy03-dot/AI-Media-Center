@@ -8,6 +8,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import java.net.InetSocketAddress;
+import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpConnectTimeoutException;
 import java.nio.charset.StandardCharsets;
@@ -148,6 +149,33 @@ class WebDavDirectoryScannerTest {
         assertEquals(encoded, rawPath.get()); assertNull(auth.get());
         assertEquals(child, result.path());
         assertEquals(child + "/note %#?.mkv", result.entries().getFirst().path());
+    }
+
+    @Test void scanningAppliesTheCodePointBudgetOnlyAfterRemovingTheConnectionRoot() {
+        String origin = address.substring(0, address.length() - "/dav/".length());
+        for (String rootPrefix : List.of("/", "/dav/", "/dav%20root%25/")) {
+            for (String character : List.of("x", "😀")) {
+                String directory = ("/" + character.repeat(254)).repeat(8);
+                String file = directory + "/abc.mkv";
+                assertEquals(2048, file.codePointCount(0, file.length()));
+                String remoteDirectory = rootPrefix + URI.create(directory).toASCIIString().substring(1) + "/";
+                xml.set(listing(resource(origin + remoteDirectory, true),
+                        withFacts(origin + remoteDirectory + "abc.mkv", "512", "Wed, 02 Oct 2024 10:11:12 GMT")));
+                var result = adapter.scanDirectory(new SourceConnection(origin + rootPrefix, "", ""), directory, deadline(5000));
+                assertEquals(directory, result.path()); assertEquals(remoteDirectory, rawPath.get());
+                assertEquals(List.of(new MediaFileDirectory.Entry("abc.mkv", file, "file", 512L,
+                        Instant.parse("2024-10-02T10:11:12Z"))), result.entries());
+            }
+        }
+    }
+
+    @Test void scanningStillRejectsSourceRelativeChildrenAboveTheBudget() {
+        String directory = ("/" + "x".repeat(254)).repeat(8);
+        String remoteDirectory = "/dav" + directory + "/";
+        xml.set(listing(resource(remoteDirectory, true), withFacts(remoteDirectory + "abcd.mkv", "512", "malformed")));
+        var error = assertThrows(ApiException.class,
+                () -> adapter.scanDirectory(new SourceConnection(address, "", ""), directory, deadline(5000)));
+        assertEquals("SOURCE_DIRECTORY_INVALID", error.code()); assertEquals(422, error.status());
     }
 
     @Test void failsWholeDirectoryOnCrossOriginEscapesGrandchildrenOrDuplicateLocators() {

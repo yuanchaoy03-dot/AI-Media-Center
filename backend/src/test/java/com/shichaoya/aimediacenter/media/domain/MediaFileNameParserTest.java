@@ -29,12 +29,46 @@ class MediaFileNameParserTest {
 
     @Test void removesKnownTechnicalAndReleaseSuffixesWithoutReturningTechnicalFacts() {
         for (var suffix : List.of("720p", "1080p", "2160p", "4K", "8k", "BDRip", "WEB-DL", "WEBRip",
-                "Remux", "x264", "H.265", "HDR10+", "Dolby.Vision", "AAC", "DTS-HD.MA", "TrueHD", "DDP5.1")) {
+                "Remux", "UHD", "PROPER", "REPACK", "x264", "H.265", "HDR10+", "Dolby.Vision", "AAC", "DTS-HD.MA", "TrueHD", "DDP5.1")) {
             assertCandidate("Some.Movie." + suffix + ".GROUP.mp4", null, "Some Movie", null, null);
         }
         assertCandidate("[字幕组] 某部电影 (2020) 1080p.mkv", null, "某部电影", 2020, null);
         assertCandidate("The.Web.2024.mkv", null, "The Web", 2024, null);
         assertCandidate("Raw.2016.mkv", null, "Raw", 2016, null);
+    }
+
+    @Test void removesStandaloneReleaseMarkersBeforeYearsWithoutMatchingInsideTitleWords() {
+        for (var marker : List.of("UHD", "PROPER", "REPACK")) {
+            assertCandidate("Example.Title." + marker + ".2020.2160p.BluRay.mkv", null, "Example Title", 2020, null);
+            assertCandidate("1917." + marker + ".2019.2160p.mkv", null, "1917", 2019, null);
+            assertCandidate("Example." + marker + ".1999.2020.2160p.mkv", null, "Example", null, null);
+        }
+        assertCandidate("Example1.UHD.2160p.BluRay.REMUX.DV.HDR.TrueHD.7.1.Atmos.mkv",
+                "Example1（2019）", "Example1", null, null);
+        assertCandidate("UHDream.Properly.Repacked.2020.mkv", null, "UHDream Properly Repacked", 2020, null);
+        assertCandidate("某UHD之旅.2020.mkv", null, "某UHD之旅", 2020, null);
+    }
+
+    @Test void cleansFullwidthParenthesesAroundYearsAndKeepsAmbiguousYearsUnresolved() {
+        assertCandidate("Example Title（2011）.mkv", null, "Example Title", 2011, null);
+        assertCandidate("1917（2019）.mkv", null, "1917", 2019, null);
+        assertCandidate("video.mkv", "Example Title（2011）", "Example Title", 2011, null);
+        assertCandidate("Example.Title（1999）（2020）.mkv", null, "Example Title 1999 2020", null, null);
+        assertCandidate("Example.Title（Part 2）.mkv", null, "Example Title Part 2", null, null);
+        assertCandidate("F1Example2025.mkv", null, "F1Example2025", null, null);
+    }
+
+    @Test void ignoresAllMetadataInKnownLeadingReleaseGroupsBeforeParsingMovieEvidence() {
+        assertCandidate("[YTS.2020] Film.2021.1080p.mkv", null, "Film", 2021, null);
+        assertCandidate("[YTS.2020] 1917.2019.1080p.mkv", null, "1917", 2019, null);
+        assertCandidate("[YTS(IMAX)] Film.2021.1080p.mkv", null, "Film", 2021, null);
+        assertCandidate("[YTS.2020.IMAX] Film.2021.Extended.Cut.1080p.mkv", null, "Film", 2021, "Extended Cut");
+        assertCandidate("[YTS(IMAX)] IMAX.2021.1080p.mkv", null, "IMAX", 2021, null);
+        assertCandidate("[YTS.2020] Film.1999.2021.1080p.mkv", null, "Film 1999 2021", null, null);
+        assertCandidate("[YTS(IMAX)] Film.2021.IMAX.Extended.Cut.mkv", null, "Film", 2021, null);
+        assertCandidate("video.mkv", "[YTS.2020] Film.2021", "Film", 2021, null);
+        assertCandidate("Film.2021.mkv", "[YTS(IMAX)] Film.2021", "Film", 2021, null);
+        assertCandidate("[UNKNOWN.2020] Film.2021.1080p.mkv", null, "UNKNOWN 2020 Film 2021", null, null);
     }
 
     @Test void normalizesUnicodeWhitespaceInFileAndDirectoryCandidates() {
@@ -45,6 +79,15 @@ class MediaFileNameParserTest {
                     "Film", 2020, "Extended Cut");
             assertCandidate("Film.2020.mkv", space + "Extended" + space + "Cut" + space,
                     "Film", 2020, "Extended Cut");
+        }
+    }
+
+    @Test void normalizesUnicodeFilenameTailsBeforeRemovingOnlyKnownMediaExtensions() {
+        for (var space : List.of("\u0020", "\u00a0", "\u202f", "\u2007", "\u3000", "\ufeff")) {
+            assertCandidate("Film.mkv" + space, null, "Film", null, null);
+            assertCandidate(space + "Film.2020.MKV" + space, null, "Film", 2020, null);
+            assertCandidate("Film.srt" + space, null, "Film srt", null, null);
+            assertCandidate("Film.mkv.backup" + space, null, "Film mkv backup", null, null);
         }
     }
 

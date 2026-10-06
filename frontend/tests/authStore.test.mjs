@@ -2360,6 +2360,106 @@ test('poll errors preserve persisted running state and require retry without cla
   }
 })
 
+test('terminal scans refresh an open result list, including files saved before a failure', async (t) => {
+  for (const status of ['completed', 'failed']) {
+    await signIn()
+    t.mock.timers.enable({ apis: ['setTimeout'] })
+    const view = await componentSetup('views/MediaSourcesView.vue')
+    const running = { ...scanTask, status: 'running', startedAt: scanTask.createdAt }
+    const finished = {
+      ...running,
+      status,
+      discoveredCount: 1,
+      persistedCount: 1,
+      directoryCount: 1,
+      finishedAt: '2026-10-03T06:31:00Z',
+      errorCode: status === 'failed' ? 'SOURCE_CONNECTION_FAILED' : null,
+      errorMessage: status === 'failed' ? '来源连接失败，请重试。' : null,
+    }
+    let scansRead = 0
+    let resourcesRead = 0
+    respond = async (url) => {
+      if (url === '/api/media-sources') return ok([ownedSource])
+      if (url.endsWith('/scan-roots')) return ok(ownedRoots)
+      if (url.endsWith('/scans')) return ok([++scansRead === 1 ? running : finished])
+      assert.equal(url, `/api/media-sources/${ownedSource.id}/resources?page=0&pageSize=50`)
+      return ok(resourcesPage(++resourcesRead === 1 ? [] : [mediaResource]))
+    }
+    try {
+      await view.mount()
+      await view.ui.openResults(running)
+      assert.equal(view.ui.resourceResult.value.total, 0)
+      assert.equal(view.ui.resultTask.value.status, 'running')
+      t.mock.timers.tick(1500)
+      await flushRequests()
+      assert.equal(view.ui.resultTask.value.status, status)
+      assert.deepEqual(view.ui.resourceResult.value.items, [mediaResource])
+      assert.equal(view.ui.resourceResult.value.total, 1)
+      assert.equal(view.ui.resourceLoading.value, false)
+      assert.equal(view.ui.resourceError.value, '')
+      assert.equal(resourcesRead, 2)
+      t.mock.timers.tick(10000)
+      await flushRequests()
+      assert.equal(scansRead, 2)
+      assert.equal(resourcesRead, 2)
+    } finally {
+      view.unmount()
+      t.mock.timers.reset()
+    }
+  }
+})
+
+test('closing results cancels the automatic refresh and ignores its late resource response', async (t) => {
+  await signIn()
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const view = await componentSetup('views/MediaSourcesView.vue')
+  const running = { ...scanTask, status: 'running', startedAt: scanTask.createdAt }
+  const completed = {
+    ...running,
+    status: 'completed',
+    discoveredCount: 1,
+    persistedCount: 1,
+    directoryCount: 1,
+    finishedAt: '2026-10-03T06:31:00Z',
+  }
+  const delayed = deferred()
+  let refreshSignal
+  let scansRead = 0
+  let resourcesRead = 0
+  respond = (url, config) => {
+    if (url === '/api/media-sources') return ok([ownedSource])
+    if (url.endsWith('/scan-roots')) return ok(ownedRoots)
+    if (url.endsWith('/scans')) return ok([++scansRead === 1 ? running : completed])
+    assert.equal(url, `/api/media-sources/${ownedSource.id}/resources?page=0&pageSize=50`)
+    if (++resourcesRead === 1) return ok(resourcesPage([]))
+    refreshSignal = config.signal
+    return delayed.promise
+  }
+  try {
+    await view.mount()
+    await view.ui.openResults(running)
+    t.mock.timers.tick(1500)
+    await flushRequests()
+    assert.equal(view.ui.resultTask.value.status, 'completed')
+    assert.equal(view.ui.resourceLoading.value, true)
+    assert.equal(resourcesRead, 2)
+    assert.equal(refreshSignal.aborted, false)
+    view.ui.closeResults()
+    assert.equal(refreshSignal.aborted, true)
+    delayed.resolve(ok(resourcesPage([mediaResource])))
+    await flushRequests()
+    assert.equal(view.ui.resultSource.value, undefined)
+    assert.equal(view.ui.resourceResult.value, undefined)
+    assert.equal(view.ui.resourceLoading.value, false)
+    assert.equal(view.ui.resourceError.value, '')
+    t.mock.timers.tick(10000)
+    await flushRequests()
+    assert.equal(resourcesRead, 2)
+  } finally {
+    view.unmount()
+  }
+})
+
 test('source menu launches a real scan, isolates repeated submits and deduplicates an existing running task', async () => {
   await signIn()
   const view = await componentSetup('views/MediaSourcesView.vue')

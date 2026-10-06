@@ -42,6 +42,23 @@ class MediaSourceRequestTest {
         assertInvalid(body("NAS", "http://localhost/dav/", "user", "bad\npassword"));
         assertInvalid(body("😀".repeat(81), "http://localhost/dav/", "user", "password"));
     }
+    @Test void rejectsRootPathsThatTheDirectoryBrowserCannotDecodeOrUse() {
+        for (String path : new String[]{"/dav/../dav/", "/dav/./", "/dav/%2e%2e/dav/", "/dav/.%2E/dav/",
+                "/dav/%2E/", "/dav/a%2fb/", "/dav/a%5Cb/", "/dav/%252e/", "/dav/%252f/",
+                "//dav/", "/dav/%00/", "/dav/%FF/", "/dav/%C0%AF/"}) {
+            var error = assertThrows(ApiException.class, () -> MediaSourceRequest.parse(body("NAS", "http://localhost" + path, "", "")));
+            assertEquals(400, error.status()); assertEquals("VALIDATION_FAILED", error.code());
+            assertTrue(error.fieldErrors().containsKey("address"));
+        }
+    }
+    @Test void preservesUsableRootNamesAndUnreservedEncodings() {
+        for (String address : new String[]{"http://localhost", "http://localhost/", "http://localhost/dav/中文/",
+                "http://localhost/dav/%E7%94%B5%E5%BD%B1%20%E5%BA%93/", "http://localhost/dav/100%25%23%3F+/",
+                "http://localhost/d%61v/Movie%2E2020/"}) {
+            var parsed = MediaSourceRequest.parse(body("NAS", address, "", ""));
+            assertEquals(java.net.URI.create(address).toASCIIString(), parsed.connection().address());
+        }
+    }
     private Map<String, Object> body(String name, String address, String username, String password) {
         return Map.of("name", name, "address", address, "username", username, "password", password);
     }

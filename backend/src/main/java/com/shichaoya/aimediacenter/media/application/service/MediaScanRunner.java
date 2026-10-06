@@ -15,9 +15,17 @@ import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.sql.init.dependency.DependsOnDatabaseInitialization;
+import org.springframework.dao.QueryTimeoutException;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.TransactionTimedOutException;
+import org.springframework.transaction.support.DelegatingTransactionDefinition;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import java.sql.SQLTimeoutException;
 import java.time.LocalDateTime;
 import java.time.DateTimeException;
 import java.time.Instant;
@@ -33,6 +41,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
 /** 单实例后台扫描。每次 Depth:1，文件事实逐项短事务保存；失败不删除任何历史资源。 */
 @Component
@@ -60,13 +69,13 @@ public class MediaScanRunner {
     private final SourceConnectionEncryption encryption;
     private final MediaSourceAdapter adapter;
     private final MediaScanLimits limits;
-    private final TransactionTemplate transaction;
+    private final PlatformTransactionManager transactions;
     private final ThreadPoolExecutor executor;
 
     public MediaScanRunner(MediaScanTaskMapper tasks, MediaResourceMapper resources, SourceConnectionEncryption encryption,
                            MediaSourceAdapter adapter, MediaScanLimits limits, PlatformTransactionManager transactions) {
         this.tasks = tasks; this.resources = resources; this.encryption = encryption; this.adapter = adapter; this.limits = limits;
-        this.transaction = new TransactionTemplate(transactions);
+        this.transactions = transactions;
         var sequence = new AtomicInteger();
         this.executor = new ThreadPoolExecutor(limits.workers(), limits.workers(), 0, TimeUnit.MILLISECONDS,
                 new ArrayBlockingQueue<>(limits.queueCapacity()), runnable -> {
@@ -86,9 +95,9 @@ public class MediaScanRunner {
 
     void scan(String taskId, MediaSourceRow source, List<String> rootPaths) {
         var counts = new Counts();
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(limits.maxSeconds());
         try {
-            if (tasks.start(taskId) != 1) return;
-            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(limits.maxSeconds());
+            if (executeBeforeDeadline(deadline, () -> { return tasks.start(taskId); }) != 1) return;
             var connection = encryption.decrypt(source.connectionConfigCiphertext(), source.userId(), source.id());
             var pending = new ArrayDeque<Directory>();
             var seenDirectories = new HashSet<String>();
@@ -110,21 +119,24 @@ public class MediaScanRunner {
                     } else if (isVideo(entry.name())) {
                         if (counts.discovered == limits.maxResources()) throw limit();
                         counts.discovered++;
-                        persist(taskId, source.id(), entry, counts);
+                        persist(taskId, source.id(), entry, counts, deadline);
                         counts.persisted++;
                     }
                 }
-                tasks.progress(taskId, counts.discovered, counts.persisted, counts.directories);
+                executeBeforeDeadline(deadline,
+                        () -> tasks.progress(taskId, counts.discovered, counts.persisted, counts.directories));
             }
             checkDeadline(deadline);
-            tasks.finish(taskId, "COMPLETED", counts.discovered, counts.persisted, counts.directories, null, null);
+            executeBeforeDeadline(deadline,
+                    () -> tasks.finish(taskId, "COMPLETED", counts.discovered, counts.persisted, counts.directories, null, null));
         } catch (RuntimeException error) {
-            String code = error instanceof ApiException known && SAFE_ERRORS.containsKey(known.code())
-                    ? known.code() : "SCAN_FAILED";
-            if (Thread.currentThread().isInterrupted()) code = "SCAN_INTERRUPTED";
+            String code = Thread.currentThread().isInterrupted() ? "SCAN_INTERRUPTED"
+                    : error instanceof ApiException known && SAFE_ERRORS.containsKey(known.code()) ? known.code() : "SCAN_FAILED";
             try {
-                tasks.finish(taskId, "FAILED", counts.discovered, counts.persisted, counts.directories, code,
-                        SAFE_ERRORS.getOrDefault(code, "扫描失败，请稍后重试。"));
+                // 失败记录允许独立的一秒清理预算；仍被占用的任务行不能无界阻塞扫描 worker。
+                long cleanupDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(1);
+                executeBeforeDeadline(cleanupDeadline, () -> tasks.finish(taskId, "FAILED", counts.discovered,
+                        counts.persisted, counts.directories, code, SAFE_ERRORS.getOrDefault(code, "扫描失败，请稍后重试。")));
             } catch (RuntimeException persistenceFailure) {
                 // 不记录远程正文、底层异常、连接或凭据；数据库恢复并重启后会将未终结任务标为中断。
                 LOG.warn("Could not save scan failure for task {}", taskId);
@@ -132,14 +144,17 @@ public class MediaScanRunner {
         }
     }
 
-    private void persist(String taskId, String sourceId, MediaFileDirectory.Entry entry, Counts counts) {
-        transaction.executeWithoutResult(status -> {
+    private void persist(String taskId, String sourceId, MediaFileDirectory.Entry entry, Counts counts, long deadline) {
+        executeBeforeDeadline(deadline, () -> {
             // 同一短事务先锁任务，终结后的旧 worker 不能继续落文件事实。
-            if (!"RUNNING".equals(tasks.lockStatus(taskId))) {
+            var taskStatus = tasks.lockStatus(taskId);
+            checkDeadline(deadline);
+            if (!"RUNNING".equals(taskStatus)) {
                 throw new ApiException(503, "SCAN_INTERRUPTED", "扫描已中断。");
             }
             var hash = MediaScanService.hash(entry.path());
             var existing = resources.lockByPathHash(sourceId, hash);
+            checkDeadline(deadline);
             if (existing != null && !existing.path().equals(entry.path())) {
                 throw new ApiException(500, "SCAN_PATH_COLLISION", "资源路径校验失败，扫描已停止。");
             }
@@ -148,9 +163,65 @@ public class MediaScanRunner {
                     existing == null ? "UNIDENTIFIED" : existing.recognitionStatus());
             if (existing == null) resources.insert(row);
             else resources.updateFacts(row);
+            checkDeadline(deadline);
             // 文件事实与计数同一事务提交，硬中断恢复后的历史计数不会落后于已入库事实。
             tasks.progress(taskId, counts.discovered, counts.persisted + 1, counts.directories);
         });
+    }
+
+    private void executeBeforeDeadline(long deadline, Runnable work) {
+        executeBeforeDeadline(deadline, () -> { work.run(); return null; });
+    }
+
+    private <T> T executeBeforeDeadline(long deadline, Supplier<T> work) {
+        checkDeadline(deadline);
+        // 保留 TransactionTemplate 的提交 / 回滚语义，将实际剩余预算传给事务管理器。
+        var transaction = new TransactionTemplate(new PlatformTransactionManager() {
+            @Override public TransactionStatus getTransaction(TransactionDefinition definition) {
+                return transactions.getTransaction(new DelegatingTransactionDefinition(definition) {
+                    // doBegin 取连接后才读取预算；不能把此前的连接等待再次加到整体截止时间。
+                    @Override public int getTimeout() { return remainingSeconds(deadline); }
+                });
+            }
+            @Override public void commit(TransactionStatus status) { transactions.commit(status); }
+            @Override public void rollback(TransactionStatus status) { transactions.rollback(status); }
+        });
+        try {
+            return transaction.execute(status -> {
+                // 取连接和开启事务也消耗预算；超时后不能再开始锁或写操作。
+                checkDeadline(deadline);
+                if (TransactionSynchronizationManager.isSynchronizationActive()) {
+                    TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                        @Override public void beforeCommit(boolean readOnly) { checkDeadline(deadline); }
+                    });
+                }
+                T result = work.get();
+                // 写入或计数更新等待超时后回滚整笔事务，已提交的前序资源不受影响。
+                checkDeadline(deadline);
+                return result;
+            });
+        } catch (RuntimeException error) {
+            checkDeadline(deadline);
+            if (isDatabaseTimeout(error)) throw timeout();
+            throw error;
+        }
+    }
+
+    private static int remainingSeconds(long deadline) {
+        checkDeadline(deadline);
+        // Spring/MyBatis 将事务剩余秒数传给 JDBC Statement.setQueryTimeout；整数秒需向上取整。
+        long remaining = deadline - System.nanoTime();
+        if (remaining <= 0) throw timeout();
+        return (int) ((remaining + TimeUnit.SECONDS.toNanos(1) - 1) / TimeUnit.SECONDS.toNanos(1));
+    }
+
+    private static boolean isDatabaseTimeout(Throwable error) {
+        for (Throwable cause = error; cause != null; cause = cause.getCause()) {
+            if (cause instanceof TransactionTimedOutException || cause instanceof QueryTimeoutException
+                    || cause instanceof SQLTimeoutException) return true;
+            if (cause.getCause() == cause) break;
+        }
+        return false;
     }
 
     private void addDirectory(ArrayDeque<Directory> pending, Set<String> seen, String path, int depth) {
@@ -185,8 +256,9 @@ public class MediaScanRunner {
     }
     private static void checkDeadline(long deadline) {
         if (Thread.currentThread().isInterrupted()) throw new ApiException(503, "SCAN_INTERRUPTED", "扫描已中断。");
-        if (System.nanoTime() >= deadline) throw new ApiException(504, "SCAN_TIMEOUT", "扫描超过整体时间上限。");
+        if (System.nanoTime() >= deadline) throw timeout();
     }
+    private static ApiException timeout() { return new ApiException(504, "SCAN_TIMEOUT", "扫描超过整体时间上限。"); }
     private static ApiException limit() { return new ApiException(422, "SCAN_LIMIT_EXCEEDED", "扫描超出遍历上限。"); }
     private static ApiException invalidDirectory() { return new ApiException(422, "SOURCE_DIRECTORY_INVALID", "来源目录无效。"); }
 

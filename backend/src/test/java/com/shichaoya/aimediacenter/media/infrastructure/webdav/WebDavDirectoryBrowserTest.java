@@ -8,6 +8,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import java.net.InetSocketAddress;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
@@ -63,6 +64,52 @@ class WebDavDirectoryBrowserTest {
         assertEquals(child, result.path());
         assertEquals(List.of(new MediaDirectory.Entry("note %#?.txt", child + "/note %#?.txt", "file")), result.entries());
     }
+    @Test void connectionRootPrefixesDoNotConsumeTheSourceRelativeCodePointBudget() {
+        String origin = address.substring(0, address.length() - "/dav/".length());
+        for (String rootPrefix : List.of("/", "/dav/", "/dav%20root%25/")) {
+            for (String character : List.of("x", "😀")) {
+                String directory = ("/" + character.repeat(254)).repeat(8);
+                String file = directory + "/abc.mkv";
+                assertEquals(2048, file.codePointCount(0, file.length()));
+                String remoteDirectory = rootPrefix + URI.create(directory).toASCIIString().substring(1) + "/";
+                var connection = new SourceConnection(origin + rootPrefix, "", "");
+                for (String href : List.of(origin + remoteDirectory + "abc.mkv", "abc.mkv")) {
+                    xml.set(listing(resource(origin + remoteDirectory, true), resource(href, false)));
+                    var result = adapter.browseDirectory(connection, directory);
+                    assertEquals(directory, result.path());
+                    assertEquals(List.of(new MediaDirectory.Entry("abc.mkv", file, "file")), result.entries());
+                    assertEquals(remoteDirectory, rawPath.get());
+                }
+            }
+        }
+    }
+    @Test void scanRootValidationAccepts2048CodePointsAfterRemovingTheConnectionRoot() {
+        String origin = address.substring(0, address.length() - "/dav/".length());
+        String directory = ("/" + "x".repeat(254)).repeat(8) + "/aaaaaaa";
+        assertEquals(2048, directory.codePointCount(0, directory.length()));
+        for (String rootPrefix : List.of("/", "/dav/", "/dav%20root%25/")) {
+            String remoteDirectory = rootPrefix + directory.substring(1) + "/";
+            xml.set(listing(resource(origin + remoteDirectory, true)));
+            adapter.validateDirectories(new SourceConnection(origin + rootPrefix, "", ""), List.of(directory));
+            assertEquals("0", depth.get()); assertEquals(remoteDirectory, rawPath.get());
+        }
+    }
+    @Test void stillRejectsSourcePathsAndRemoteChildrenAbove2048CodePoints() {
+        String directory = ("/" + "x".repeat(254)).repeat(8);
+        String oversized = directory + "/abcd.mkv";
+        assertEquals(2049, oversized.codePointCount(0, oversized.length()));
+        assertEquals("VALIDATION_FAILED", assertThrows(ApiException.class,
+                () -> adapter.browseDirectory(new SourceConnection(address, "", ""), oversized)).code());
+        assertEquals(0, requests.get());
+        String origin = address.substring(0, address.length() - "/dav/".length());
+        for (String rootPrefix : List.of("/", "/dav/", "/dav%20root%25/")) {
+            String remoteDirectory = rootPrefix + directory.substring(1) + "/";
+            xml.set(listing(resource(remoteDirectory, true), resource(remoteDirectory + "abcd.mkv", false)));
+            var error = assertThrows(ApiException.class,
+                    () -> adapter.browseDirectory(new SourceConnection(origin + rootPrefix, "", ""), directory));
+            assertEquals("SOURCE_DIRECTORY_INVALID", error.code()); assertEquals(422, error.status());
+        }
+    }
     @Test void allowsEmptyDirectoriesAndMapsMissingOrFileTargetsToDirectoryNotFound() {
         assertEquals(List.of(), browse().entries());
         assertError(404, "private upstream body", "SOURCE_DIRECTORY_NOT_FOUND", 404);
@@ -81,7 +128,8 @@ class WebDavDirectoryBrowserTest {
     @Test void rejectsEveryInvalidHrefInsteadOfSilentlyReturningPartialListings() {
         for (String href : List.of("http://example.invalid/dav/x/", "https://127.0.0.1/dav/x/", "/dav2/x/", "/other/x/",
                 "/dav/child/grandchild/", "/dav/../dav/x/", "/dav/%2e%2e/dav/x/", "/dav/x%2Fy/", "/dav/x%5Cy/", "/dav/%252f/",
-                "/dav/x/?secret=y", "/dav/x/#fragment", "/dav/%C0%AF/", "/dav/%ED%A0%80/", "/dav/x\\y/")) {
+                "/dav/x/?secret=y", "/dav/x/#fragment", "/dav/%C0%AF/", "/dav/%ED%A0%80/", "/dav/%00/",
+                "/dav/%ZZ/", "/dav/x\\y/", "../dav/x/", "./x/")) {
             assertError(207, listing(resource("/dav/", true), resource(href, true)), "SOURCE_DIRECTORY_INVALID", 422);
         }
     }

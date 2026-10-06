@@ -12,7 +12,7 @@ public final class MediaFileNameParser {
     private static final Pattern YEAR = Pattern.compile("(?<![\\p{L}\\p{N}])(?:18|19|20)\\d{2}(?![\\p{L}\\p{N}])");
     private static final Pattern TECHNICAL = Pattern.compile(
             "(?i)(?<![\\p{L}\\p{N}])(?:\\d{3,4}[pi]|[48]k|[xh][ -]?26[45]|hevc|avc|av1|"
-                    + "blu[ -]?ray|bd[ -]?rip|br[ -]?rip|dvd[ -]?rip|web[ -]?(?:dl|rip)|hdtv|remux|"
+                    + "blu[ -]?ray|bd[ -]?rip|br[ -]?rip|dvd[ -]?rip|web[ -]?(?:dl|rip)|hdtv|remux|uhd|proper|repack|"
                     + "hdr(?:10\\+?)?|dolby[ -]+vision|dv|sdr|dts(?:[ -]+hd)?(?:[257] ?[01])?|"
                     + "truehd(?:[257] ?[01])?|aac(?:[257] ?[01])?|e[ -]?ac[ -]?3|ac[ -]?3|"
                     + "ddp?(?:[257] ?[01])?|atmos|flac)(?![\\p{L}\\p{N}])");
@@ -34,7 +34,7 @@ public final class MediaFileNameParser {
 
     /** 只接收原文件名和最近父目录名；保留原标题数字，歧义年份/版本为空。 */
     public static NameCandidate parse(String fileName, String parentDirectoryName) {
-        var file = parseName(text(EXTENSION.matcher(fileName == null ? "" : fileName.strip()).replaceFirst("")));
+        var file = parseName(text(EXTENSION.matcher(normalizeWhitespace(fileName)).replaceFirst("")));
         var directory = parseName(text(parentDirectoryName));
         var selected = file;
         // 父目录只有明确的片名+年份才能替代通用/无效文件名，不借用集合目录年份。
@@ -55,12 +55,13 @@ public final class MediaFileNameParser {
     }
 
     private static ParsedName parseName(String name) {
+        // 已知前置发行组的年份、版本和技术文本均不属于影片命名证据。
+        name = LEADING_GROUP.matcher(name).replaceFirst("");
         var years = new ArrayList<YearToken>();
         var yearMatcher = YEAR.matcher(name);
         while (yearMatcher.find()) {
             int value = Integer.parseInt(yearMatcher.group());
-            // 仅在判定标题前缀时忽略已知发行组，原始文本仍保留给版本提取。
-            if (value >= 1888 && clean(LEADING_GROUP.matcher(name.substring(0, yearMatcher.start())).replaceFirst("")) != null) {
+            if (value >= 1888 && clean(name.substring(0, yearMatcher.start())) != null) {
                 years.add(new YearToken(yearMatcher.start(), value));
             }
         }
@@ -76,7 +77,7 @@ public final class MediaFileNameParser {
                         && matcher.end() < years.getFirst().start()
                         && name.substring(matcher.end(), years.getFirst().start()).matches("[\\s\\[\\](){}-]+")
                         && TECHNICAL.matcher(name).find(years.getFirst().start() + 4);
-                String prefix = clean(LEADING_GROUP.matcher(name.substring(0, matcher.start())).replaceFirst(""));
+                String prefix = clean(name.substring(0, matcher.start()));
                 // Uncut 在紧邻唯一年份且有技术后缀时可作为版本；首词/仅冠词前缀仍保留为标题。
                 boolean titlePrefix = prefix != null;
                 if (titlePrefix && (afterYear || bracketed || uncutBeforeYear && !prefix.matches("(?i)(?:the|a|an)"))) {
@@ -87,10 +88,9 @@ public final class MediaFileNameParser {
         }
 
         int titleEnd = years.size() == 1 ? years.getFirst().start() : name.length();
-        var leadingGroup = LEADING_GROUP.matcher(name);
         var technical = TECHNICAL.matcher(name);
-        // 跳过完整发行组后清理技术后缀，年份在后缀之前或之后都不能让噪声成为片名。
-        if (technical.find(leadingGroup.find() ? leadingGroup.end() : 0)) {
+        // 年份在技术后缀之前或之后都不能让噪声成为片名。
+        if (technical.find()) {
             titleEnd = Math.min(titleEnd, technical.start());
         }
         var title = new StringBuilder(name.substring(0, titleEnd));
@@ -98,7 +98,7 @@ public final class MediaFileNameParser {
         spans.stream().filter(span -> span.end() <= title.length())
                 .sorted((left, right) -> Integer.compare(right.start(), left.start()))
                 .forEach(span -> title.replace(span.start(), span.end(), " "));
-        String candidateTitle = clean(LEADING_GROUP.matcher(title).replaceFirst(""));
+        String candidateTitle = clean(title.toString());
         Integer candidateYear = candidateTitle != null && years.size() == 1 ? years.getFirst().value() : null;
         return new ParsedName(candidateTitle, candidateYear, labels.size() == 1 ? labels.iterator().next() : null,
                 labels.size() > 1);
@@ -119,12 +119,15 @@ public final class MediaFileNameParser {
     }
 
     private static String text(String value) {
-        return value == null ? "" : value.replace('.', ' ').replace('_', ' ').replace('\u2019', '\'')
-                .replaceAll("(?U)[\\s\\uFEFF]+", " ").strip();
+        return normalizeWhitespace(value == null ? "" : value.replace('.', ' ').replace('_', ' ').replace('\u2019', '\''));
+    }
+
+    private static String normalizeWhitespace(String value) {
+        return value == null ? "" : value.replaceAll("(?U)[\\s\\uFEFF]+", " ").strip();
     }
 
     private static String clean(String value) {
-        String result = value.replaceAll("[\\[\\](){}]", " ").replaceAll("\\s+", " ").strip()
+        String result = value.replaceAll("[\\[\\](){}（）]", " ").replaceAll("\\s+", " ").strip()
                 .replaceAll("^[\\s-]+|[\\s-]+$", "");
         return result.codePoints().anyMatch(Character::isLetterOrDigit) ? result : null;
     }

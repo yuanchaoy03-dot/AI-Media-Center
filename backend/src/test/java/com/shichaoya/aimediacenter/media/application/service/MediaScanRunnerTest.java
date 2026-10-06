@@ -14,12 +14,22 @@ import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
+import org.springframework.dao.QueryTimeoutException;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.TransactionTimedOutException;
+import org.springframework.transaction.support.DefaultTransactionStatus;
 import tools.jackson.databind.json.JsonMapper;
+import javax.sql.DataSource;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.sql.Connection;
+import java.sql.SQLTimeoutException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -29,6 +39,7 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -82,7 +93,8 @@ class MediaScanRunnerTest {
         assertEquals("stable-id", captured.getValue().id()); assertEquals(99L, captured.getValue().size());
         assertEquals("UNIDENTIFIED", captured.getValue().recognitionStatus());
         var order = inOrder(transactions, tasks, resources);
-        order.verify(tasks).start("task"); order.verify(transactions).getTransaction(any());
+        order.verify(transactions).getTransaction(any()); order.verify(tasks).start("task");
+        order.verify(transactions).commit(transactionStatus); order.verify(transactions).getTransaction(any());
         order.verify(tasks).lockStatus("task"); order.verify(resources).lockByPathHash(eq("source"), any());
         order.verify(resources).updateFacts(any()); order.verify(tasks).progress("task", 1, 1, 1);
         order.verify(transactions).commit(transactionStatus);
@@ -95,7 +107,7 @@ class MediaScanRunnerTest {
         runner.scan("task", source, List.of("/a"));
         verify(resources).insert(any());
         verify(tasks).finish("task", "FAILED", 1, 1, 1, "SOURCE_AUTH_FAILED", "来源认证失败或无权访问目录，请检查账号和密码。");
-        verify(transactions).commit(transactionStatus);
+        verify(transactions, times(4)).commit(transactionStatus);
     }
 
     @Test void unknownFailureNeverLeaksExceptionMessageToTask() {
@@ -121,7 +133,7 @@ class MediaScanRunnerTest {
         runner.scan("task", source, List.of("/a"));
         verify(resources).insert(any());
         verify(transactions).rollback(transactionStatus);
-        verify(transactions, never()).commit(transactionStatus);
+        verify(transactions, times(2)).commit(transactionStatus);
         verify(tasks).finish("task", "FAILED", 1, 0, 1, "SCAN_FAILED", "扫描失败，请稍后重试。");
     }
 
@@ -186,6 +198,215 @@ class MediaScanRunnerTest {
         verifyNoInteractions(resources);
     }
 
+    @Test void resourceTransactionAcquisitionDelayCannotStartDatabaseWorkAfterDeadline() {
+        directory("/a", entry("/a/Movie.mp4", "file", null, null));
+        when(transactions.getTransaction(any())).thenReturn(transactionStatus).thenAnswer(invocation -> {
+            expireBudget();
+            return transactionStatus;
+        }).thenReturn(transactionStatus);
+        runner(new MediaScanLimits(1, 1, 10, 10, 100, 1, 1)).scan("task", source, List.of("/a"));
+        verify(tasks, never()).lockStatus(anyString());
+        verifyNoInteractions(resources);
+        verify(transactions).rollback(transactionStatus);
+        verify(transactions, times(2)).commit(transactionStatus);
+        verify(tasks).finish("task", "FAILED", 1, 0, 1, "SCAN_TIMEOUT", "扫描超过整体时间上限，请缩小范围后重试。");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"transaction", "statement"})
+    void startWaitConsumesTheScanBudgetBeforeReadingTheSource(String stage) {
+        if (stage.equals("transaction")) {
+            when(transactions.getTransaction(any())).thenAnswer(invocation -> { expireBudget(); return transactionStatus; })
+                    .thenReturn(transactionStatus);
+        } else {
+            when(tasks.start("task")).thenAnswer(invocation -> { expireBudget(); return 1; });
+        }
+        runner(new MediaScanLimits(1, 1, 10, 10, 100, 1, 1)).scan("task", source, List.of("/a"));
+        verifyNoInteractions(adapter, resources);
+        if (stage.equals("transaction")) verify(tasks, never()).start(anyString());
+        verify(transactions).rollback(transactionStatus);
+        verify(transactions).commit(transactionStatus);
+        verify(tasks).finish("task", "FAILED", 0, 0, 0, "SCAN_TIMEOUT", "扫描超过整体时间上限，请缩小范围后重试。");
+    }
+
+    @Test void failureStatusHasAnIndependentFiniteCleanupBudgetAndCanRemainForRecovery() {
+        var timeouts = new ArrayList<Integer>();
+        when(transactions.getTransaction(any())).thenAnswer(invocation -> {
+            timeouts.add(((TransactionDefinition) invocation.getArgument(0)).getTimeout());
+            return transactionStatus;
+        });
+        when(adapter.scanDirectory(eq(connection), eq("/a"), anyLong())).thenThrow(new IllegalStateException("fixture failure"));
+        doAnswer(invocation -> { expireBudget(); return null; })
+                .when(tasks).finish("task", "FAILED", 0, 0, 0, "SCAN_FAILED", "扫描失败，请稍后重试。");
+        runner.scan("task", source, List.of("/a"));
+        assertEquals(List.of(30, 1), timeouts);
+        verify(transactions).commit(transactionStatus);
+        verify(transactions).rollback(transactionStatus);
+        verify(tasks).finish("task", "FAILED", 0, 0, 0, "SCAN_FAILED", "扫描失败，请稍后重试。");
+        verifyNoInteractions(resources);
+        runner.recoverInterrupted();
+        verify(tasks).failInterrupted();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"task-lock", "resource-lock", "insert", "update", "progress"})
+    void databaseWaitThatCrossesDeadlineRollsBackWithoutCountingTheResource(String stage) {
+        directory("/a", entry("/a/Movie.mp4", "file", 99L, null));
+        var existing = new MediaResourceRow("stable-id", "source", "/a/Movie.mp4", MediaScanService.hash("/a/Movie.mp4"),
+                "Movie.mp4", 1L, null, "UNIDENTIFIED");
+        switch (stage) {
+            case "task-lock" -> when(tasks.lockStatus("task")).thenAnswer(invocation -> { expireBudget(); return "RUNNING"; });
+            case "resource-lock" -> when(resources.lockByPathHash(eq("source"), any()))
+                    .thenAnswer(invocation -> { expireBudget(); return existing; });
+            case "insert" -> doAnswer(invocation -> { expireBudget(); return null; }).when(resources).insert(any());
+            case "update" -> {
+                when(resources.lockByPathHash(eq("source"), any())).thenReturn(existing);
+                when(resources.updateFacts(any())).thenAnswer(invocation -> { expireBudget(); return 1; });
+            }
+            case "progress" -> doAnswer(invocation -> { expireBudget(); return null; })
+                    .when(tasks).progress("task", 1, 1, 1);
+            default -> fail("Unexpected stage");
+        }
+        runner(new MediaScanLimits(1, 1, 10, 10, 100, 1, 1)).scan("task", source, List.of("/a"));
+        if (stage.equals("task-lock")) verifyNoInteractions(resources);
+        if (stage.equals("resource-lock")) {
+            verify(resources, never()).insert(any());
+            verify(resources, never()).updateFacts(any());
+        }
+        if (!stage.equals("progress")) verify(tasks, never()).progress(anyString(), anyInt(), anyInt(), anyInt());
+        verify(transactions).rollback(transactionStatus);
+        verify(transactions, times(2)).commit(transactionStatus);
+        verify(tasks).finish("task", "FAILED", 1, 0, 1, "SCAN_TIMEOUT", "扫描超过整体时间上限，请缩小范围后重试。");
+    }
+
+    @Test void deadlineExpiredBetweenCallbackAndBeforeCommitRollsBack() throws Exception {
+        var dataSource = mock(DataSource.class);
+        var jdbcConnection = mock(Connection.class);
+        when(dataSource.getConnection()).thenReturn(jdbcConnection);
+        when(jdbcConnection.getAutoCommit()).thenReturn(true);
+        var transactionNumber = new AtomicInteger();
+        var delayedCommit = new DataSourceTransactionManager(dataSource) {
+            @Override protected void prepareForCommit(DefaultTransactionStatus status) {
+                if (transactionNumber.incrementAndGet() == 2) expireBudget();
+            }
+        };
+        var shortBudget = new MediaScanRunner(tasks, resources, encryption, adapter,
+                new MediaScanLimits(1, 1, 10, 10, 100, 1, 1), delayedCommit);
+        runners.add(shortBudget);
+        directory("/a", entry("/a/Movie.mp4", "file", null, null));
+        shortBudget.scan("task", source, List.of("/a"));
+        verify(resources).insert(any());
+        verify(tasks).progress("task", 1, 1, 1);
+        verify(jdbcConnection).rollback();
+        verify(jdbcConnection, times(2)).commit();
+        verify(tasks).finish("task", "FAILED", 1, 0, 1, "SCAN_TIMEOUT", "扫描超过整体时间上限，请缩小范围后重试。");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"transaction", "statement", "driver"})
+    void databaseTimeoutsHaveAStableScanTimeoutCode(String type) {
+        directory("/a", entry("/a/Movie.mp4", "file", null, null));
+        RuntimeException error = switch (type) {
+            case "transaction" -> new TransactionTimedOutException("fixture transaction timeout");
+            case "statement" -> new QueryTimeoutException("fixture statement timeout");
+            case "driver" -> new IllegalStateException(new SQLTimeoutException("fixture driver timeout"));
+            default -> throw new IllegalArgumentException(type);
+        };
+        when(resources.lockByPathHash(eq("source"), any())).thenThrow(error);
+        runner.scan("task", source, List.of("/a"));
+        verify(resources, never()).insert(any());
+        verify(transactions).rollback(transactionStatus);
+        verify(tasks).finish("task", "FAILED", 1, 0, 1, "SCAN_TIMEOUT", "扫描超过整体时间上限，请缩小范围后重试。");
+    }
+
+    @Test void eachTransactionUsesItsOwnRemainingScanBudget() {
+        var timeouts = new ArrayList<Integer>();
+        when(transactions.getTransaction(any())).thenAnswer(invocation -> {
+            timeouts.add(((TransactionDefinition) invocation.getArgument(0)).getTimeout());
+            return transactionStatus;
+        });
+        when(adapter.scanDirectory(eq(connection), eq("/a"), anyLong())).thenAnswer(invocation -> {
+            Thread.sleep(1500);
+            return new MediaFileDirectory("/a", List.of(entry("/a/Movie.mp4", "file", null, null)));
+        });
+        runner(new MediaScanLimits(1, 1, 10, 10, 100, 1, 4)).scan("task", source, List.of("/a"));
+        var definitions = ArgumentCaptor.forClass(TransactionDefinition.class);
+        verify(transactions, times(4)).getTransaction(definitions.capture());
+        assertEquals(List.of(4, 3, 3, 3), timeouts);
+        assertNotSame(definitions.getAllValues().get(0), definitions.getAllValues().get(1));
+        assertNotSame(definitions.getAllValues().get(1), definitions.getAllValues().get(2));
+        verify(tasks).finish("task", "COMPLETED", 1, 1, 1, null, null);
+    }
+
+    @Test void springAppliesTheReducedBudgetAfterConnectionAcquisition() throws Exception {
+        var dataSource = mock(DataSource.class);
+        var jdbcConnection = mock(Connection.class);
+        when(dataSource.getConnection()).thenAnswer(invocation -> { expireBudget(); return jdbcConnection; })
+                .thenReturn(jdbcConnection);
+        when(jdbcConnection.getAutoCommit()).thenReturn(true);
+        var initialTimeouts = new ArrayList<Integer>();
+        var appliedTimeouts = new ArrayList<Integer>();
+        var transactionManager = new DataSourceTransactionManager(dataSource) {
+            @Override protected void doBegin(Object transaction, TransactionDefinition definition) {
+                initialTimeouts.add(definition.getTimeout());
+                super.doBegin(transaction, definition);
+            }
+            @Override protected int determineTimeout(TransactionDefinition definition) {
+                int timeout = super.determineTimeout(definition);
+                appliedTimeouts.add(timeout);
+                return timeout;
+            }
+        };
+        var shortBudget = new MediaScanRunner(tasks, resources, encryption, adapter,
+                new MediaScanLimits(1, 1, 10, 10, 100, 1, 3), transactionManager);
+        runners.add(shortBudget);
+        directory("/a");
+        shortBudget.scan("task", source, List.of("/a"));
+        assertEquals(3, initialTimeouts.getFirst());
+        assertEquals(List.of(2, 2, 2), appliedTimeouts);
+        verify(jdbcConnection, times(3)).commit();
+        verify(jdbcConnection, never()).rollback();
+        verify(tasks).finish("task", "COMPLETED", 0, 0, 1, null, null);
+    }
+
+    @Test void deadlineFailureRetainsResourcesCommittedByEarlierTransactions() {
+        directory("/a", entry("/a/First.mp4", "file", null, null), entry("/a/Second.mp4", "file", null, null));
+        when(tasks.lockStatus("task")).thenReturn("RUNNING").thenAnswer(invocation -> { expireBudget(); return "RUNNING"; });
+        runner(new MediaScanLimits(1, 1, 10, 10, 100, 1, 1)).scan("task", source, List.of("/a"));
+        var saved = ArgumentCaptor.forClass(MediaResourceRow.class);
+        verify(resources).insert(saved.capture());
+        assertEquals("/a/First.mp4", saved.getValue().path());
+        verify(transactions, times(3)).commit(transactionStatus);
+        verify(transactions).rollback(transactionStatus);
+        verify(tasks).finish("task", "FAILED", 2, 1, 1, "SCAN_TIMEOUT", "扫描超过整体时间上限，请缩小范围后重试。");
+    }
+
+    @Test void directoryProgressThatCrossesDeadlineRollsBack() {
+        directory("/a");
+        doAnswer(invocation -> { expireBudget(); return null; }).when(tasks).progress("task", 0, 0, 1);
+        runner(new MediaScanLimits(1, 1, 10, 10, 100, 1, 1)).scan("task", source, List.of("/a"));
+        verifyNoInteractions(resources);
+        verify(transactions).rollback(transactionStatus);
+        verify(transactions, times(2)).commit(transactionStatus);
+        verify(tasks).finish("task", "FAILED", 0, 0, 1, "SCAN_TIMEOUT", "扫描超过整体时间上限，请缩小范围后重试。");
+    }
+
+    @Test void completionThatCrossesDeadlineRollsBackBeforeSavingFailure() {
+        directory("/a");
+        doAnswer(invocation -> { expireBudget(); return null; })
+                .when(tasks).finish("task", "COMPLETED", 0, 0, 1, null, null);
+        runner(new MediaScanLimits(1, 1, 10, 10, 100, 1, 1)).scan("task", source, List.of("/a"));
+        verifyNoInteractions(resources);
+        var order = inOrder(transactions, tasks);
+        order.verify(tasks).start("task");
+        order.verify(transactions).commit(transactionStatus);
+        order.verify(tasks).progress("task", 0, 0, 1);
+        order.verify(transactions).commit(transactionStatus);
+        order.verify(tasks).finish("task", "COMPLETED", 0, 0, 1, null, null);
+        order.verify(transactions).rollback(transactionStatus);
+        order.verify(tasks).finish("task", "FAILED", 0, 0, 1, "SCAN_TIMEOUT", "扫描超过整体时间上限，请缩小范围后重试。");
+    }
+
     @Test void realHttpTimeoutPersistsTheErrorForTheBudgetThatExpiresFirst() throws Exception {
         for (boolean overallDeadline : List.of(true, false)) {
             var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
@@ -248,6 +469,10 @@ class MediaScanRunnerTest {
     private MediaScanRunner runner(MediaScanLimits limits) {
         var result = new MediaScanRunner(tasks, resources, encryption, adapter, limits, transactions);
         runners.add(result); return result;
+    }
+    private static void expireBudget() {
+        try { Thread.sleep(1100); }
+        catch (InterruptedException error) { Thread.currentThread().interrupt(); }
     }
     private void directory(String path, MediaFileDirectory.Entry... entries) {
         when(adapter.scanDirectory(eq(connection), eq(path), anyLong())).thenReturn(new MediaFileDirectory(path, List.of(entries)));

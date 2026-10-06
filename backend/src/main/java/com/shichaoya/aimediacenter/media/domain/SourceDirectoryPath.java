@@ -10,8 +10,14 @@ public final class SourceDirectoryPath {
     private SourceDirectoryPath() {}
 
     public static String normalize(String value) {
+        if (value != null && value.codePointCount(0, value.length()) > 2048) throw invalid();
+        return normalizeDecodedPath(value);
+    }
+
+    /** 校验已解码的完整路径结构；转换成来源内路径后仍须调用 normalize 应用业务长度上限。 */
+    public static String normalizeDecodedPath(String value) {
         if (value == null || value.isBlank() || !value.startsWith("/") || value.startsWith("//")
-                || value.codePointCount(0, value.length()) > 2048 || value.indexOf('\\') >= 0
+                || value.indexOf('\\') >= 0
                 || value.codePoints().anyMatch(c -> Character.isISOControl(c) || c >= 0xd800 && c <= 0xdfff)
                 || ENCODED_BOUNDARY.matcher(value).find()) throw invalid();
         for (String segment : value.split("/", -1)) {

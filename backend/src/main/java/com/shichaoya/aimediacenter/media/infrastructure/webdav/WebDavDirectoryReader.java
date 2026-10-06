@@ -142,11 +142,12 @@ final class WebDavDirectoryReader {
                     || resource.getHost() == null || !resource.getHost().equalsIgnoreCase(root.getHost())
                     || !resource.getScheme().equalsIgnoreCase(root.getScheme()) || port(resource) != port(root)) throw invalid();
             String remotePath = decodedPath(resource);
-            if (rootPath.equals("/")) return remotePath;
+            if (rootPath.equals("/")) return SourceDirectoryPath.normalize(remotePath);
             if (remotePath.equals(rootPath)) return "/";
             if (!remotePath.startsWith(rootPath + "/")) throw invalid();
-            return remotePath.substring(rootPath.length());
-        } catch (IllegalArgumentException error) { throw invalid(); }
+            // 完整远程路径的结构已校验；只有移除连接根前缀后的来源内路径消耗业务长度预算。
+            return SourceDirectoryPath.normalize(remotePath.substring(rootPath.length()));
+        } catch (IllegalArgumentException | ApiException error) { throw invalid(); }
     }
 
     private static String decodedPath(URI uri) {
@@ -178,7 +179,7 @@ final class WebDavDirectoryReader {
         // 保留路径段边界；编码后的点段同样由来源内路径规则拒绝。
         String value = String.join("/", decoded);
         if (!value.startsWith("/")) value = "/" + value;
-        try { return SourceDirectoryPath.normalize(value); }
+        try { return SourceDirectoryPath.normalizeDecodedPath(value); }
         catch (ApiException error) { throw invalid(); }
     }
 

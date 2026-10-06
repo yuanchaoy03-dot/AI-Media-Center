@@ -2,6 +2,7 @@ package com.shichaoya.aimediacenter.media.infrastructure.webdav;
 
 import com.shichaoya.aimediacenter.common.web.ApiException;
 import com.shichaoya.aimediacenter.media.domain.SourceConnection;
+import com.shichaoya.aimediacenter.media.web.dto.MediaSourceRequest;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -9,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -56,6 +58,37 @@ class WebDavMediaSourceAdapterTest {
         });
         adapter.testConnection(new SourceConnection(address, "", ""));
         assertNull(auth.get());
+    }
+    @Test void rejectsUnbrowsableRootInputBeforeTestingOrSavingItsConnection() {
+        var requests = new AtomicInteger();
+        server.createContext("/", exchange -> {
+            requests.incrementAndGet();
+            byte[] content = DIRECTORY.getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(207, content.length); exchange.getResponseBody().write(content); exchange.close();
+        });
+        for (String path : new String[]{"/dav/../dav/", "/dav/%2e%2e/dav/", "/dav/%2F/", "/dav/%FF/"}) {
+            var error = assertThrows(ApiException.class, () -> {
+                var input = MediaSourceRequest.parse(Map.of("name", "NAS", "address", address.replace("/dav/", path),
+                        "username", "", "password", ""));
+                adapter.testConnection(input.connection());
+            });
+            assertEquals("VALIDATION_FAILED", error.code()); assertTrue(error.fieldErrors().containsKey("address"));
+        }
+        assertEquals(0, requests.get());
+    }
+    @Test void acceptedUnicodeAndEncodedRootNamesPassConnectionTestAndBrowsing() {
+        server.createContext("/", exchange -> {
+            String path = exchange.getRequestURI().getRawPath();
+            byte[] content = DIRECTORY.replace("/dav/", path).getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(207, content.length); exchange.getResponseBody().write(content); exchange.close();
+        });
+        for (String path : new String[]{"/dav/中文/", "/dav/%E7%94%B5%E5%BD%B1%20%E5%BA%93/", "/dav/100%25%23%3F+/",
+                "/dav/Movie%2E2020/"}) {
+            var input = MediaSourceRequest.parse(Map.of("name", "NAS", "address", address.replace("/dav/", path),
+                    "username", "", "password", ""));
+            adapter.testConnection(input.connection());
+            assertEquals("/", adapter.browseDirectory(input.connection(), "/").path());
+        }
     }
     @Test void treatsUnreservedEncodingAsEquivalentButPreservesEncodedPathSeparators() {
         server.createContext("/dav/", exchange -> {

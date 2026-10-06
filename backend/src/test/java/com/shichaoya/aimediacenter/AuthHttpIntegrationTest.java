@@ -1,6 +1,15 @@
 package com.shichaoya.aimediacenter;
 
 import com.shichaoya.aimediacenter.common.id.BusinessIds;
+import com.shichaoya.aimediacenter.media.application.port.MediaSourceAdapter;
+import com.shichaoya.aimediacenter.media.application.service.MediaScanLimits;
+import com.shichaoya.aimediacenter.media.application.service.MediaScanRunner;
+import com.shichaoya.aimediacenter.media.domain.MediaFileDirectory;
+import com.shichaoya.aimediacenter.media.infrastructure.persistence.MediaResourceMapper;
+import com.shichaoya.aimediacenter.media.infrastructure.persistence.MediaResourceRow;
+import com.shichaoya.aimediacenter.media.infrastructure.persistence.MediaScanTaskMapper;
+import com.shichaoya.aimediacenter.media.infrastructure.persistence.MediaSourceMapper;
+import com.shichaoya.aimediacenter.media.infrastructure.security.SourceConnectionEncryption;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -13,6 +22,7 @@ import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.*;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.transaction.PlatformTransactionManager;
 import tools.jackson.databind.ObjectMapper;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -26,6 +36,8 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 /**
  * 真实 HTTP + MySQL 的认证/本人来源集成测试，需显式提供独立且可清空的 *_auth_test 数据库。
@@ -53,6 +65,11 @@ class AuthHttpIntegrationTest {
     @Autowired ObjectMapper json;
     @Autowired JwtEncoder encoder;
     @Autowired PasswordEncoder passwords;
+    @Autowired MediaScanTaskMapper scanTasks;
+    @Autowired MediaResourceMapper mediaResources;
+    @Autowired MediaSourceMapper mediaSources;
+    @Autowired SourceConnectionEncryption sourceEncryption;
+    @Autowired PlatformTransactionManager transactions;
     final HttpClient client = HttpClient.newHttpClient();
     final String password = " 中文密码 full input 😀 " + "z".repeat(90);
 
@@ -509,6 +526,153 @@ class AuthHttpIntegrationTest {
                 check(call(resources + query, null, owner), 400, "VALIDATION_FAILED");
             assertEquals(List.of(), check(call("/media-sources", null, other), 200, "OK").get("data"));
         }
+    }
+
+    @Test void reviewedNameCandidatesAreDerivedWithoutChangingPersistedFileFacts() throws Exception {
+        String owner = registerAndLogin("candidate_review");
+        try (var dav = new TemporaryWebDavServer()) {
+            String sourceId = (String) data(check(call("/media-sources", dav.input("/dav/"), owner), 201, "OK")).get("id");
+            record CandidateCase(String name, String title, Integer year) {}
+            var cases = List.of(
+                    new CandidateCase("Example1.UHD.2160p.BluRay.REMUX.mkv", "Example1", null),
+                    new CandidateCase("Example.Title.PROPER.2020.1080p.mkv", "Example Title", 2020),
+                    new CandidateCase("Example.Title.REPACK.2020.1080p.mkv", "Example Title", 2020),
+                    new CandidateCase("Example Title（2011）.mkv", "Example Title", 2011),
+                    new CandidateCase("[YTS.2020] Film.2021.1080p.mkv", "Film", 2021),
+                    new CandidateCase("[YTS(IMAX)] Film.2021.1080p.mkv", "Film", 2021),
+                    new CandidateCase("[YTS.2020] 1917.2019.1080p.mkv", "1917", 2019),
+                    new CandidateCase("Film.mkv\u00a0\u202f\u2007\ufeff", "Film", null));
+            for (var item : cases) {
+                String path = "/" + item.name();
+                mediaResources.insert(new MediaResourceRow(BusinessIds.next(), sourceId, path,
+                        java.security.MessageDigest.getInstance("SHA-256").digest(path.getBytes(StandardCharsets.UTF_8)),
+                        item.name(), 1024L, null, "UNIDENTIFIED"));
+            }
+            var before = db.queryForList("SELECT * FROM media_resource ORDER BY id");
+            var files = objectList(data(check(call("/media-sources/" + sourceId + "/resources", null, owner), 200, "OK")).get("items"));
+            assertEquals(cases.size(), files.size());
+            for (var item : cases) {
+                var file = files.stream().filter(row -> item.name().equals(row.get("name"))).findFirst().orElseThrow();
+                assertEquals("/" + item.name(), file.get("path"));
+                assertEquals("unidentified", file.get("recognitionStatus"));
+                var candidate = (Map<?, ?>) file.get("nameCandidate");
+                assertEquals(item.title(), candidate.get("title")); assertEquals(item.year(), candidate.get("year"));
+                assertNull(candidate.get("editionLabel"));
+            }
+            // BINARY path_hash 的 byte[] 必须按内容比较，避免 Map.equals 按对象身份误判。
+            var after = db.queryForList("SELECT * FROM media_resource ORDER BY id");
+            for (int i = 0; i < before.size(); i++) {
+                assertArrayEquals((byte[]) before.get(i).remove("path_hash"), (byte[]) after.get(i).remove("path_hash"));
+                assertEquals(before.get(i), after.get(i));
+            }
+        }
+    }
+
+    @Test void scanDeadlineBoundsRealResourceLockWaitAndPreservesExistingFacts() throws Exception {
+        String owner = registerAndLogin("deadline_lock");
+        try (var dav = new TemporaryWebDavServer()) {
+            String sourceId = (String) data(check(call("/media-sources", dav.input("/dav/"), owner), 201, "OK")).get("id");
+            String ownerId = (String) data(check(call("/auth/me", null, owner), 200, "OK")).get("id");
+            String path = "/selected/Film.2020.mkv", resourceId = BusinessIds.next();
+            byte[] hash = java.security.MessageDigest.getInstance("SHA-256").digest(path.getBytes(StandardCharsets.UTF_8));
+            mediaResources.insert(new MediaResourceRow(resourceId, sourceId, path, hash, "Film.2020.mkv", 1L, null, "UNIDENTIFIED"));
+            var adapter = deadlineAdapter(path);
+            var observedResources = mock(MediaResourceMapper.class, org.mockito.AdditionalAnswers.delegatesTo(mediaResources));
+            String taskId = insertDeadlineTask(sourceId);
+            try (var lock = Objects.requireNonNull(db.getDataSource()).getConnection()) {
+                lock.setAutoCommit(false);
+                try (var statement = lock.prepareStatement("SELECT id FROM media_resource WHERE id=? FOR UPDATE")) {
+                    statement.setString(1, resourceId);
+                    try (var result = statement.executeQuery()) { assertTrue(result.next()); }
+                }
+                var runner = new MediaScanRunner(scanTasks, observedResources, sourceEncryption, adapter,
+                        new MediaScanLimits(1, 1, 10, 10, 100, 4, 1), transactions);
+                try {
+                    long started = System.nanoTime();
+                    assertTrue(runner.submit(taskId, mediaSources.findOwned(ownerId, sourceId), List.of("/selected")));
+                    var failed = awaitScan("/media-sources/" + sourceId + "/scans", taskId, owner);
+                    assertTrue(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started) < 5000,
+                            "JDBC query timeout must cancel the lock wait while the competing lock is still held");
+                    assertDeadlineFailure(failed);
+                    verify(observedResources).lockByPathHash(eq(sourceId), any());
+                    assertEquals(resourceId, db.queryForObject("SELECT id FROM media_resource WHERE source_id=?", String.class, sourceId));
+                    assertEquals(1L, db.queryForObject("SELECT size FROM media_resource WHERE id=?", Long.class, resourceId));
+                } finally { try { lock.rollback(); } finally { runner.close(); } }
+            }
+        }
+    }
+
+    @Test void scanDeadlineRollsBackResourceWrittenBeforeDelayedProgress() throws Exception {
+        String owner = registerAndLogin("deadline_rollback");
+        try (var dav = new TemporaryWebDavServer()) {
+            String sourceId = (String) data(check(call("/media-sources", dav.input("/dav/"), owner), 201, "OK")).get("id");
+            String ownerId = (String) data(check(call("/auth/me", null, owner), 200, "OK")).get("id");
+            String taskId = insertDeadlineTask(sourceId);
+            // 当前文件已 INSERT 后才延迟进度写入，必须连同文件事实一起回滚。
+            db.execute("CREATE TRIGGER delay_scan_progress BEFORE UPDATE ON scan_task FOR EACH ROW "
+                    + "BEGIN IF NEW.status='RUNNING' AND NEW.persisted_count>OLD.persisted_count THEN DO SLEEP(1.3); END IF; END");
+            var observedResources = mock(MediaResourceMapper.class, org.mockito.AdditionalAnswers.delegatesTo(mediaResources));
+            var runner = new MediaScanRunner(scanTasks, observedResources, sourceEncryption,
+                    deadlineAdapter("/selected/Film.2020.mkv"), new MediaScanLimits(1, 1, 10, 10, 100, 4, 1), transactions);
+            try {
+                assertTrue(runner.submit(taskId, mediaSources.findOwned(ownerId, sourceId), List.of("/selected")));
+                assertDeadlineFailure(awaitScan("/media-sources/" + sourceId + "/scans", taskId, owner));
+                verify(observedResources).insert(any());
+                assertEquals(0, db.queryForObject("SELECT COUNT(*) FROM media_resource WHERE source_id=?", Integer.class, sourceId));
+                assertEquals(0, db.queryForObject("SELECT persisted_count FROM scan_task WHERE id=?", Integer.class, taskId));
+            } finally { try { runner.close(); } finally { db.execute("DROP TRIGGER IF EXISTS delay_scan_progress"); } }
+        }
+    }
+
+    @Test void taskRowLockCannotKeepWorkerWaitingThroughStartAndFailureCleanup() throws Exception {
+        String owner = registerAndLogin("deadline_task_lock");
+        try (var dav = new TemporaryWebDavServer(); var callers = Executors.newVirtualThreadPerTaskExecutor()) {
+            String sourceId = (String) data(check(call("/media-sources", dav.input("/dav/"), owner), 201, "OK")).get("id");
+            String ownerId = (String) data(check(call("/auth/me", null, owner), 200, "OK")).get("id");
+            String taskId = insertDeadlineTask(sourceId);
+            var adapter = deadlineAdapter("/selected/Film.2020.mkv");
+            var runner = new MediaScanRunner(scanTasks, mediaResources, sourceEncryption, adapter,
+                    new MediaScanLimits(1, 1, 10, 10, 100, 4, 1), transactions);
+            try (var lock = Objects.requireNonNull(db.getDataSource()).getConnection()) {
+                lock.setAutoCommit(false);
+                try (var statement = lock.prepareStatement("SELECT id FROM scan_task WHERE id=? FOR UPDATE")) {
+                    statement.setString(1, taskId);
+                    try (var result = statement.executeQuery()) { assertTrue(result.next()); }
+                }
+                try {
+                    // 直接等待同一 worker 入口返回，以验证失败收尾也能退出；不依赖失败终态一定写入。
+                    var scan = MediaScanRunner.class.getDeclaredMethod("scan", String.class,
+                            com.shichaoya.aimediacenter.media.infrastructure.persistence.MediaSourceRow.class, List.class);
+                    scan.setAccessible(true);
+                    var source = mediaSources.findOwned(ownerId, sourceId);
+                    var finished = callers.submit(() -> { scan.invoke(runner, taskId, source, List.of("/selected")); return null; });
+                    finished.get(5, TimeUnit.SECONDS);
+                    verifyNoInteractions(adapter);
+                    assertEquals("PENDING", db.queryForObject("SELECT status FROM scan_task WHERE id=?", String.class, taskId));
+                    assertEquals(0, db.queryForObject("SELECT COUNT(*) FROM media_resource", Integer.class));
+                } finally { try { lock.rollback(); } finally { runner.close(); } }
+            }
+            assertEquals("FAILED", db.queryForObject("SELECT status FROM scan_task WHERE id=?", String.class, taskId));
+            assertEquals("SCAN_INTERRUPTED", db.queryForObject("SELECT error_code FROM scan_task WHERE id=?", String.class, taskId));
+        }
+    }
+
+    private MediaSourceAdapter deadlineAdapter(String path) {
+        var adapter = mock(MediaSourceAdapter.class);
+        when(adapter.scanDirectory(any(), eq("/selected"), anyLong())).thenReturn(new MediaFileDirectory("/selected",
+                List.of(new MediaFileDirectory.Entry(path.substring(path.lastIndexOf('/') + 1), path, "file", 99L, null))));
+        return adapter;
+    }
+    private String insertDeadlineTask(String sourceId) {
+        String taskId = BusinessIds.next();
+        db.update("INSERT INTO scan_task(id,source_id,status,root_paths_json,created_at) VALUES(?,?,'PENDING',?,UTC_TIMESTAMP(3))",
+                taskId, sourceId, "[\"/selected\"]");
+        return taskId;
+    }
+    private void assertDeadlineFailure(Map<String, Object> task) {
+        assertEquals("failed", task.get("status")); assertEquals("SCAN_TIMEOUT", task.get("errorCode"));
+        assertEquals(1, task.get("discoveredCount")); assertEquals(0, task.get("persistedCount"));
+        assertEquals(1, task.get("directoryCount"));
     }
 
     @Test void activeScanFreezesRootsAndConcurrentStartsReturnOneTask() throws Exception {
