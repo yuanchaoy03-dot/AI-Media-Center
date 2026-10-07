@@ -499,24 +499,22 @@ class AuthHttpIntegrationTest {
             var all = data(check(call(resources, null, owner), 200, "OK"));
             var files = objectList(all.get("items"));
             assertEquals(Set.of("/selected/" + ScanWebDavServer.RELEASE_NAME, "/selected/电影 #100%.mp4",
-                            "/selected/sub/" + ScanWebDavServer.UNICODE_SPACE_NAME),
+                            "/selected/sub/" + ScanWebDavServer.UNICODE_NAME),
                     files.stream().map(row -> (String) row.get("path")).collect(java.util.stream.Collectors.toSet()));
             for (var file : files) {
                 assertEquals("unidentified", file.get("recognitionStatus"));
                 var candidate = (Map<?, ?>) file.get("nameCandidate");
-                assertEquals(Set.of("title", "year", "editionLabel"), candidate.keySet());
+                assertEquals(Set.of("title", "year"), candidate.keySet());
                 if (ScanWebDavServer.RELEASE_NAME.equals(file.get("name"))) {
-                    assertEquals("Example Saga Sequel", candidate.get("title"));
-                    assertEquals(2004, candidate.get("year"));
-                    assertEquals("Uncut", candidate.get("editionLabel"));
-                } else if (ScanWebDavServer.UNICODE_SPACE_NAME.equals(file.get("name"))) {
-                    assertEquals("/selected/sub/" + ScanWebDavServer.UNICODE_SPACE_NAME, file.get("path"));
-                    assertEquals("Example Whitespace Movie", candidate.get("title"));
-                    assertEquals(2021, candidate.get("year"));
-                    assertEquals("Extended Cut", candidate.get("editionLabel"));
+                    assertEquals("Dune Part Two", candidate.get("title"));
+                    assertEquals(2024, candidate.get("year"));
+                } else if (ScanWebDavServer.UNICODE_NAME.equals(file.get("name"))) {
+                    assertEquals("/selected/sub/" + ScanWebDavServer.UNICODE_NAME, file.get("path"));
+                    assertEquals("千与千寻", candidate.get("title"));
+                    assertEquals(2001, candidate.get("year"));
                 } else {
                     assertEquals(((String) file.get("name")).replaceFirst("(?i)\\.(mkv|mp4|mov)$", ""), candidate.get("title"));
-                    assertNull(candidate.get("year")); assertNull(candidate.get("editionLabel"));
+                    assertNull(candidate.get("year"));
                 }
                 assertEquals(7, UUID.fromString((String) file.get("id")).version());
                 assertEquals(1024, ((Number) file.get("size")).intValue());
@@ -537,26 +535,17 @@ class AuthHttpIntegrationTest {
         }
     }
 
-    @Test void reviewedNameCandidatesAreDerivedWithoutChangingPersistedFileFacts() throws Exception {
+    @Test void titleYearCandidatesAreDerivedWithoutChangingPersistedFileFacts() throws Exception {
         String owner = registerAndLogin("candidate_review");
         try (var dav = new TemporaryWebDavServer()) {
             String sourceId = (String) data(check(call("/media-sources", dav.input("/dav/"), owner), 201, "OK")).get("id");
-            record CandidateCase(String name, String title, Integer year, String edition) {}
+            record CandidateCase(String name, String title, Integer year) {}
             var cases = List.of(
-                    new CandidateCase("Example1.UHD.2160p.BluRay.REMUX.mkv", "Example1", null, null),
-                    new CandidateCase("Example.Title.PROPER.2020.1080p.mkv", "Example Title", 2020, null),
-                    new CandidateCase("Example.Title.REPACK.2020.1080p.mkv", "Example Title", 2020, null),
-                    new CandidateCase("Example Title（2011）.mkv", "Example Title", 2011, null),
-                    new CandidateCase("[YTS.2020] Film.2021.1080p.mkv", "Film", 2021, null),
-                    new CandidateCase("[YTS(IMAX)] Film.2021.1080p.mkv", "Film", 2021, null),
-                    new CandidateCase("[YTS.2020] 1917.2019.1080p.mkv", "1917", 2019, null),
-                    new CandidateCase("Film.mkv\u00a0\u202f\u2007\ufeff", "Film", null, null),
-                    new CandidateCase("Film.Uncut.（2020）.2160p.mkv", "Film", 2020, "Uncut"),
-                    new CandidateCase("Film.（Extended Cut）.1080p.mkv", "Film", null, "Extended Cut"),
-                    new CandidateCase("Film.( Extended Cut ).1080p.mkv", "Film", null, "Extended Cut"),
-                    new CandidateCase("Film.[ Extended Cut ].2020.1080p.mkv", "Film", 2020, "Extended Cut"),
-                    new CandidateCase("Film.（\u3000Extended\u00a0Cut\u202f）.1080p.mkv", "Film", null, "Extended Cut"),
-                    new CandidateCase("Film.（Extended Cut）.（IMAX）.1080p.mkv", "Film", null, null));
+                    new CandidateCase("Interstellar.2014.2160p.BluRay.REMUX.mkv", "Interstellar", 2014),
+                    new CandidateCase("Dune_Part_Two.2024.WEB-DL.mkv", "Dune Part Two", 2024),
+                    new CandidateCase("千与千寻.2001.1080p.mkv", "千与千寻", 2001),
+                    new CandidateCase("1917.2019.1080p.mkv", "1917", 2019),
+                    new CandidateCase("Interstellar.mkv", "Interstellar", null));
             for (var item : cases) {
                 String path = "/" + item.name();
                 mediaResources.insert(new MediaResourceRow(BusinessIds.next(), sourceId, path,
@@ -571,8 +560,8 @@ class AuthHttpIntegrationTest {
                 assertEquals("/" + item.name(), file.get("path"));
                 assertEquals("unidentified", file.get("recognitionStatus"));
                 var candidate = (Map<?, ?>) file.get("nameCandidate");
+                assertEquals(Set.of("title", "year"), candidate.keySet());
                 assertEquals(item.title(), candidate.get("title")); assertEquals(item.year(), candidate.get("year"));
-                assertEquals(item.edition(), candidate.get("editionLabel"));
             }
             // BINARY path_hash 的 byte[] 必须按内容比较，避免 Map.equals 按对象身份误判。
             var after = db.queryForList("SELECT * FROM media_resource ORDER BY id");
@@ -767,10 +756,8 @@ class AuthHttpIntegrationTest {
     @SuppressWarnings("unchecked") List<Map<String, Object>> objectList(Object value) { return (List<Map<String, Object>>) value; }
 
     static final class ScanWebDavServer implements AutoCloseable {
-        // 保留开发库实际发行命名结构，片名和发行组脱敏。
-        static final String RELEASE_NAME = "Example.Saga.Sequel.Uncut.2004.2160p.BluRay.REMUX.DV.HDR.HEVC.TrueHD.7.1.Atmos-GROUP.mkv";
-        // 合法路径保留 NBSP、窄 NBSP、全角空格和 FEFF；仅派生命名候选规范化空白。
-        static final String UNICODE_SPACE_NAME = "\u00a0\ufeffExample\u202fWhitespace\u3000Movie\u00a0.2021.[Extended\u00a0Cut].1080p.MOV";
+        static final String RELEASE_NAME = "Dune.Part.Two.2024.WEB-DL.mkv";
+        static final String UNICODE_NAME = "千与千寻.2001.1080p.MOV";
         final HttpServer server;
         final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
         final AtomicInteger requests = new AtomicInteger(), outsideRequests = new AtomicInteger();
@@ -794,7 +781,7 @@ class AuthHttpIntegrationTest {
                             body += node(raw + RELEASE_NAME, false) + node(raw + "%E7%94%B5%E5%BD%B1%20%23100%25.mp4", false)
                                     + node(raw + "notes.txt", false) + node(raw + "sub/", true);
                         } else if ("1".equals(depth) && path.equals("/dav/selected/sub/"))
-                            body += node(raw + URLEncoder.encode(UNICODE_SPACE_NAME, StandardCharsets.UTF_8).replace("+", "%20"), false);
+                            body += node(raw + URLEncoder.encode(UNICODE_NAME, StandardCharsets.UTF_8).replace("+", "%20"), false);
                         else if ("1".equals(depth) && path.equals("/dav/other/")) { outsideRequests.incrementAndGet(); body += node(raw + "outside.mkv", false); }
                         body = "<d:multistatus xmlns:d=\"DAV:\">" + body + "</d:multistatus>";
                     }

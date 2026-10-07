@@ -102,7 +102,7 @@ const mediaResource = {
   size: 1024,
   modifiedAt: '2026-10-03T06:00:00Z',
   recognitionStatus: 'unidentified',
-  nameCandidate: { title: 'Movie', year: null, editionLabel: null },
+  nameCandidate: { title: 'Movie', year: null },
 }
 const resourcesPage = (items = [mediaResource], page = 0, total = items.length) => ({
   items,
@@ -2300,7 +2300,7 @@ test('owned scan DTOs reject foreign ownership, credentials, invalid states/coun
 test('resource name candidates require the complete bounded DTO and do not replace file facts', async () => {
   await signIn()
   const signal = new AbortController().signal
-  const candidate = { title: '某部电影', year: 2020, editionLabel: 'Extended Cut' }
+  const candidate = { title: '某部电影', year: 2020 }
   const withoutCandidate = { ...mediaResource }
   delete withoutCandidate.nameCandidate
   respond = async () => ok(resourcesPage([withoutCandidate]))
@@ -2313,7 +2313,7 @@ test('resource name candidates require the complete bounded DTO and do not repla
     [],
     'Movie',
     {},
-    { title: 'Movie', year: null },
+    { title: 'Movie' },
     { ...candidate, confidence: 0.9 },
     { ...candidate, title: '' },
     { ...candidate, title: '   ' },
@@ -2327,10 +2327,6 @@ test('resource name candidates require the complete bounded DTO and do not repla
     { ...candidate, year: 2100 },
     { ...candidate, year: 2020.5 },
     { ...candidate, year: '2020' },
-    { ...candidate, editionLabel: '' },
-    { ...candidate, editionLabel: 'extended cut' },
-    { ...candidate, editionLabel: 'Extended Cut ' },
-    { ...candidate, editionLabel: 42 },
   ]) {
     respond = async () => ok(resourcesPage([{ ...mediaResource, nameCandidate }]))
     await assert.rejects(
@@ -2341,21 +2337,10 @@ test('resource name candidates require the complete bounded DTO and do not repla
   }
   const accepted = [
     candidate,
-    { title: null, year: null, editionLabel: null },
-    { title: '2001', year: null, editionLabel: null },
-    { title: '最早年份', year: 1888, editionLabel: null },
-    { title: '年份上界', year: 2099, editionLabel: null },
-    ...[
-      'Theatrical Cut',
-      "Director's Cut",
-      'Extended Cut',
-      'Final Cut',
-      'IMAX',
-      'Special Edition',
-      'Unrated',
-      'Uncut',
-      'Anniversary Edition',
-    ].map((editionLabel) => ({ title: null, year: null, editionLabel })),
+    { title: null, year: null },
+    { title: '2001', year: null },
+    { title: '最早年份', year: 1888 },
+    { title: '年份上界', year: 2099 },
   ]
   for (const nameCandidate of accepted) {
     const resource = { ...mediaResource, nameCandidate }
@@ -2384,7 +2369,7 @@ test('normalized candidates accept Unicode whitespace in file facts without fail
         id: `unicode-resource-${index}-${nameIndex}`,
         path: `${directory}/${name}`,
         name,
-        nameCandidate: { title: 'Film', year: 2020, editionLabel: null },
+        nameCandidate: { title: 'Film', year: 2020 },
       })
     }
   }
@@ -2394,7 +2379,7 @@ test('normalized candidates accept Unicode whitespace in file facts without fail
   assert.equal(result.total, items.length)
 })
 
-test('scan result candidate text distinguishes parsed names, partial labels and unavailable names', async () => {
+test('scan result candidate text displays titles, optional years and unavailable names', async () => {
   const dialog = await componentSetup('components/media-source/OwnedScanResults.vue', {
     sourceName: ownedSource.name,
     page: 0,
@@ -2404,25 +2389,11 @@ test('scan result candidate text distinguishes parsed names, partial labels and 
   })
   try {
     assert.equal(
-      dialog.ui.nameCandidateLabel({ title: '某部电影', year: 2020, editionLabel: 'Extended Cut' }),
-      '名称解析候选：某部电影 · 2020 · Extended Cut',
+      dialog.ui.nameCandidateLabel({ title: '某部电影', year: 2020 }),
+      '名称解析候选：某部电影 · 2020',
     )
-    assert.equal(
-      dialog.ui.nameCandidateLabel({ title: '2001', year: null, editionLabel: null }),
-      '名称解析候选：2001',
-    )
-    assert.equal(
-      dialog.ui.nameCandidateLabel({ title: '某部电影', year: 2020, editionLabel: 'Uncut' }),
-      '名称解析候选：某部电影 · 2020 · Uncut',
-    )
-    assert.equal(
-      dialog.ui.nameCandidateLabel({ title: null, year: null, editionLabel: 'IMAX' }),
-      '名称解析候选：IMAX',
-    )
-    assert.equal(
-      dialog.ui.nameCandidateLabel({ title: null, year: null, editionLabel: null }),
-      '名称暂无法解析',
-    )
+    assert.equal(dialog.ui.nameCandidateLabel({ title: '2001', year: null }), '名称解析候选：2001')
+    assert.equal(dialog.ui.nameCandidateLabel({ title: null, year: null }), '名称暂无法解析')
   } finally {
     dialog.unmount()
   }

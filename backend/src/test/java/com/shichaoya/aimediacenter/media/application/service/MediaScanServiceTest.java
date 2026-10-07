@@ -150,26 +150,24 @@ class MediaScanServiceTest {
     @Test void derivesNameCandidatesFromDecodedFactsWithoutWritingResourcesOrAccessingUpstream() {
         when(sources.findOwned("alice", "source")).thenReturn(source);
         when(resources.countOwned("alice", "source")).thenReturn(3L);
-        String nested = "/合集/银翼杀手.1982.Final.Cut/video.mkv";
+        String nested = "/合集/银翼杀手 (1982)/video.mkv";
         String atRoot = "/1917.2019.1080p.mkv";
-        String uncutName = "Example.Saga.Sequel.Uncut.2004.2160p.BluRay.REMUX.mkv";
-        String uncutPath = "/某系列2/" + uncutName;
+        String releaseName = "Interstellar.2014.2160p.BluRay.REMUX.mkv";
+        String releasePath = "/电影/" + releaseName;
         when(resources.findOwnedPage("alice", "source", 50, 0)).thenReturn(List.of(
                 new MediaResourceRow("first", "source", nested, MediaScanService.hash(nested), "video.mkv", null, null, "UNIDENTIFIED"),
                 new MediaResourceRow("second", "source", atRoot, MediaScanService.hash(atRoot), "1917.2019.1080p.mkv", 1024L, null, "UNIDENTIFIED"),
-                new MediaResourceRow("third", "source", uncutPath, MediaScanService.hash(uncutPath), uncutName, null, null, "UNIDENTIFIED")));
+                new MediaResourceRow("third", "source", releasePath, MediaScanService.hash(releasePath), releaseName, null, null, "UNIDENTIFIED")));
         var items = service.resources(alice, "source", 0, 50).items();
         assertEquals("银翼杀手", items.getFirst().nameCandidate().title());
         assertEquals(1982, items.getFirst().nameCandidate().year());
-        assertEquals("Final Cut", items.getFirst().nameCandidate().editionLabel());
         assertEquals(nested, items.getFirst().path()); assertEquals("video.mkv", items.getFirst().name());
         assertNull(items.getFirst().size()); assertNull(items.getFirst().modifiedAt());
         assertEquals("1917", items.get(1).nameCandidate().title());
         assertEquals(2019, items.get(1).nameCandidate().year());
-        assertEquals("Example Saga Sequel", items.getLast().nameCandidate().title());
-        assertEquals(2004, items.getLast().nameCandidate().year());
-        assertEquals("Uncut", items.getLast().nameCandidate().editionLabel());
-        assertEquals(uncutName, items.getLast().name()); assertEquals(uncutPath, items.getLast().path());
+        assertEquals("Interstellar", items.getLast().nameCandidate().title());
+        assertEquals(2014, items.getLast().nameCandidate().year());
+        assertEquals(releaseName, items.getLast().name()); assertEquals(releasePath, items.getLast().path());
         assertEquals("unidentified", items.getLast().recognitionStatus());
         verify(resources).countOwned("alice", "source");
         verify(resources).findOwnedPage("alice", "source", 50, 0);

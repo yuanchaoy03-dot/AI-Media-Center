@@ -31,9 +31,7 @@ function sizeLabel(size: number | null) {
   return `${(size / 1024 ** unit).toFixed(1)} ${['B', 'KiB', 'MiB', 'GiB'][unit]}`
 }
 function nameCandidateLabel(candidate: OwnedMediaNameCandidate) {
-  const parts = [candidate.title, candidate.year?.toString(), candidate.editionLabel].filter(
-    Boolean,
-  )
+  const parts = [candidate.title, candidate.year?.toString()].filter(Boolean)
   return parts.length ? `名称解析候选：${parts.join(' · ')}` : '名称暂无法解析'
 }
 onMounted(() => dialog.value?.showModal())

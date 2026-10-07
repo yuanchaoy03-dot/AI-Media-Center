@@ -32,30 +32,7 @@ export interface OwnedMediaResource {
 export interface OwnedMediaNameCandidate {
   title: string | null
   year: number | null
-  editionLabel:
-    | 'Theatrical Cut'
-    | "Director's Cut"
-    | 'Extended Cut'
-    | 'Final Cut'
-    | 'IMAX'
-    | 'Special Edition'
-    | 'Unrated'
-    | 'Uncut'
-    | 'Anniversary Edition'
-    | null
 }
-
-const editionLabels: readonly string[] = [
-  'Theatrical Cut',
-  "Director's Cut",
-  'Extended Cut',
-  'Final Cut',
-  'IMAX',
-  'Special Edition',
-  'Unrated',
-  'Uncut',
-  'Anniversary Edition',
-]
 
 export interface OwnedResourcePage {
   items: OwnedMediaResource[]
@@ -115,7 +92,7 @@ function count(value: unknown): value is number {
 }
 
 function readNameCandidate(value: unknown): OwnedMediaNameCandidate {
-  const candidate = object(value, ['title', 'year', 'editionLabel'])
+  const candidate = object(value, ['title', 'year'])
   if (
     !(candidate.title === null || id(candidate.title)) ||
     !(
@@ -124,10 +101,6 @@ function readNameCandidate(value: unknown): OwnedMediaNameCandidate {
         candidate.year >= 1888 &&
         candidate.year <= 2099 &&
         candidate.title !== null)
-    ) ||
-    !(
-      candidate.editionLabel === null ||
-      (typeof candidate.editionLabel === 'string' && editionLabels.includes(candidate.editionLabel))
     )
   )
     return invalid()
