@@ -301,6 +301,16 @@ class WebDavDirectoryScannerTest {
         assertTrue(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started) < 950);
     }
 
+    @Test void scanningAndRootValidationRejectRepeatedRemoteSlashHrefsWithoutReturningFacts() {
+        for (String href : List.of("/dav//movie.mkv", "/dav///movie.mkv", "movie.mkv//", address + "/movie.mkv")) {
+            assertError(207, listing(resource("/dav/", true), withFacts(href, "1024", "Mon, 01 Jan 2024 00:00:00 GMT")),
+                    "SOURCE_DIRECTORY_INVALID");
+        }
+        xml.set(listing(resource("/dav//", true)));
+        var error = assertThrows(ApiException.class,
+                () -> adapter.validateDirectories(new SourceConnection(address, "", ""), List.of("/")));
+        assertEquals("SOURCE_DIRECTORY_INVALID", error.code());
+    }
     private MediaFileDirectory scan() { return adapter.scanDirectory(new SourceConnection(address, "", ""), "/", deadline(5000)); }
     private static long deadline(long millis) { return System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(millis); }
     private void assertError(int httpStatus, String body, String code) {

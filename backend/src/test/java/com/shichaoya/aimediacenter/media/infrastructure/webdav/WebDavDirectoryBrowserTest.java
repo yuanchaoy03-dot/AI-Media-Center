@@ -125,6 +125,38 @@ class WebDavDirectoryBrowserTest {
         assertEquals(List.of(new MediaDirectory.Entry("child", "/child", "directory")),
                 adapter.browseDirectory(new SourceConnection(address.substring(0, address.length() - 1), "", ""), "/").entries());
     }
+    @Test void rejectsAmbiguousSavedRootsBeforeAllFourOperationsAccessTheUpstream() {
+        for (String root : List.of("/dav//library/", "/dav///library/", "/dav//")) {
+            String normalized = root.replaceAll("/+", "/");
+            // A provider may serve two distinct trees; accepting the merged path would read the wrong one.
+            xml.set(listing(resource(normalized, true), resource(normalized + "Other.Movie.2020.mkv", false)));
+            var connection = new SourceConnection(address.replace("/dav/", root), "", "");
+            var test = assertThrows(ApiException.class, () -> adapter.testConnection(connection));
+            assertEquals("SOURCE_NOT_WEBDAV", test.code());
+            var browse = assertThrows(ApiException.class, () -> adapter.browseDirectory(connection, "/child"));
+            assertEquals("SOURCE_DIRECTORY_INVALID", browse.code());
+            var validate = assertThrows(ApiException.class, () -> adapter.validateDirectories(connection, List.of("/child")));
+            assertEquals("SOURCE_DIRECTORY_INVALID", validate.code());
+            var scan = assertThrows(ApiException.class, () -> adapter.scanDirectory(connection, "/child",
+                    System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(5)));
+            assertEquals("SOURCE_DIRECTORY_INVALID", scan.code());
+            assertEquals(0, requests.get());
+        }
+    }
+    @Test void rejectsRepeatedSlashesInAbsoluteRelativeAndFullyQualifiedHrefs() {
+        for (String href : List.of("/dav//child/", "/dav///child/", "child//", address + "/child/")) {
+            assertError(207, listing(resource("/dav/", true), resource(href, true)), "SOURCE_DIRECTORY_INVALID", 422);
+        }
+        assertError(207, listing(resource("/dav//", true)), "SOURCE_DIRECTORY_INVALID", 422);
+    }
+    @Test void sourcePathsStillNormalizeWithoutChangingAnUnslashedRemoteRoot() {
+        xml.set(listing(resource("/dav/child/sub/", true), resource("movie.mkv", false)));
+        var result = adapter.browseDirectory(new SourceConnection(address.substring(0, address.length() - 1), "", ""),
+                "/child//sub///");
+        assertEquals("/dav/child/sub/", rawPath.get());
+        assertEquals("/child/sub", result.path());
+        assertEquals(List.of(new MediaDirectory.Entry("movie.mkv", "/child/sub/movie.mkv", "file")), result.entries());
+    }
     @Test void rejectsEveryInvalidHrefInsteadOfSilentlyReturningPartialListings() {
         for (String href : List.of("http://example.invalid/dav/x/", "https://127.0.0.1/dav/x/", "/dav2/x/", "/other/x/",
                 "/dav/child/grandchild/", "/dav/../dav/x/", "/dav/%2e%2e/dav/x/", "/dav/x%2Fy/", "/dav/x%5Cy/", "/dav/%252f/",

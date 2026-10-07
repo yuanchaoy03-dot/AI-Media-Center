@@ -61,7 +61,9 @@ public class WebDavMediaSourceAdapter implements MediaSourceAdapter {
                 .followRedirects(HttpClient.Redirect.NEVER).version(HttpClient.Version.HTTP_1_1).build();
     }
     @Override public void testConnection(SourceConnection connection) {
-        URI target = URI.create(connection.address());
+        URI target;
+        try { target = new WebDavDirectoryReader(connection.address(), "/").target(); }
+        catch (ApiException error) { throw notWebDav(); }
         verifyDirectory(request(connection, target, "0", MAX_BODY_BYTES, false), target);
     }
     @Override public MediaDirectory browseDirectory(SourceConnection connection, String path) {
@@ -217,12 +219,16 @@ public class WebDavMediaSourceAdapter implements MediaSourceAdapter {
     }
     private static boolean sameResource(URI target, String href) {
         try {
-            URI resource = target.resolve(href);
+            URI supplied = URI.create(href);
+            // resolve/normalize 前检查原始 href，不能让连续斜线或点段消失后冒充目标自身。
+            WebDavDirectoryReader.decodedPath(supplied);
+            URI resource = target.resolve(supplied);
+            WebDavDirectoryReader.decodedPath(resource);
             return resource.getRawUserInfo() == null && resource.getRawQuery() == null && resource.getRawFragment() == null
                     && resource.getHost() != null && resource.getHost().equalsIgnoreCase(target.getHost())
                     && resource.getScheme().equalsIgnoreCase(target.getScheme()) && effectivePort(resource) == effectivePort(target)
                     && comparablePath(resource).equals(comparablePath(target));
-        } catch (IllegalArgumentException error) { return false; }
+        } catch (IllegalArgumentException | ApiException error) { return false; }
     }
     private static int effectivePort(URI uri) {
         return uri.getPort() == -1 ? uri.getScheme().equalsIgnoreCase("https") ? 443 : 80 : uri.getPort();

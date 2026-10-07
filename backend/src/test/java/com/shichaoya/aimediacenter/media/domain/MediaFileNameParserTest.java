@@ -97,6 +97,79 @@ class MediaFileNameParserTest {
         assertCandidate("1080p.（Extended Cut）.2020.mkv", "Film.2019.Uncut", "Film", 2019, "Uncut");
     }
 
+    @Test void extractsEveryEditionInsideMatchingBracketsWithWhitespacePadding() {
+        for (var edition : List.of("Theatrical Cut", "Director's Cut", "Extended Cut", "Final Cut", "IMAX",
+                "Special Edition", "Unrated", "Uncut", "Anniversary Edition")) {
+            for (var brackets : List.of("[]", "()", "{}", "（）")) {
+                String padded = brackets.charAt(0) + " " + edition + " " + brackets.charAt(1);
+                assertCandidate("Film." + padded + ".1080p.mkv", null, "Film", null, edition);
+                assertCandidate("Film." + padded + ".2020.1080p.mkv", null, "Film", 2020, edition);
+                assertCandidate("Film.2020." + padded + ".1080p.mkv", null, "Film", 2020, edition);
+            }
+        }
+    }
+
+    @Test void normalizesAsciiAndUnicodeWhitespaceAtEitherEditionBracketBoundary() {
+        for (var space : List.of(" ", "\t", "\r\n", "\f", "\u00a0", "\u202f", "\u2007", "\u3000", "\ufeff")) {
+            for (var brackets : List.of("[]", "()", "{}", "（）")) {
+                String opening = String.valueOf(brackets.charAt(0));
+                String closing = String.valueOf(brackets.charAt(1));
+                assertCandidate("Film." + opening + space + "Extended Cut" + closing + ".1080p.mkv",
+                        null, "Film", null, "Extended Cut");
+                assertCandidate("Film." + opening + "Extended Cut" + space + closing + ".1080p.mkv",
+                        null, "Film", null, "Extended Cut");
+                assertCandidate("Film." + opening + space + "Extended" + space + "Cut" + space + closing + ".mkv",
+                        null, "Film", null, "Extended Cut");
+            }
+        }
+        assertCandidate("Film.(\t\u3000Extended Cut\u00a0\r\n).1080p.mkv", null, "Film", null, "Extended Cut");
+    }
+
+    @Test void paddedEditionBracketsSupportDirectoryFallbackNumericTitlesAndVersionPriority() {
+        assertCandidate("1917.( Extended Cut ).2019.1080p.mkv", null, "1917", 2019, "Extended Cut");
+        assertCandidate("1917.2019.[ IMAX ].1080p.mkv", null, "1917", 2019, "IMAX");
+        assertCandidate("1917.{ Final Cut }.mkv", null, "1917", null, "Final Cut");
+        assertCandidate("video.mkv", "Film.（\u3000Extended Cut\u3000）.2020", "Film", 2020, "Extended Cut");
+        assertCandidate("1080p.x265.mkv", "1917.[ IMAX ].2019", "1917", 2019, "IMAX");
+        assertCandidate("Film.2020.mkv", "Film.( Extended Cut ).2020", "Film", 2020, "Extended Cut");
+        assertCandidate("Film.mkv", "Film.{ Extended Cut }.2020", "Film", null, "Extended Cut");
+        assertCandidate("Film.2021.mkv", "Film.( Extended Cut ).2020", "Film", 2021, null);
+        assertCandidate("Film.2020.mkv", "Other Film.( Extended Cut ).2020", "Film", 2020, null);
+        assertCandidate("Film.( Extended Cut ).1080p.mkv", "Film.2020.Final.Cut", "Film", null, "Extended Cut");
+        assertCandidate("Film.( Extended Cut ).[ Extended Cut ].1080p.mkv", null, "Film", null, "Extended Cut");
+        assertCandidate("Film.( Extended Cut ).[ IMAX ].1080p.mkv", "Final Cut", "Film", null, null);
+        assertCandidate("video.mkv", "Film.( Extended Cut ).[ IMAX ].2020", "Film", 2020, null);
+    }
+
+    @Test void paddedBracketEditionsStillRequireMatchingBracketsAndTitleEvidence() {
+        for (var edition : List.of("Theatrical Cut", "Director's Cut", "Extended Cut", "Final Cut", "IMAX",
+                "Special Edition", "Unrated", "Uncut", "Anniversary Edition")) {
+            for (var brackets : List.of("[]", "()", "{}", "（）")) {
+                String padded = brackets.charAt(0) + " " + edition + " " + brackets.charAt(1);
+                assertCandidate(padded + ".1080p.mkv", null, edition, null, null);
+                assertCandidate("Film." + brackets.charAt(0) + " " + edition + ".1080p.mkv",
+                        null, "Film " + edition, null, null);
+                assertCandidate("Film." + edition + " " + brackets.charAt(1) + ".1080p.mkv",
+                        null, "Film " + edition, null, null);
+            }
+            assertCandidate("Film." + edition + ".mkv", null, "Film " + edition, null, null);
+        }
+        for (var opening : List.of('[', '(', '{', '（')) {
+            for (var closing : List.of(']', ')', '}', '）')) {
+                if (List.of("[]", "()", "{}", "（）").contains("" + opening + closing)) continue;
+                assertCandidate("Film." + opening + " Extended Cut " + closing + ".1080p.mkv",
+                        null, "Film Extended Cut", null, null);
+            }
+        }
+        assertCandidate("Film.( Edition Extended Cut ).1080p.mkv", null, "Film Edition Extended Cut", null, null);
+        assertCandidate("Film.( Extended Cut Edition ).1080p.mkv", null, "Film Extended Cut Edition", null, null);
+        assertCandidate("Film.( -Extended Cut- ).1080p.mkv", null, "Film -Extended Cut", null, null);
+        assertCandidate("The.Uncut.（2020）.2160p.mkv", null, "The Uncut", 2020, null);
+        assertCandidate("Uncut.Gems.（2019）.2160p.mkv", null, "Uncut Gems", 2019, null);
+        assertCandidate("1080p.( Extended Cut ).2020.mkv", "Film.2019.Uncut", "Film", 2019, "Uncut");
+        assertCandidate("[YTS( IMAX )] Film.2020.1080p.mkv", null, "Film", 2020, null);
+    }
+
     @Test void ignoresAllMetadataInKnownLeadingReleaseGroupsBeforeParsingMovieEvidence() {
         assertCandidate("[YTS.2020] Film.2021.1080p.mkv", null, "Film", 2021, null);
         assertCandidate("[YTS.2020] 1917.2019.1080p.mkv", null, "1917", 2019, null);

@@ -3,6 +3,9 @@
 .env.*
 !.env.example
 
+# Private WebDAV acceptance inventory
+/test-data/webdav/movie-directories.json
+
 # Node / Vue
 node_modules/
 dist/

@@ -225,8 +225,17 @@ class AuthHttpIntegrationTest {
                     var response = call(endpoint, invalid, token);
                     check(response, 400, "VALIDATION_FAILED"); assertSourceFailurePrivate(response, invalid);
                 }
+                for (String path : List.of("/dav//library/", "/dav///library/", "//dav/")) {
+                    var invalid = dav.input(path);
+                    var response = call(endpoint, invalid, token);
+                    var failure = check(response, 400, "VALIDATION_FAILED");
+                    assertEquals(Set.of("address"), ((Map<?, ?>) failure.get("fieldErrors")).keySet());
+                    assertSourceFailurePrivate(response, invalid);
+                }
             }
             assertEquals(0, dav.davRequests.get());
+            assertEquals(0, dav.directoryRequests.get());
+            assertEquals(0, db.queryForObject("SELECT COUNT(*) FROM media_source", Integer.class));
             var wrongPassword = new HashMap<>(input); wrongPassword.put("password", "wrong-webdav-password-fixture");
             for (String endpoint : List.of("/media-sources/test-connection", "/media-sources")) {
                 var response = call(endpoint, wrongPassword, token);
@@ -544,6 +553,9 @@ class AuthHttpIntegrationTest {
                     new CandidateCase("Film.mkv\u00a0\u202f\u2007\ufeff", "Film", null, null),
                     new CandidateCase("Film.Uncut.（2020）.2160p.mkv", "Film", 2020, "Uncut"),
                     new CandidateCase("Film.（Extended Cut）.1080p.mkv", "Film", null, "Extended Cut"),
+                    new CandidateCase("Film.( Extended Cut ).1080p.mkv", "Film", null, "Extended Cut"),
+                    new CandidateCase("Film.[ Extended Cut ].2020.1080p.mkv", "Film", 2020, "Extended Cut"),
+                    new CandidateCase("Film.（\u3000Extended\u00a0Cut\u202f）.1080p.mkv", "Film", null, "Extended Cut"),
                     new CandidateCase("Film.（Extended Cut）.（IMAX）.1080p.mkv", "Film", null, null));
             for (var item : cases) {
                 String path = "/" + item.name();

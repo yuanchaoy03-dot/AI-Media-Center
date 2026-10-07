@@ -59,6 +59,14 @@ class MediaSourceRequestTest {
             assertEquals(java.net.URI.create(address).toASCIIString(), parsed.connection().address());
         }
     }
+    @Test void rejectsRepeatedSlashesInRemoteRootsInsteadOfChangingTheirIdentity() {
+        for (String path : new String[]{"/dav//library/", "/dav///library/", "/dav//", "//dav/"}) {
+            var error = assertThrows(ApiException.class,
+                    () -> MediaSourceRequest.parse(body("NAS", "http://localhost" + path, "", "")));
+            assertEquals(400, error.status()); assertEquals("VALIDATION_FAILED", error.code());
+            assertEquals(java.util.Set.of("address"), error.fieldErrors().keySet());
+        }
+    }
     private Map<String, Object> body(String name, String address, String username, String password) {
         return Map.of("name", name, "address", address, "username", username, "password", password);
     }

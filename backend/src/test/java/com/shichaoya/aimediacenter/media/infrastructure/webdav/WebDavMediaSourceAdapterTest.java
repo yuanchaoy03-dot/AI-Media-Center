@@ -149,6 +149,11 @@ class WebDavMediaSourceAdapterTest {
             assertEquals(400, error.status()); assertTrue(error.fieldErrors().containsKey("address"));
         }
     }
+    @Test void connectionTestDoesNotNormalizeRepeatedSlashHrefsToTheRequestedRoot() {
+        for (String href : new String[]{"/dav//", "dav//", address + "/"}) {
+            assertResponseError(207, DIRECTORY.replace("/dav/", href), "SOURCE_NOT_WEBDAV");
+        }
+    }
     private void assertResponseError(int status, String body, String code) {
         try { server.removeContext("/dav/"); } catch (IllegalArgumentException ignored) {}
         server.createContext("/dav/", exchange -> {

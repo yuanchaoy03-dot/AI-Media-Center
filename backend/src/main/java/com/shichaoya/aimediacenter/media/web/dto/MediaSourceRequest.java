@@ -65,6 +65,8 @@ public record MediaSourceRequest(String name, SourceConnection connection) {
     private static boolean validRootPath(URI uri) throws CharacterCodingException {
         String rawPath = URI.create(uri.toASCIIString()).getRawPath();
         if (rawPath == null || rawPath.isEmpty()) return true;
+        // 远程 URL 的空路径段可能标识另一目录，不能按来源内 path 规则静默合并。
+        if (rawPath.contains("//")) return false;
         var bytes = new ByteArrayOutputStream();
         for (int i = 0; i < rawPath.length();) {
             char ch = rawPath.charAt(i++);

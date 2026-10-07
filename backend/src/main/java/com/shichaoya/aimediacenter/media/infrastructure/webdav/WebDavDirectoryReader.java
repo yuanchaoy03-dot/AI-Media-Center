@@ -150,9 +150,11 @@ final class WebDavDirectoryReader {
         } catch (IllegalArgumentException | ApiException error) { throw invalid(); }
     }
 
-    private static String decodedPath(URI uri) {
+    static String decodedPath(URI uri) {
         String rawPath = URI.create(uri.toASCIIString()).getRawPath();
         if (rawPath == null || rawPath.isEmpty()) return "/";
+        // 先拒绝远程空路径段，避免后续规范化或 URI.resolve 将不同目录树混为一处。
+        if (rawPath.contains("//")) throw invalid();
         List<String> decoded = new ArrayList<>();
         for (String segment : rawPath.split("/", -1)) {
             var bytes = new ByteArrayOutputStream();

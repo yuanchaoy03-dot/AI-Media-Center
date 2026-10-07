@@ -71,8 +71,7 @@ public final class MediaFileNameParser {
             var matcher = edition.pattern().matcher(name);
             while (matcher.find()) {
                 boolean afterYear = !years.isEmpty() && matcher.start() > years.getFirst().start();
-                boolean bracketed = matcher.start() > 0 && matcher.end() < name.length()
-                        && matchingBrackets(name.charAt(matcher.start() - 1), name.charAt(matcher.end()));
+                boolean bracketed = bracketedEdition(name, matcher.start(), matcher.end());
                 boolean uncutBeforeYear = edition.label().equals("Uncut") && years.size() == 1
                         && matcher.end() < years.getFirst().start()
                         && name.substring(matcher.end(), years.getFirst().start()).matches("[\\s\\[\\](){}（）-]+")
@@ -137,6 +136,16 @@ public final class MediaFileNameParser {
     private static boolean matchingBrackets(char start, char end) {
         return start == '[' && end == ']' || start == '(' && end == ')' || start == '{' && end == '}'
                 || start == '（' && end == '）';
+    }
+
+    private static boolean bracketedEdition(String name, int start, int end) {
+        // text 已将 ASCII / Unicode 空白统一为空格；只越过空白，保留严格括号配对。
+        int opening = start - 1;
+        while (opening >= 0 && name.charAt(opening) == ' ') opening--;
+        int closing = end;
+        while (closing < name.length() && name.charAt(closing) == ' ') closing++;
+        return opening >= 0 && closing < name.length()
+                && matchingBrackets(name.charAt(opening), name.charAt(closing));
     }
 
     public record NameCandidate(String title, Integer year, String editionLabel) {}
