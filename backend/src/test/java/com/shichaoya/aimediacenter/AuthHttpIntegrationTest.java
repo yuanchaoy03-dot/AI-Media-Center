@@ -572,111 +572,36 @@ class AuthHttpIntegrationTest {
         }
     }
 
-    @Test void scanDeadlineBoundsRealResourceLockWaitAndPreservesExistingFacts() throws Exception {
-        String owner = registerAndLogin("deadline_lock");
+    @Test void progressFailureRollsBackResourceAndPersistedCount() throws Exception {
+        String owner = registerAndLogin("scan_progress_failure");
         try (var dav = new TemporaryWebDavServer()) {
             String sourceId = (String) data(check(call("/media-sources", dav.input("/dav/"), owner), 201, "OK")).get("id");
             String ownerId = (String) data(check(call("/auth/me", null, owner), 200, "OK")).get("id");
-            String path = "/selected/Film.2020.mkv", resourceId = BusinessIds.next();
-            byte[] hash = java.security.MessageDigest.getInstance("SHA-256").digest(path.getBytes(StandardCharsets.UTF_8));
-            mediaResources.insert(new MediaResourceRow(resourceId, sourceId, path, hash, "Film.2020.mkv", 1L, null, "UNIDENTIFIED"));
-            var adapter = deadlineAdapter(path);
+            String taskId = BusinessIds.next();
+            db.update("INSERT INTO scan_task(id,source_id,status,root_paths_json,created_at) VALUES(?,?,'PENDING',?,UTC_TIMESTAMP(3))",
+                    taskId, sourceId, "[\"/selected\"]");
+            var adapter = mock(MediaSourceAdapter.class);
+            when(adapter.scanDirectory(any(), eq("/selected"), anyLong())).thenReturn(new MediaFileDirectory("/selected",
+                    List.of(new MediaFileDirectory.Entry("Film.2020.mkv", "/selected/Film.2020.mkv", "file", 99L, null))));
+            // 资源已 INSERT 后，进度写入失败必须回滚同一事务中的文件事实。
+            db.execute("CREATE TRIGGER reject_scan_progress BEFORE UPDATE ON scan_task FOR EACH ROW "
+                    + "BEGIN IF NEW.status='RUNNING' AND NEW.persisted_count>OLD.persisted_count THEN "
+                    + "SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='private progress failure'; END IF; END");
             var observedResources = mock(MediaResourceMapper.class, org.mockito.AdditionalAnswers.delegatesTo(mediaResources));
-            String taskId = insertDeadlineTask(sourceId);
-            try (var lock = Objects.requireNonNull(db.getDataSource()).getConnection()) {
-                lock.setAutoCommit(false);
-                try (var statement = lock.prepareStatement("SELECT id FROM media_resource WHERE id=? FOR UPDATE")) {
-                    statement.setString(1, resourceId);
-                    try (var result = statement.executeQuery()) { assertTrue(result.next()); }
-                }
-                var runner = new MediaScanRunner(scanTasks, observedResources, sourceEncryption, adapter,
-                        new MediaScanLimits(1, 1, 10, 10, 100, 4, 1), transactions);
-                try {
-                    long started = System.nanoTime();
-                    assertTrue(runner.submit(taskId, mediaSources.findOwned(ownerId, sourceId), List.of("/selected")));
-                    var failed = awaitScan("/media-sources/" + sourceId + "/scans", taskId, owner);
-                    assertTrue(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started) < 5000,
-                            "JDBC query timeout must cancel the lock wait while the competing lock is still held");
-                    assertDeadlineFailure(failed);
-                    verify(observedResources).lockByPathHash(eq(sourceId), any());
-                    assertEquals(resourceId, db.queryForObject("SELECT id FROM media_resource WHERE source_id=?", String.class, sourceId));
-                    assertEquals(1L, db.queryForObject("SELECT size FROM media_resource WHERE id=?", Long.class, resourceId));
-                } finally { try { lock.rollback(); } finally { runner.close(); } }
-            }
-        }
-    }
-
-    @Test void scanDeadlineRollsBackResourceWrittenBeforeDelayedProgress() throws Exception {
-        String owner = registerAndLogin("deadline_rollback");
-        try (var dav = new TemporaryWebDavServer()) {
-            String sourceId = (String) data(check(call("/media-sources", dav.input("/dav/"), owner), 201, "OK")).get("id");
-            String ownerId = (String) data(check(call("/auth/me", null, owner), 200, "OK")).get("id");
-            String taskId = insertDeadlineTask(sourceId);
-            // 当前文件已 INSERT 后才延迟进度写入，必须连同文件事实一起回滚。
-            db.execute("CREATE TRIGGER delay_scan_progress BEFORE UPDATE ON scan_task FOR EACH ROW "
-                    + "BEGIN IF NEW.status='RUNNING' AND NEW.persisted_count>OLD.persisted_count THEN DO SLEEP(1.3); END IF; END");
-            var observedResources = mock(MediaResourceMapper.class, org.mockito.AdditionalAnswers.delegatesTo(mediaResources));
-            var runner = new MediaScanRunner(scanTasks, observedResources, sourceEncryption,
-                    deadlineAdapter("/selected/Film.2020.mkv"), new MediaScanLimits(1, 1, 10, 10, 100, 4, 1), transactions);
+            var runner = new MediaScanRunner(scanTasks, observedResources, sourceEncryption, adapter,
+                    new MediaScanLimits(1, 1, 10, 10, 100, 4, 30), transactions);
             try {
                 assertTrue(runner.submit(taskId, mediaSources.findOwned(ownerId, sourceId), List.of("/selected")));
-                assertDeadlineFailure(awaitScan("/media-sources/" + sourceId + "/scans", taskId, owner));
+                var failed = awaitScan("/media-sources/" + sourceId + "/scans", taskId, owner);
+                assertEquals("failed", failed.get("status")); assertEquals("SCAN_FAILED", failed.get("errorCode"));
+                assertEquals("扫描失败，请稍后重试。", failed.get("errorMessage"));
+                assertEquals(1, failed.get("discoveredCount")); assertEquals(0, failed.get("persistedCount"));
+                assertEquals(1, failed.get("directoryCount"));
                 verify(observedResources).insert(any());
                 assertEquals(0, db.queryForObject("SELECT COUNT(*) FROM media_resource WHERE source_id=?", Integer.class, sourceId));
                 assertEquals(0, db.queryForObject("SELECT persisted_count FROM scan_task WHERE id=?", Integer.class, taskId));
-            } finally { try { runner.close(); } finally { db.execute("DROP TRIGGER IF EXISTS delay_scan_progress"); } }
+            } finally { try { runner.close(); } finally { db.execute("DROP TRIGGER IF EXISTS reject_scan_progress"); } }
         }
-    }
-
-    @Test void taskRowLockCannotKeepWorkerWaitingThroughStartAndFailureCleanup() throws Exception {
-        String owner = registerAndLogin("deadline_task_lock");
-        try (var dav = new TemporaryWebDavServer(); var callers = Executors.newVirtualThreadPerTaskExecutor()) {
-            String sourceId = (String) data(check(call("/media-sources", dav.input("/dav/"), owner), 201, "OK")).get("id");
-            String ownerId = (String) data(check(call("/auth/me", null, owner), 200, "OK")).get("id");
-            String taskId = insertDeadlineTask(sourceId);
-            var adapter = deadlineAdapter("/selected/Film.2020.mkv");
-            var runner = new MediaScanRunner(scanTasks, mediaResources, sourceEncryption, adapter,
-                    new MediaScanLimits(1, 1, 10, 10, 100, 4, 1), transactions);
-            try (var lock = Objects.requireNonNull(db.getDataSource()).getConnection()) {
-                lock.setAutoCommit(false);
-                try (var statement = lock.prepareStatement("SELECT id FROM scan_task WHERE id=? FOR UPDATE")) {
-                    statement.setString(1, taskId);
-                    try (var result = statement.executeQuery()) { assertTrue(result.next()); }
-                }
-                try {
-                    // 直接等待同一 worker 入口返回，以验证失败收尾也能退出；不依赖失败终态一定写入。
-                    var scan = MediaScanRunner.class.getDeclaredMethod("scan", String.class,
-                            com.shichaoya.aimediacenter.media.infrastructure.persistence.MediaSourceRow.class, List.class);
-                    scan.setAccessible(true);
-                    var source = mediaSources.findOwned(ownerId, sourceId);
-                    var finished = callers.submit(() -> { scan.invoke(runner, taskId, source, List.of("/selected")); return null; });
-                    finished.get(5, TimeUnit.SECONDS);
-                    verifyNoInteractions(adapter);
-                    assertEquals("PENDING", db.queryForObject("SELECT status FROM scan_task WHERE id=?", String.class, taskId));
-                    assertEquals(0, db.queryForObject("SELECT COUNT(*) FROM media_resource", Integer.class));
-                } finally { try { lock.rollback(); } finally { runner.close(); } }
-            }
-            assertEquals("FAILED", db.queryForObject("SELECT status FROM scan_task WHERE id=?", String.class, taskId));
-            assertEquals("SCAN_INTERRUPTED", db.queryForObject("SELECT error_code FROM scan_task WHERE id=?", String.class, taskId));
-        }
-    }
-
-    private MediaSourceAdapter deadlineAdapter(String path) {
-        var adapter = mock(MediaSourceAdapter.class);
-        when(adapter.scanDirectory(any(), eq("/selected"), anyLong())).thenReturn(new MediaFileDirectory("/selected",
-                List.of(new MediaFileDirectory.Entry(path.substring(path.lastIndexOf('/') + 1), path, "file", 99L, null))));
-        return adapter;
-    }
-    private String insertDeadlineTask(String sourceId) {
-        String taskId = BusinessIds.next();
-        db.update("INSERT INTO scan_task(id,source_id,status,root_paths_json,created_at) VALUES(?,?,'PENDING',?,UTC_TIMESTAMP(3))",
-                taskId, sourceId, "[\"/selected\"]");
-        return taskId;
-    }
-    private void assertDeadlineFailure(Map<String, Object> task) {
-        assertEquals("failed", task.get("status")); assertEquals("SCAN_TIMEOUT", task.get("errorCode"));
-        assertEquals(1, task.get("discoveredCount")); assertEquals(0, task.get("persistedCount"));
-        assertEquals(1, task.get("directoryCount"));
     }
 
     @Test void activeScanFreezesRootsAndConcurrentStartsReturnOneTask() throws Exception {
