@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -107,6 +108,45 @@ class WebDavMediaSourceAdapterTest {
         assertResponseError(207, DIRECTORY.replace("HTTP/1.1 200 OK", "HTTP/1.1 404 Not Found"), "SOURCE_NOT_WEBDAV");
         assertResponseError(207, DIRECTORY.replace("HTTP/1.1 200 OK", "HTTP/1.1 403 Forbidden"), "SOURCE_AUTH_FAILED");
     }
+    @Test void deniedOptionalPropertiesDoNotMakeConnectionResultsDependOnPropstatOrder() {
+        var connection = new SourceConnection(address, "", "");
+        for (String status : List.of("401 Unauthorized", "403 Forbidden")) {
+            for (boolean before : List.of(true, false)) {
+                respond(207, withPropstat("<d:getcontentlength/><d:getlastmodified/>", status, before));
+                assertDoesNotThrow(() -> adapter.testConnection(connection));
+                assertDoesNotThrow(() -> adapter.validateDirectories(connection, List.of("/")));
+                assertEquals("/", adapter.browseDirectory(connection, "/").path());
+                assertEquals("/", adapter.scanDirectory(connection, "/", System.nanoTime() + 5_000_000_000L).path());
+            }
+        }
+    }
+    @Test void deniedRequiredTypeRemainsFatalEvenAfterSuccessfulDirectoryProperties() {
+        var connection = new SourceConnection(address, "user", "secret");
+        for (String status : List.of("401 Unauthorized", "403 Forbidden")) {
+            for (boolean before : List.of(true, false)) {
+                respond(207, withPropstat("<d:resourcetype/>", status, before));
+                for (Runnable operation : List.<Runnable>of(() -> adapter.testConnection(connection),
+                        () -> adapter.validateDirectories(connection, List.of("/")),
+                        () -> adapter.browseDirectory(connection, "/"),
+                        () -> adapter.scanDirectory(connection, "/", System.nanoTime() + 5_000_000_000L))) {
+                    var error = assertThrows(ApiException.class, operation::run);
+                    assertEquals("SOURCE_AUTH_FAILED", error.code()); assertEquals(422, error.status());
+                }
+            }
+        }
+    }
+    @Test void depthZeroConnectionRequiresExactlyOneValidCurrentDirectoryResponse() {
+        String response = DIRECTORY.substring(DIRECTORY.indexOf("<d:response>"), DIRECTORY.indexOf("</d:response>") + "</d:response>".length());
+        assertResponseError(207, DIRECTORY.replace("</d:multistatus>", response + "</d:multistatus>"), "SOURCE_NOT_WEBDAV");
+        assertResponseError(207, DIRECTORY.replace("</d:multistatus>", response.replace("/dav/", "/other/") + "</d:multistatus>"), "SOURCE_NOT_WEBDAV");
+        assertResponseError(207, DIRECTORY.replace("<d:resourcetype><d:collection/></d:resourcetype>", ""), "SOURCE_NOT_WEBDAV");
+        assertResponseError(207, withPropstat("<d:resourcetype><d:collection/></d:resourcetype>", "200 OK", false), "SOURCE_NOT_WEBDAV");
+        server.createContext("/dav", exchange -> {
+            byte[] content = DIRECTORY.getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(207, content.length); exchange.getResponseBody().write(content); exchange.close();
+        });
+        assertDoesNotThrow(() -> adapter.testConnection(new SourceConnection(address.substring(0, address.length() - 1), "", "")));
+    }
     @Test void classifiesAuthAndConnectionFailuresWithoutExposingUpstreamBody() {
         assertResponseError(401, "upstream secret", "SOURCE_AUTH_FAILED");
         assertResponseError(403, "upstream secret", "SOURCE_AUTH_FAILED");
@@ -155,13 +195,21 @@ class WebDavMediaSourceAdapterTest {
         }
     }
     private void assertResponseError(int status, String body, String code) {
+        respond(status, body);
+        var error = assertThrows(ApiException.class, () -> adapter.testConnection(new SourceConnection(address, "user", "secret")));
+        assertEquals(code, error.code()); assertEquals(422, error.status());
+        assertFalse(error.getMessage().contains("upstream secret"));
+    }
+    private void respond(int status, String body) {
         try { server.removeContext("/dav/"); } catch (IllegalArgumentException ignored) {}
         server.createContext("/dav/", exchange -> {
             byte[] content = body.getBytes(StandardCharsets.UTF_8);
             exchange.sendResponseHeaders(status, content.length); exchange.getResponseBody().write(content); exchange.close();
         });
-        var error = assertThrows(ApiException.class, () -> adapter.testConnection(new SourceConnection(address, "user", "secret")));
-        assertEquals(code, error.code()); assertEquals(422, error.status());
-        assertFalse(error.getMessage().contains("upstream secret"));
+    }
+    private static String withPropstat(String properties, String status, boolean before) {
+        String propstat = "<d:propstat><d:prop>" + properties + "</d:prop><d:status>HTTP/1.1 " + status + "</d:status></d:propstat>";
+        return before ? DIRECTORY.replace("<d:propstat>", propstat + "<d:propstat>")
+                : DIRECTORY.replace("</d:response>", propstat + "</d:response>");
     }
 }

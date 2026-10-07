@@ -93,9 +93,12 @@ async function submit() {
       // replace 替换当前浏览器历史记录，返回时不会回到刚提交的注册表单。
       if (created && !controller.signal.aborted) await router.replace({ name: 'login' })
     } else {
-      const ready = await auth.login(username.value, password.value, controller.signal)
+      const loginRequest = auth.login(username.value, password.value, controller.signal)
+      // login 同步清理旧会话后再记录版本，避免“使用其他账号”后回填旧表单提示。
+      const requestEpoch = auth.epoch
+      const ready = await loginRequest
       password.value = ''
-      if (controller.signal.aborted) return
+      if (controller.signal.aborted || requestEpoch !== auth.epoch) return
       if (ready) await router.replace({ name: 'media-sources' })
       else message.value = auth.error || auth.notice || '身份验证未完成，请重试。'
     }
@@ -118,8 +121,11 @@ async function submit() {
 }
 // restoreSession 用已有 Token 向后端确认身份；确认成功才进入媒体来源页。
 async function retryIdentity() {
-  if (mockPreview) return
-  if (await auth.restoreSession()) await router.replace({ name: 'media-sources' })
+  if (mockPreview || controller.signal.aborted) return
+  const requestEpoch = auth.epoch
+  const ready = await auth.restoreSession()
+  if (controller.signal.aborted || requestEpoch !== auth.epoch) return
+  if (ready) await router.replace({ name: 'media-sources' })
   else message.value = auth.error || auth.notice
 }
 function useAnotherAccount() {

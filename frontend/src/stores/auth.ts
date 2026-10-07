@@ -141,7 +141,9 @@ export const useAuthStore = defineStore('auth', () => {
       sessionStorage.setItem(storageKey, result.accessToken)
       token = result.accessToken
       tokenPresent.value = true
-      return restoreSession()
+      // 身份恢复由本会话共享；表单取消只取消自己的登录结果，不取消路由的恢复。
+      const ready = await restoreSession()
+      return requestEpoch === epoch.value && !signal.aborted && ready
     } catch (reason) {
       if (reason instanceof ApiError && reason.code === 'STALE_REQUEST') return false
       throw reason

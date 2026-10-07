@@ -8,7 +8,6 @@ import com.shichaoya.aimediacenter.media.domain.MediaFileDirectory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.w3c.dom.Element;
-import org.w3c.dom.Node;
 import org.xml.sax.SAXException;
 import org.xml.sax.SAXParseException;
 import org.xml.sax.helpers.DefaultHandler;
@@ -26,7 +25,6 @@ import java.net.http.HttpTimeoutException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
@@ -61,10 +59,10 @@ public class WebDavMediaSourceAdapter implements MediaSourceAdapter {
                 .followRedirects(HttpClient.Redirect.NEVER).version(HttpClient.Version.HTTP_1_1).build();
     }
     @Override public void testConnection(SourceConnection connection) {
-        URI target;
-        try { target = new WebDavDirectoryReader(connection.address(), "/").target(); }
+        WebDavDirectoryReader reader;
+        try { reader = new WebDavDirectoryReader(connection.address(), "/"); }
         catch (ApiException error) { throw notWebDav(); }
-        verifyDirectory(request(connection, target, "0", MAX_BODY_BYTES, false), target);
+        verifyDirectory(request(connection, reader.target(), "0", MAX_BODY_BYTES, false), reader);
     }
     @Override public MediaDirectory browseDirectory(SourceConnection connection, String path) {
         var reader = new WebDavDirectoryReader(connection.address(), path);
@@ -170,31 +168,14 @@ public class WebDavMediaSourceAdapter implements MediaSourceAdapter {
             } catch (java.net.UnknownHostException error) { throw unsafeAddress(); }
         }
     }
-    private static void verifyDirectory(byte[] xml, URI target) {
+    private static void verifyDirectory(byte[] xml, WebDavDirectoryReader reader) {
         try {
-            Element root = parseXml(xml);
-            if (!isDav(root, "multistatus")) throw notWebDav();
-            for (var resource : children(root, "response")) {
-                var hrefs = children(resource, "href");
-                if (hrefs.size() != 1 || !sameResource(target, hrefs.getFirst().getTextContent().strip())) continue;
-                for (var status : children(resource, "status")) {
-                    if (statusCode(status, 401) || statusCode(status, 403)) throw authFailed();
-                }
-                for (var propstat : children(resource, "propstat")) {
-                    var statuses = children(propstat, "status");
-                    if (statuses.size() != 1) continue;
-                    var status = statuses.getFirst();
-                    if (statusCode(status, 401) || statusCode(status, 403)) throw authFailed();
-                    if (!statusCode(status, 200)) continue;
-                    for (var prop : children(propstat, "prop")) {
-                        for (var type : children(prop, "resourcetype")) {
-                            if (!children(type, "collection").isEmpty()) return;
-                        }
-                    }
-                }
-            }
+            // 与扫描根验证共用必需属性和完整响应判定，不能因 propstat 顺序提前成功或误拒可选属性。
+            reader.verifyCurrent(parseXml(xml));
+        } catch (ApiException error) {
+            if (error.code().equals("SOURCE_AUTH_FAILED")) throw error;
             throw notWebDav();
-        } catch (ApiException error) { throw error; }
+        }
         catch (Exception error) { throw notWebDav(); }
     }
     private static Element parseXml(byte[] xml) throws Exception {
@@ -216,49 +197,6 @@ public class WebDavMediaSourceAdapter implements MediaSourceAdapter {
             @Override public void fatalError(SAXParseException error) throws SAXException { throw error; }
         });
         return parser.parse(new ByteArrayInputStream(xml)).getDocumentElement();
-    }
-    private static boolean sameResource(URI target, String href) {
-        try {
-            URI supplied = URI.create(href);
-            // resolve/normalize 前检查原始 href，不能让连续斜线或点段消失后冒充目标自身。
-            WebDavDirectoryReader.decodedPath(supplied);
-            URI resource = target.resolve(supplied);
-            WebDavDirectoryReader.decodedPath(resource);
-            return resource.getRawUserInfo() == null && resource.getRawQuery() == null && resource.getRawFragment() == null
-                    && resource.getHost() != null && resource.getHost().equalsIgnoreCase(target.getHost())
-                    && resource.getScheme().equalsIgnoreCase(target.getScheme()) && effectivePort(resource) == effectivePort(target)
-                    && comparablePath(resource).equals(comparablePath(target));
-        } catch (IllegalArgumentException | ApiException error) { return false; }
-    }
-    private static int effectivePort(URI uri) {
-        return uri.getPort() == -1 ? uri.getScheme().equalsIgnoreCase("https") ? 443 : 80 : uri.getPort();
-    }
-    private static String comparablePath(URI uri) {
-        String path = uri.normalize().toASCIIString();
-        path = URI.create(path).getRawPath();
-        if (path == null || path.isEmpty()) return "/";
-        path = java.util.regex.Pattern.compile("%[0-9a-fA-F]{2}").matcher(path)
-                .replaceAll(match -> {
-                    char value = (char) Integer.parseInt(match.group().substring(1), 16);
-                    // RFC 3986 unreserved 编码等价；%2F 等 reserved 保留，不合并不同目录边界。
-                    return value >= 'a' && value <= 'z' || value >= 'A' && value <= 'Z'
-                            || value >= '0' && value <= '9' || "-._~".indexOf(value) >= 0
-                            ? Character.toString(value) : match.group().toUpperCase(Locale.ROOT);
-                });
-        return path.length() > 1 && path.endsWith("/") ? path.substring(0, path.length() - 1) : path;
-    }
-    private static boolean statusCode(Element status, int code) {
-        return status.getTextContent().strip().matches("HTTP/[0-9.]+\\s+" + code + "(?:\\s+.*)?");
-    }
-    private static boolean isDav(Element element, String name) {
-        return "DAV:".equals(element.getNamespaceURI()) && name.equals(element.getLocalName());
-    }
-    private static List<Element> children(Element parent, String name) {
-        List<Element> result = new ArrayList<>();
-        for (Node node = parent.getFirstChild(); node != null; node = node.getNextSibling()) {
-            if (node instanceof Element element && isDav(element, name)) result.add(element);
-        }
-        return result;
     }
     private static ApiException authFailed() {
         return new ApiException(422, "SOURCE_AUTH_FAILED", "来源认证失败或无权访问此目录，请检查账号和密码。");

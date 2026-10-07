@@ -559,6 +559,77 @@ test('login and registration signals cancel on form exit or logout without insta
   }
 })
 
+test('login cancellation during identity verification never reports success to its canceled form', async () => {
+  const external = new AbortController()
+  const delayed = deferred()
+  let identitySignal
+  respond = (path, { signal }) => {
+    if (path.endsWith('/login'))
+      return ok({ accessToken: 'synthetic-test-token', tokenType: 'Bearer', expiresIn: 3600 })
+    assert.equal(path, '/api/auth/me')
+    identitySignal = signal
+    return delayed.promise
+  }
+  const login = auth.login('alice', 'test-only-password', external.signal)
+  await flushRequests()
+  assert.equal(auth.verifying, true)
+  external.abort()
+  // Identity restoration belongs to the current session, even after its form exits.
+  assert.equal(identitySignal.aborted, false)
+  delayed.resolve(ok(user))
+  assert.equal(await login, false)
+  assert.deepEqual(auth.user, user)
+  assert.equal(auth.verifying, false)
+  assert.equal(auth.error, '')
+  // POST already issued a valid token; the next page can explicitly verify it again.
+  assert.equal(auth.tokenPresent, true)
+})
+
+test('canceling a login waiter preserves identity restoration needed by another caller', async () => {
+  const external = new AbortController()
+  const delayed = deferred()
+  let identitySignal
+  let identityCalls = 0
+  respond = (path, { signal }) => {
+    if (path.endsWith('/login'))
+      return ok({ accessToken: 'synthetic-test-token', tokenType: 'Bearer', expiresIn: 3600 })
+    identityCalls++
+    identitySignal = signal
+    return delayed.promise
+  }
+  const login = auth.login('alice', 'test-only-password', external.signal)
+  await flushRequests()
+  const restoration = auth.restoreSession()
+  external.abort()
+  assert.equal(identitySignal.aborted, false)
+  assert.equal(identityCalls, 1)
+  delayed.resolve(ok(user))
+  assert.equal(await login, false)
+  assert.equal(await restoration, true)
+  assert.deepEqual(auth.user, user)
+})
+
+test('logout during login verification prevents a late identity from replacing a new account', async () => {
+  const delayed = deferred()
+  let identitySignal
+  respond = (path, { signal }) => {
+    if (path.endsWith('/login'))
+      return ok({ accessToken: 'synthetic-old-token', tokenType: 'Bearer', expiresIn: 3600 })
+    identitySignal = signal
+    return delayed.promise
+  }
+  const login = auth.login('alice', 'test-only-password', new AbortController().signal)
+  await flushRequests()
+  auth.logout()
+  assert.equal(identitySignal.aborted, true)
+  const nextUser = { id: 'user-b', username: 'bob', role: 'USER' }
+  await signIn(nextUser)
+  delayed.resolve(ok(user))
+  assert.equal(await login, false)
+  assert.deepEqual(auth.user, nextUser)
+  assert.equal(auth.tokenPresent, true)
+})
+
 test('late registration cannot overwrite a new account or its notice', async () => {
   const delayed = deferred()
   let oldSignal
@@ -868,6 +939,90 @@ test('canceled registration cannot navigate the old AuthForm', async () => {
     assert.equal(form.ui.password.value, '')
     assert.equal(form.ui.confirmation.value, '')
     assert.equal(auth.notice, '')
+  } finally {
+    form.unmount()
+  }
+})
+
+test('identity retry never navigates an unmounted form or cancels shared restoration', async () => {
+  for (const shared of [false, true]) {
+    const restored = freshStore()
+    const instance = instances.at(-1)
+    const form = await componentSetup(
+      'components/auth/AuthForm.vue',
+      { mode: 'login' },
+      { instance },
+    )
+    const delayed = deferred()
+    let identitySignal
+    respond = (path, { signal }) => {
+      assert.equal(path, '/api/auth/me')
+      identitySignal = signal
+      return delayed.promise
+    }
+    try {
+      const retry = form.ui.retryIdentity()
+      const restoration = shared ? restored.restoreSession() : undefined
+      form.unmount()
+      assert.equal(identitySignal.aborted, false)
+      delayed.resolve(ok(user))
+      await retry
+      if (restoration) assert.equal(await restoration, true)
+      assert.deepEqual(form.routes, [])
+      assert.equal(form.ui.message.value, '')
+      assert.deepEqual(restored.user, user)
+      await form.ui.retryIdentity()
+      assert.deepEqual(form.routes, [])
+    } finally {
+      form.unmount()
+    }
+  }
+})
+
+test('using another account during login verification leaves the current form clear', async () => {
+  const form = await componentSetup('components/auth/AuthForm.vue', { mode: 'login' })
+  const delayed = deferred()
+  respond = (path) =>
+    path.endsWith('/login')
+      ? ok({ accessToken: 'synthetic-test-token', tokenType: 'Bearer', expiresIn: 3600 })
+      : delayed.promise
+  try {
+    form.ui.username.value = 'alice'
+    form.ui.password.value = 'test-only-password'
+    const submitting = form.ui.submit()
+    await flushRequests()
+    assert.equal(auth.verifying, true)
+    form.ui.useAnotherAccount()
+    assert.equal(form.ui.message.value, '')
+    delayed.resolve(ok(user))
+    await submitting
+    assert.equal(form.ui.message.value, '')
+    assert.equal(form.ui.password.value, '')
+    assert.equal(form.ui.pending.value, false)
+    assert.deepEqual(form.routes, [])
+    assert.equal(auth.user, null)
+    assert.equal(auth.tokenPresent, false)
+  } finally {
+    form.unmount()
+  }
+})
+
+test('identity retry cannot copy a later session notice after using another account', async () => {
+  const restored = freshStore()
+  const instance = instances.at(-1)
+  const form = await componentSetup('components/auth/AuthForm.vue', { mode: 'login' }, { instance })
+  const delayed = deferred()
+  respond = () => delayed.promise
+  try {
+    const retry = form.ui.retryIdentity()
+    form.ui.useAnotherAccount()
+    restored.notice = '新会话通知'
+    delayed.resolve(ok(user))
+    await retry
+    assert.equal(form.ui.message.value, '')
+    assert.equal(restored.notice, '新会话通知')
+    assert.deepEqual(form.routes, [])
+    assert.equal(restored.user, null)
   } finally {
     form.unmount()
   }
