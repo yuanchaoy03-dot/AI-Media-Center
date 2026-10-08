@@ -29,7 +29,7 @@ const testing = ref(false)
 const saving = ref(false)
 const success = ref(false)
 const feedback = ref('')
-// revision 记录表单版本；改输入或关闭弹窗时加一，让旧连接测试结果失效。
+// revision 记录表单版本；改输入或关闭弹窗时加一，让旧测试和保存响应失效。
 let revision = 0
 let controller: AbortController | undefined
 function changed() {
@@ -37,10 +37,11 @@ function changed() {
   controller?.abort()
   success.value = false
   testing.value = false
-  feedback.value = '连接信息已更改，请重新测试。'
+  saving.value = false
+  feedback.value = '连接信息已更改，旧测试结果已失效。'
 }
 async function test() {
-  if (!form.value?.reportValidity()) return
+  if (testing.value || saving.value || !form.value?.reportValidity()) return
   if (!input.name.trim()) {
     feedback.value = '请填写来源名称。'
     return
@@ -59,8 +60,8 @@ async function test() {
     success.value = passed
     feedback.value = passed
       ? props.preview
-        ? '连接成功（演示）。尚未扫描；连接结果不代表文件可播放。'
-        : '连接测试成功。添加来源不会自动开始扫描。'
+        ? '连接成功（演示）。尚未保存；连接结果不代表文件可播放。'
+        : '连接测试成功。尚未保存；添加时会重新验证，连接结果不代表文件可播放。'
       : props.preview
         ? '连接失败（演示）：服务不可达，请检查地址后重试。'
         : '连接测试失败，请检查连接信息后重试。'
@@ -77,14 +78,20 @@ async function test() {
     if (revision === current) testing.value = false
   }
 }
-// 只有当前输入通过连接测试才允许保存；正式服务端保存时仍会重新测试连接。
+// 测试是可选的预检查；正式服务端独立验证当前输入，成功后才加密保存。
 async function save() {
-  if (!success.value || saving.value || !form.value?.reportValidity()) return
+  if (saving.value || testing.value || !form.value?.reportValidity()) return
+  if (!input.name.trim()) {
+    feedback.value = '请填写来源名称。'
+    return
+  }
   const current = ++revision
   controller?.abort()
   const request = new AbortController()
   controller = request
   saving.value = true
+  success.value = false
+  feedback.value = props.preview ? '正在保存（演示）…' : '正在验证连接并保存…'
   try {
     const id = await props.saveConnection({ ...input }, request.signal, props.source?.id)
     if (current !== revision || request.signal.aborted) return
@@ -203,10 +210,11 @@ onBeforeUnmount(() => {
               />
             </div>
             <p v-if="preview" id="credential-help" class="form-help">
-              当前仅模拟连接，请勿填写真实凭据。凭据不会保存；编辑时留空的正式行为待接口确认。
+              当前仅模拟连接，可直接保存或提前测试，请勿填写真实凭据。凭据不会保存；编辑时留空的正式行为待接口确认。
             </p>
             <p v-else id="credential-help" class="form-help">
-              凭据由服务器加密保存，仅用于访问你的 WebDAV。连接测试不会保存来源。
+              添加时会自动验证连接，也可提前点击“测试连接”；测试不会保存来源。凭据由服务器加密保存，仅用于访问你的
+              WebDAV。
             </p>
             <p class="form-help">先保存连接，再选择影片文件夹。添加来源不会开始扫描。</p>
           </div>
@@ -219,7 +227,7 @@ onBeforeUnmount(() => {
               @click="test"
             >
               {{ testing ? '正在连接…' : success ? '重新测试' : '测试连接' }}</button
-            ><button class="primary-action" :disabled="!success || saving" type="submit">
+            ><button class="primary-action" :disabled="testing || saving" type="submit">
               {{ saving ? '正在保存…' : source ? '保存更改' : '添加来源' }}
             </button>
           </div>

@@ -58,6 +58,8 @@ const {
 } = await import('../src/services/ownedSourceService.ts')
 const scanRootPaths = await import('../src/services/scanRootPaths.ts')
 const ownedScanService = await import('../src/services/ownedScanService.ts')
+const previewSourceService = await import('../src/services/mediaSourceService.ts')
+const previewMovieService = await import('../src/services/movieService.ts')
 const { request, ApiError } = await import('../src/services/http.ts')
 axios.defaults.adapter = originalAdapter
 const user = { id: 'user-a', username: 'alice', role: 'USER' }
@@ -788,6 +790,8 @@ async function componentSetup(path, props = {}, { preview = false, instance = pi
       }
     if (name.endsWith('/services/scanRootPaths')) return scanRootPaths
     if (name.endsWith('/services/ownedScanService')) return ownedScanService
+    if (name.endsWith('/services/mediaSourceService')) return previewSourceService
+    if (name.endsWith('/services/movieService')) return previewMovieService
     if (name === './router') return { signOut: () => auth.logout() }
     if (name.endsWith('.vue') || name.endsWith('.css') || name.endsWith('.svg')) return {}
     throw new Error(`Unexpected import: ${name}`)
@@ -1392,17 +1396,179 @@ test('real source page injects real operations, refreshes after save, and keeps 
   }
 })
 
-test('source dialog cancels edited and closed tests, invalidates old success, and clears credentials', async () => {
+test('source dialog submits valid input directly through the real create service without a test POST', async () => {
+  await signIn()
+  const calls = []
+  const dialog = await componentSetup('components/media-source/SourceDialog.vue', {
+    testConnection: async (input, signal) => {
+      await testOwnedSourceConnection(input, signal)
+      return true
+    },
+    saveConnection: async (input, signal) => (await createOwnedSource(input, signal)).id,
+  })
+  try {
+    let valid = false
+    dialog.ui.form.value = { reportValidity: () => valid }
+    Object.assign(dialog.ui.input, sourceInput)
+    respond = async (path, config) => {
+      calls.push(path)
+      assert.equal(path, '/api/media-sources')
+      assert.equal(config.method, 'post')
+      assert.deepEqual(JSON.parse(config.body), sourceInput)
+      return ok(ownedSource, 201)
+    }
+    await dialog.ui.save()
+    assert.deepEqual(calls, [])
+    valid = true
+    dialog.ui.input.name = '   '
+    await dialog.ui.save()
+    assert.deepEqual(calls, [])
+    assert.equal(dialog.ui.feedback.value, '请填写来源名称。')
+    dialog.ui.input.name = sourceInput.name
+    await dialog.ui.save()
+    assert.deepEqual(calls, ['/api/media-sources'])
+    assert.deepEqual(dialog.events, [['saved', ownedSource.id]])
+    assert.equal(dialog.ui.input.password, '')
+    assert.equal(dialog.ui.input.username, '')
+    assert.equal(
+      [...storage.values()].some((value) => value.includes(sourceInput.password)),
+      false,
+    )
+  } finally {
+    dialog.unmount()
+  }
+})
+
+test('source dialog keeps optional testing independent and prevents concurrent or repeated operations', async () => {
+  const tested = deferred()
+  const saved = deferred()
+  let testCalls = 0
+  let saveCalls = 0
+  const dialog = await componentSetup('components/media-source/SourceDialog.vue', {
+    testConnection: (input) => {
+      testCalls++
+      assert.deepEqual(input, sourceInput)
+      return tested.promise
+    },
+    saveConnection: (input) => {
+      saveCalls++
+      assert.deepEqual(input, sourceInput)
+      return saved.promise
+    },
+  })
+  const ui = dialog.ui
+  try {
+    ui.form.value = { reportValidity: () => true }
+    Object.assign(ui.input, sourceInput)
+    const testing = ui.test()
+    await ui.test()
+    await ui.save()
+    assert.equal(testCalls, 1)
+    assert.equal(saveCalls, 0)
+    tested.resolve(true)
+    await testing
+    assert.equal(ui.success.value, true)
+    assert.match(ui.feedback.value, /连接测试成功.*尚未保存.*重新验证/)
+    assert.deepEqual(dialog.events, [])
+    const saving = ui.save()
+    assert.equal(ui.saving.value, true)
+    assert.equal(ui.success.value, false)
+    assert.match(ui.feedback.value, /正在验证连接并保存/)
+    await ui.save()
+    await ui.test()
+    let closePrevented = false
+    ui.close({ preventDefault: () => (closePrevented = true) })
+    assert.equal(closePrevented, true)
+    assert.equal(testCalls, 1)
+    assert.equal(saveCalls, 1)
+    assert.equal(ui.input.password, sourceInput.password)
+    assert.deepEqual(dialog.events, [])
+    saved.resolve('saved-id')
+    await saving
+    assert.equal(ui.saving.value, false)
+    assert.deepEqual(dialog.events, [['saved', 'saved-id']])
+    assert.equal(ui.input.password, '')
+    assert.equal(ui.input.username, '')
+  } finally {
+    dialog.unmount()
+  }
+})
+
+test('source dialog can add after a failed test and retry a failed save without retesting', async () => {
+  await signIn()
+  let testCalls = 0
+  const dialog = await componentSetup('components/media-source/SourceDialog.vue', {
+    testConnection: async () => {
+      testCalls++
+      return false
+    },
+    saveConnection: async (input, signal) => (await createOwnedSource(input, signal)).id,
+  })
+  const ui = dialog.ui
+  try {
+    ui.form.value = { reportValidity: () => true }
+    Object.assign(ui.input, sourceInput)
+    await ui.test()
+    assert.match(ui.feedback.value, /连接测试失败/)
+    ui.input.address = 'https://changed.example.com/'
+    ui.changed()
+    const draft = { ...ui.input }
+    respond = async (path, config) => {
+      assert.equal(path, '/api/media-sources')
+      assert.deepEqual(JSON.parse(config.body), draft)
+      return failure(422, 'SOURCE_CONNECTION_FAILED')
+    }
+    await ui.save()
+    assert.equal(ui.feedback.value, '测试错误')
+    assert.equal(ui.saving.value, false)
+    assert.deepEqual(ui.input, draft)
+    assert.deepEqual(dialog.events, [])
+    respond = async () => ok(ownedSource, 201)
+    await ui.save()
+    assert.equal(testCalls, 1)
+    assert.deepEqual(dialog.events, [['saved', ownedSource.id]])
+  } finally {
+    dialog.unmount()
+  }
+})
+
+test('source dialog does not treat a successful test as a successful save', async () => {
+  const dialog = await componentSetup('components/media-source/SourceDialog.vue', {
+    testConnection: async () => true,
+    saveConnection: async () => {
+      throw new ApiError(422, 'SOURCE_CONNECTION_FAILED', '连接失败，请检查地址后重试。')
+    },
+  })
+  try {
+    dialog.ui.form.value = { reportValidity: () => true }
+    Object.assign(dialog.ui.input, sourceInput)
+    await dialog.ui.test()
+    assert.equal(dialog.ui.success.value, true)
+    await dialog.ui.save()
+    assert.equal(dialog.ui.success.value, false)
+    assert.equal(dialog.ui.feedback.value, '连接失败，请检查地址后重试。')
+    assert.deepEqual(dialog.ui.input, sourceInput)
+    assert.deepEqual(dialog.events, [])
+  } finally {
+    dialog.unmount()
+  }
+})
+
+test('source dialog cancels edited and closed tests, invalidates old success without blocking save, and clears credentials', async () => {
   let testResult = deferred()
   const signals = []
   const inputs = []
+  let savedInput
   const dialog = await componentSetup('components/media-source/SourceDialog.vue', {
     testConnection: (input, signal) => {
       inputs.push(input)
       signals.push(signal)
       return testResult.promise
     },
-    saveConnection: async () => 'saved-id',
+    saveConnection: async (input) => {
+      savedInput = input
+      return 'saved-id'
+    },
   })
   const ui = dialog.ui
   try {
@@ -1419,7 +1585,7 @@ test('source dialog cancels edited and closed tests, invalidates old success, an
     testResult.resolve(true)
     await first
     assert.equal(ui.success.value, false)
-    assert.match(ui.feedback.value, /重新测试/)
+    assert.match(ui.feedback.value, /旧测试结果已失效/)
     testResult = deferred()
     const second = ui.test()
     testResult.resolve(true)
@@ -1430,7 +1596,10 @@ test('source dialog cancels edited and closed tests, invalidates old success, an
     ui.changed()
     assert.equal(ui.success.value, false)
     await ui.save()
-    assert.deepEqual(dialog.events, [])
+    assert.equal(savedInput.address, 'https://changed.example.com/')
+    assert.equal(savedInput.password, 'changed-password')
+    assert.deepEqual(dialog.events, [['saved', 'saved-id']])
+    Object.assign(ui.input, sourceInput)
     testResult = deferred()
     const third = ui.test()
     ui.close()
@@ -1440,7 +1609,7 @@ test('source dialog cancels edited and closed tests, invalidates old success, an
     testResult.resolve(true)
     await third
     assert.equal(ui.success.value, false)
-    assert.deepEqual(dialog.events, [['close']])
+    assert.deepEqual(dialog.events, [['saved', 'saved-id'], ['close']])
   } finally {
     dialog.unmount()
   }
@@ -1460,8 +1629,6 @@ test('source dialog clears credentials after real save and ignores a POST comple
     try {
       ui.form.value = { reportValidity: () => true }
       Object.assign(ui.input, sourceInput)
-      respond = async () => ok({ testedAt: ownedSource.createdAt })
-      await ui.test()
       const delayed = deferred()
       let transportSignal
       respond = (path, config) => {
@@ -1485,22 +1652,102 @@ test('source dialog clears credentials after real save and ignores a POST comple
   }
 })
 
-test('source dialog retains the explicit preview connection message', async () => {
+test('source dialog ignores a late save after changed input and preserves the current draft', async () => {
+  const delayed = deferred()
+  let oldSignal
   const dialog = await componentSetup('components/media-source/SourceDialog.vue', {
-    preview: true,
     testConnection: async () => true,
-    saveConnection: async () => 'preview-id',
+    saveConnection: (input, signal) => {
+      oldSignal = signal
+      return delayed.promise
+    },
   })
   try {
     dialog.ui.form.value = { reportValidity: () => true }
     Object.assign(dialog.ui.input, sourceInput)
-    await dialog.ui.test()
-    assert.equal(dialog.ui.success.value, true)
-    assert.match(dialog.ui.feedback.value, /连接成功（演示）/)
-    await dialog.ui.save()
-    assert.deepEqual(dialog.events, [['saved', 'preview-id']])
+    const saving = dialog.ui.save()
+    dialog.ui.input.password = 'current-draft-password'
+    dialog.ui.changed()
+    assert.equal(oldSignal.aborted, true)
+    assert.equal(dialog.ui.saving.value, false)
+    const feedback = dialog.ui.feedback.value
+    delayed.resolve('stale-id')
+    await saving
+    assert.equal(dialog.ui.input.password, 'current-draft-password')
+    assert.equal(dialog.ui.input.username, sourceInput.username)
+    assert.equal(dialog.ui.feedback.value, feedback)
+    assert.deepEqual(dialog.events, [])
   } finally {
     dialog.unmount()
+  }
+})
+
+test('source dialog and Mock Preview retain direct add, optional test and local edit semantics without HTTP', async () => {
+  const calls = []
+  respond = async (path) => {
+    calls.push(path)
+    throw new Error('Mock Preview must not send HTTP requests')
+  }
+  const view = await componentSetup('views/MediaSourcesPreviewView.vue', {}, { preview: true })
+  const dialogs = []
+  let createdId
+  try {
+    await view.mount()
+    view.ui.openDialog()
+    const added = await componentSetup('components/media-source/SourceDialog.vue', {
+      preview: true,
+      testConnection: view.ui.testConnectionInput,
+      saveConnection: view.ui.savePreviewSource,
+    })
+    dialogs.push(added)
+    added.ui.form.value = { reportValidity: () => true }
+    Object.assign(added.ui.input, sourceInput)
+    await added.ui.save()
+    createdId = added.events[0][1]
+    const created = view.ui.sourceList.value.find((source) => source.id === createdId)
+    assert.equal(created.name, sourceInput.name)
+    assert.equal(Object.hasOwn(created, 'username'), false)
+    assert.equal(Object.hasOwn(created, 'password'), false)
+    assert.equal(added.ui.input.username, '')
+    assert.equal(added.ui.input.password, '')
+    view.ui.saved(createdId)
+    assert.deepEqual(view.routes.at(-1), {
+      name: 'media-source-detail',
+      params: { sourceId: createdId },
+      query: { created: '1' },
+    })
+
+    view.ui.openDialog(created)
+    const edited = await componentSetup('components/media-source/SourceDialog.vue', {
+      source: view.ui.editing.value,
+      preview: true,
+      testConnection: view.ui.testConnectionInput,
+      saveConnection: view.ui.savePreviewSource,
+    })
+    dialogs.push(edited)
+    edited.ui.form.value = { reportValidity: () => true }
+    edited.ui.input.name = '更新演示来源'
+    await edited.ui.test()
+    assert.equal(edited.ui.success.value, true)
+    assert.match(edited.ui.feedback.value, /连接成功（演示）.*尚未保存/)
+    await edited.ui.save()
+    assert.deepEqual(edited.events, [['saved', createdId]])
+    assert.equal(created.name, '更新演示来源')
+    view.ui.saved(createdId)
+    assert.deepEqual(view.routes.at(-1).query, {})
+
+    const count = view.ui.sourceList.value.length
+    Object.assign(added.ui.input, { ...sourceInput, address: 'https://offline.example.com/' })
+    added.ui.changed()
+    await added.ui.save()
+    assert.match(added.ui.feedback.value, /连接失败（演示）/)
+    assert.equal(added.events.length, 1)
+    assert.equal(view.ui.sourceList.value.length, count)
+    assert.deepEqual(calls, [])
+  } finally {
+    dialogs.forEach((dialog) => dialog.unmount())
+    if (createdId) previewSourceService.removeSource(createdId)
+    view.unmount()
   }
 })
 
