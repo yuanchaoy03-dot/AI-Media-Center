@@ -2,7 +2,7 @@ import { useAuthStore } from '../stores/auth'
 import { pinia } from '../stores/index'
 import type { DirectoryEntry, MediaScanRoot, SourceConnectionInput } from '../types/mediaSource'
 import { ApiError } from './http'
-import { getScanRootRelation, normalizeScanRootPath } from './scanRootPaths'
+import { validateScanRootPaths } from './scanRootPaths'
 
 /** Spring Boot 返回的本人来源 DTO；与开发预览的连接/扫描展示模型分开。 */
 export interface OwnedMediaSource {
@@ -75,10 +75,8 @@ function isDirectoryPath(value: unknown): value is string {
 function isScanRootSelection(paths: readonly string[]): boolean {
   try {
     if (paths.length > 32) return false
-    const normalized = paths.map(normalizeScanRootPath)
-    return normalized.every((path, index) =>
-      normalized.slice(0, index).every((other) => getScanRootRelation(path, other) === 'none'),
-    )
+    validateScanRootPaths(paths)
+    return true
   } catch {
     return false
   }
