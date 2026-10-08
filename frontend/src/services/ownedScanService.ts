@@ -1,7 +1,6 @@
 import { useAuthStore } from '../stores/auth'
 import { pinia } from '../stores/index'
 import { ApiError } from './http'
-import { getScanRootRelation } from './scanRootPaths'
 
 export interface OwnedScanTask {
   id: string
@@ -45,120 +44,78 @@ function invalid(): never {
   throw new ApiError(0, 'REQUEST_FAILED', '扫描响应异常，请重新查询。')
 }
 
-function object(value: unknown, fields: readonly string[]): Record<string, unknown> {
-  if (
-    !value ||
-    typeof value !== 'object' ||
-    Array.isArray(value) ||
-    Object.keys(value).length !== fields.length ||
-    !fields.every((field) => Object.hasOwn(value, field))
-  )
-    return invalid()
-  return value as Record<string, unknown>
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
 }
 
-function id(value: unknown): value is string {
-  return typeof value === 'string' && !!value.trim() && value === value.trim()
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0
 }
 
-function timestamp(value: unknown): value is string {
-  return (
-    typeof value === 'string' &&
-    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?Z$/.test(value) &&
-    Number.isFinite(Date.parse(value)) &&
-    new Date(value).toISOString().slice(0, 19) === value.slice(0, 19)
-  )
+function isDateString(value: unknown): value is string {
+  return typeof value === 'string' && Number.isFinite(Date.parse(value))
 }
 
-function path(value: unknown): value is string {
-  if (typeof value !== 'string' || !value.startsWith('/') || [...value].length > 2048) return false
-  return (
-    !value.includes('\\') &&
-    !/%(?:25)*(?:2f|5c|2e)/i.test(value) &&
-    [...value].every((character) => {
-      const code = character.codePointAt(0) ?? 0
-      return code > 31 && (code < 127 || code > 159) && (code < 0xd800 || code > 0xdfff)
-    }) &&
-    (value === '/' ||
-      value
-        .slice(1)
-        .split('/')
-        .every((part) => part && part !== '.' && part !== '..'))
-  )
+function isPath(value: unknown): value is string {
+  return typeof value === 'string' && value.startsWith('/')
 }
 
-function count(value: unknown): value is number {
+function isCount(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
 }
 
 function readNameCandidate(value: unknown): OwnedMediaNameCandidate {
-  const candidate = object(value, ['title', 'year'])
   if (
-    !(candidate.title === null || id(candidate.title)) ||
-    !(
-      candidate.year === null ||
-      (count(candidate.year) &&
-        candidate.year >= 1888 &&
-        candidate.year <= 2099 &&
-        candidate.title !== null)
-    )
+    !isRecord(value) ||
+    !(value.title === null || typeof value.title === 'string') ||
+    !(value.year === null || (isCount(value.year) && value.year >= 1888 && value.year <= 2099))
   )
     return invalid()
-  return candidate as unknown as OwnedMediaNameCandidate
+  return { title: value.title, year: value.year }
 }
 
-function readTask(value: unknown, sourceId: string): OwnedScanTask {
-  const task = object(value, [
-    'id',
-    'sourceId',
-    'status',
-    'rootPaths',
-    'discoveredCount',
-    'persistedCount',
-    'directoryCount',
-    'errorCode',
-    'errorMessage',
-    'createdAt',
-    'startedAt',
-    'finishedAt',
-  ])
+// 历史任务只按 DTO 读取，不在 Vue 重建状态机或扫描范围不变量。
+function readTask(task: unknown, sourceId: string): OwnedScanTask {
   if (
-    !id(task.id) ||
+    !isRecord(task) ||
+    !isNonEmptyString(task.id) ||
     task.sourceId !== sourceId ||
-    !['pending', 'running', 'completed', 'failed'].includes(task.status as string) ||
+    !(
+      task.status === 'pending' ||
+      task.status === 'running' ||
+      task.status === 'completed' ||
+      task.status === 'failed'
+    ) ||
     !Array.isArray(task.rootPaths) ||
-    !task.rootPaths.length ||
-    task.rootPaths.length > 32 ||
-    !task.rootPaths.every(path) ||
-    !count(task.discoveredCount) ||
-    !count(task.persistedCount) ||
-    !count(task.directoryCount) ||
-    task.persistedCount > task.discoveredCount ||
-    !(task.errorCode === null || id(task.errorCode)) ||
-    !(task.errorMessage === null || id(task.errorMessage)) ||
-    !timestamp(task.createdAt) ||
-    !(task.startedAt === null || timestamp(task.startedAt)) ||
-    !(task.finishedAt === null || timestamp(task.finishedAt))
+    !task.rootPaths.every(isPath) ||
+    !isCount(task.discoveredCount) ||
+    !isCount(task.persistedCount) ||
+    !isCount(task.directoryCount) ||
+    !(task.errorCode === null || typeof task.errorCode === 'string') ||
+    !(task.errorMessage === null || typeof task.errorMessage === 'string') ||
+    !isDateString(task.createdAt) ||
+    !(task.startedAt === null || isDateString(task.startedAt)) ||
+    !(task.finishedAt === null || isDateString(task.finishedAt))
   )
     return invalid()
-  const roots = task.rootPaths as string[]
-  if (
-    roots.some((root, index) =>
-      roots.slice(0, index).some((other) => getScanRootRelation(root, other) !== 'none'),
-    )
-  )
-    return invalid()
-  if (
-    (task.status === 'completed' || task.status === 'failed') !== (task.finishedAt !== null) ||
-    (task.status === 'pending' && task.startedAt !== null) ||
-    (task.status === 'running' && task.startedAt === null)
-  )
-    return invalid()
-  return { ...task, rootPaths: [...roots] } as unknown as OwnedScanTask
+  return {
+    id: task.id,
+    sourceId: task.sourceId,
+    status: task.status,
+    rootPaths: [...task.rootPaths],
+    discoveredCount: task.discoveredCount,
+    persistedCount: task.persistedCount,
+    directoryCount: task.directoryCount,
+    errorCode: task.errorCode,
+    errorMessage: task.errorMessage,
+    createdAt: task.createdAt,
+    startedAt: task.startedAt,
+    finishedAt: task.finishedAt,
+  }
 }
 
 function sourcePath(sourceId: string) {
-  if (!id(sourceId)) return invalid()
+  if (!sourceId.trim() || sourceId !== sourceId.trim()) return invalid()
   return `/media-sources/${encodeURIComponent(sourceId)}`
 }
 
@@ -183,10 +140,8 @@ export async function getOwnedSourceScans(
     `${sourcePath(sourceId)}/scans`,
     signal,
   )
-  if (!Array.isArray(result) || result.length > 20) return invalid()
-  const tasks = result.map((value) => readTask(value, sourceId))
-  if (new Set(tasks.map((task) => task.id)).size !== tasks.length) return invalid()
-  return tasks
+  if (!Array.isArray(result)) return invalid()
+  return result.map((value) => readTask(value, sourceId))
 }
 
 export async function getOwnedSourceResources(
@@ -195,54 +150,41 @@ export async function getOwnedSourceResources(
   signal: AbortSignal,
   pageSize = 50,
 ): Promise<OwnedResourcePage> {
-  if (!count(page) || !count(pageSize) || pageSize < 1 || pageSize > 100) return invalid()
+  if (!isCount(page) || !isCount(pageSize) || pageSize < 1 || pageSize > 100) return invalid()
   const result = await useAuthStore(pinia).authenticatedRequest<unknown>(
     `${sourcePath(sourceId)}/resources?page=${page}&pageSize=${pageSize}`,
     signal,
   )
-  const resultPage = object(result, ['items', 'total', 'page', 'pageSize'])
   if (
-    !Array.isArray(resultPage.items) ||
-    !count(resultPage.total) ||
-    resultPage.page !== page ||
-    resultPage.pageSize !== pageSize ||
-    resultPage.items.length > pageSize ||
-    resultPage.items.length > resultPage.total ||
-    (resultPage.items.length > 0 && page * pageSize + resultPage.items.length > resultPage.total)
+    !isRecord(result) ||
+    !Array.isArray(result.items) ||
+    !isCount(result.total) ||
+    result.page !== page ||
+    result.pageSize !== pageSize
   )
     return invalid()
-  const items = resultPage.items.map((value): OwnedMediaResource => {
-    const resource = object(value, [
-      'id',
-      'sourceId',
-      'path',
-      'name',
-      'size',
-      'modifiedAt',
-      'recognitionStatus',
-      'nameCandidate',
-    ])
+  const items = result.items.map((resource: unknown): OwnedMediaResource => {
     if (
-      !id(resource.id) ||
+      !isRecord(resource) ||
+      !isNonEmptyString(resource.id) ||
       resource.sourceId !== sourceId ||
-      !path(resource.path) ||
-      resource.path === '/' ||
+      !isPath(resource.path) ||
       typeof resource.name !== 'string' ||
-      resource.name !== resource.path.slice(resource.path.lastIndexOf('/') + 1) ||
-      !(resource.size === null || count(resource.size)) ||
-      !(resource.modifiedAt === null || timestamp(resource.modifiedAt)) ||
+      !(resource.size === null || isCount(resource.size)) ||
+      !(resource.modifiedAt === null || isDateString(resource.modifiedAt)) ||
       resource.recognitionStatus !== 'unidentified'
     )
       return invalid()
     return {
-      ...resource,
+      id: resource.id,
+      sourceId: resource.sourceId,
+      path: resource.path,
+      name: resource.name,
+      size: resource.size,
+      modifiedAt: resource.modifiedAt,
+      recognitionStatus: resource.recognitionStatus,
       nameCandidate: readNameCandidate(resource.nameCandidate),
-    } as unknown as OwnedMediaResource
+    }
   })
-  if (
-    new Set(items.map((item) => item.id)).size !== items.length ||
-    new Set(items.map((item) => item.path)).size !== items.length
-  )
-    return invalid()
-  return { items, total: resultPage.total, page, pageSize }
+  return { items, total: result.total, page, pageSize }
 }

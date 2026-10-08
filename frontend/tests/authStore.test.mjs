@@ -1094,7 +1094,7 @@ test('owned WebDAV test/create POST JSON with bearer, and the saved source reloa
   assert.deepEqual([...storage.entries()], [[storageKey, 'synthetic-test-token']])
 })
 
-test('owned DTO validation rejects wrong types, credentials, duplicate IDs and invalid UTC times', async () => {
+test('owned source DTOs require basic fields, WebDAV type and displayable nullable dates', async () => {
   await signIn()
   for (const malformed of [
     null,
@@ -1102,13 +1102,11 @@ test('owned DTO validation rejects wrong types, credentials, duplicate IDs and i
     { ...ownedSource, enabled: 'true' },
     { ...ownedSource, type: 'SMB' },
     { ...ownedSource, id: '' },
-    { ...ownedSource, name: '   ' },
-    { ...ownedSource, address: 'https://username:secret@example.com/' },
+    { ...ownedSource, name: 42 },
+    { ...ownedSource, address: null },
     { ...ownedSource, lastConnectionTestAt: 'just now' },
-    { ...ownedSource, createdAt: '2026-02-31T06:30:00Z' },
-    { ...ownedSource, createdAt: '2026-10-02T14:30:00+08:00' },
-    { ...ownedSource, password: 'should-not-be-returned' },
-    { ...ownedSource, connectionConfig: 'encrypted-should-not-be-returned' },
+    { ...ownedSource, lastConnectionTestAt: 42 },
+    { ...ownedSource, createdAt: 'invalid' },
   ]) {
     respond = async () => ok([malformed])
     await assert.rejects(getOwnedSources(new AbortController().signal), { code: 'REQUEST_FAILED' })
@@ -1117,23 +1115,16 @@ test('owned DTO validation rejects wrong types, credentials, duplicate IDs and i
       code: 'REQUEST_FAILED',
     })
   }
-  respond = async () => ok([ownedSource, ownedSource])
-  await assert.rejects(getOwnedSources(new AbortController().signal), { code: 'REQUEST_FAILED' })
   respond = async () => ok([{ ...ownedSource, lastConnectionTestAt: null }])
   assert.deepEqual(await getOwnedSources(new AbortController().signal), [
     { ...ownedSource, lastConnectionTestAt: null },
   ])
   respond = async () => ok({ ...ownedSource, lastConnectionTestAt: null }, 201)
-  await assert.rejects(createOwnedSource(sourceInput, new AbortController().signal), {
-    code: 'REQUEST_FAILED',
+  assert.deepEqual(await createOwnedSource(sourceInput, new AbortController().signal), {
+    ...ownedSource,
+    lastConnectionTestAt: null,
   })
-  for (const malformed of [
-    null,
-    {},
-    { testedAt: 'now' },
-    { testedAt: null },
-    { testedAt: ownedSource.createdAt, password: 'secret' },
-  ]) {
+  for (const malformed of [null, {}, { testedAt: 'now' }, { testedAt: null }]) {
     respond = async () => ok(malformed)
     await assert.rejects(testOwnedSourceConnection(sourceInput, new AbortController().signal), {
       code: 'REQUEST_FAILED',
@@ -1175,7 +1166,7 @@ test('owned directory GET encodes each segment once and carries the current bear
   assert.deepEqual([...storage.entries()], [[storageKey, 'synthetic-test-token']])
 })
 
-test('owned directory rejects malformed, credential-bearing, duplicate and non-direct entries', async () => {
+test('owned directory rejects malformed DTOs, invalid entry kinds and mismatched context', async () => {
   await signIn()
   const entry = { name: '电影', path: '/Movies/电影', kind: 'directory' }
   const valid = { path: '/Movies', entries: [entry] }
@@ -1183,43 +1174,16 @@ test('owned directory rejects malformed, credential-bearing, duplicate and non-d
     null,
     {},
     [],
-    { ...valid, password: 'synthetic-secret' },
     { ...valid, path: '/Other' },
-    { ...valid, path: '/Movies/' },
+    { ...valid, path: 42 },
     { ...valid, entries: null },
-    { ...valid, entries: [entry, entry] },
     { ...valid, entries: [null] },
     { ...valid, entries: [[]] },
-    { ...valid, entries: [{ ...entry, name: '' }] },
-    { ...valid, entries: [{ ...entry, name: '其他名字' }] },
-    { ...valid, entries: [{ ...entry, path: '/Else/电影' }] },
-    { ...valid, entries: [{ ...entry, name: '电影/子目录', path: '/Movies/电影/子目录' }] },
-    { ...valid, entries: [{ ...entry, path: 'https://dav.example.com/Movies/电影' }] },
+    { ...valid, entries: [{ ...entry, name: null }] },
+    { ...valid, entries: [{ ...entry, path: 42 }] },
+    { ...valid, entries: [{ ...entry, path: '' }] },
+    { ...valid, entries: [{ ...entry, path: 'Movies/电影' }] },
     { ...valid, entries: [{ ...entry, kind: 'symlink' }] },
-    { ...valid, entries: [{ ...entry, password: 'synthetic-secret' }] },
-    {
-      ...valid,
-      entries: Array.from({ length: 2001 }, (_, index) => ({
-        name: `item${index}`,
-        path: `/Movies/item${index}`,
-        kind: 'file',
-      })),
-    },
-    ...[
-      '.',
-      '..',
-      'back\\slash',
-      'encoded%2Fslash',
-      'encoded%2Edot',
-      'encoded%5Cslash',
-      'nested%252fslash',
-      'nested%25252edot',
-      'nested%25255cslash',
-      'a\nb',
-      'a\u0080b',
-      '\ud800',
-      'x'.repeat(2048),
-    ].map((name) => ({ ...valid, entries: [{ ...entry, name, path: `/Movies/${name}` }] })),
   ]) {
     respond = async () => ok(invalid)
     await assert.rejects(
@@ -1231,20 +1195,8 @@ test('owned directory rejects malformed, credential-bearing, duplicate and non-d
       },
     )
   }
-  respond = () => assert.fail('unsafe directory path reached transport')
-  for (const path of [
-    '',
-    'Movies',
-    '//Movies',
-    '/Movies/',
-    '/Movies//child',
-    '/.',
-    '/../x',
-    '/%2f',
-    '/%252f',
-    '/%25252e',
-    '/%25255c',
-  ])
+  respond = () => assert.fail('invalid directory path reached transport')
+  for (const path of ['', 'Movies'])
     await assert.rejects(getOwnedSourceDirectory('source-a', path, new AbortController().signal), {
       code: 'REQUEST_FAILED',
     })
@@ -1591,7 +1543,7 @@ test('owned scan roots use authenticated GET and explicit PUT JSON without cachi
   assert.deepEqual([...storage.entries()], [[storageKey, 'synthetic-test-token']])
 })
 
-test('scan root responses reject wrong ownership, unsafe paths, duplicate IDs and overlapping ranges', async () => {
+test('scan root responses require basic DTO fields and the requested source context', async () => {
   await signIn()
   const first = ownedRoots[0]
   const operations = [
@@ -1604,47 +1556,17 @@ test('scan root responses reject wrong ownership, unsafe paths, duplicate IDs an
     [null],
     [[]],
     [{ ...first, id: '' }],
-    [{ ...first, id: ' ' }],
     [{ ...first, sourceId: 'another-owner-source' }],
     [{ ...first, sourceId: undefined }],
     [{ ...first, enabled: 'true' }],
-    [{ ...first, password: 'synthetic-secret' }],
-    [first, first],
-    [first, { ...first, id: 'different-id' }],
-    [first, { ...first, id: 'child', path: '/Movies/child', enabled: true }],
-    [first, { ...first, id: 'parent', path: '/', enabled: false }],
-    Array.from({ length: 33 }, (_, index) => ({
-      ...first,
-      id: `id-${index}`,
-      path: `/root-${index}`,
-    })),
-    ...[
-      '',
-      'Movies',
-      '/Movies/',
-      '//Movies',
-      '/Movies//child',
-      '/Movies/../TV',
-      '/Movies/./child',
-      '/back\\slash',
-      '/%2f',
-      '/%252f',
-      '/%25252e',
-      '/%25255c',
-      '/a\nb',
-      '/a\u0080b',
-      '/\ud800',
-      `/${'x'.repeat(2048)}`,
-    ].map((path) => [{ ...first, path }]),
+    [{ ...first, path: null }],
+    [{ ...first, path: '' }],
+    [{ ...first, path: 'Movies' }],
   ]
   for (const response of invalidResponses) {
     respond = async () => ok(response)
     for (const operation of operations)
-      await assert.rejects(operation(), (error) => {
-        assert.equal(error.code, 'REQUEST_FAILED')
-        assert.equal(error.message.includes('synthetic-secret'), false)
-        return true
-      })
+      await assert.rejects(operation(), { code: 'REQUEST_FAILED' })
   }
   respond = async () => ok(ownedRoots)
   assert.deepEqual(
@@ -1654,7 +1576,7 @@ test('scan root responses reject wrong ownership, unsafe paths, duplicate IDs an
   assert.equal(auth.tokenPresent, true)
 })
 
-test('invalid root selections never reach transport and mismatched successful saves are rejected', async () => {
+test('invalid root selections never reach transport and successful saves return the server DTO', async () => {
   await signIn()
   respond = () => assert.fail('invalid selection reached HTTP')
   for (const paths of [
@@ -1662,10 +1584,8 @@ test('invalid root selections never reach transport and mismatched successful sa
     ['/Movies', '/Movies/child'],
     ['/Movies/child', '/Movies'],
     ['/', '/Movies'],
-    ['/Movies/'],
     ['/../Movies'],
     ['Movies'],
-    ['/%25252e'],
     Array.from({ length: 33 }, (_, index) => `/root-${index}`),
   ])
     await assert.rejects(
@@ -1679,14 +1599,14 @@ test('invalid root selections never reach transport and mismatched successful sa
     code: 'REQUEST_FAILED',
   })
   respond = async () => ok([ownedRoots[0]])
-  await assert.rejects(
-    saveOwnedSourceScanRoots(ownedSource.id, ['/TV'], new AbortController().signal),
-    { code: 'REQUEST_FAILED' },
+  assert.deepEqual(
+    await saveOwnedSourceScanRoots(ownedSource.id, ['/TV'], new AbortController().signal),
+    [ownedRoots[0]],
   )
   respond = async () => ok([])
-  await assert.rejects(
-    saveOwnedSourceScanRoots(ownedSource.id, ['/Movies'], new AbortController().signal),
-    { code: 'REQUEST_FAILED' },
+  assert.deepEqual(
+    await saveOwnedSourceScanRoots(ownedSource.id, ['/Movies'], new AbortController().signal),
+    [],
   )
   assert.equal(auth.tokenPresent, true)
 })
@@ -2235,41 +2155,59 @@ test('owned scan service uses authenticated bodyless POST, persistent task GET a
   assert.equal(calls.length, 3)
 })
 
-test('owned scan DTOs reject foreign ownership, credentials, invalid states/counts/paths and malformed resources', async () => {
+test('owned scan DTOs read each task status with nullable timestamps and error fields', async () => {
+  await signIn()
+  const tasks = ['pending', 'running', 'completed', 'failed'].map((status) => ({
+    ...scanTask,
+    id: `task-${status}`,
+    status,
+    startedAt: status === 'pending' ? null : scanTask.createdAt,
+    finishedAt: ['completed', 'failed'].includes(status) ? scanTask.createdAt : null,
+    errorCode: status === 'failed' ? 'SOURCE_CONNECTION_FAILED' : null,
+    errorMessage: status === 'failed' ? '来源连接失败' : null,
+  }))
+  respond = async () => ok(tasks)
+  assert.deepEqual(
+    await ownedScanService.getOwnedSourceScans(ownedSource.id, new AbortController().signal),
+    tasks,
+  )
+})
+
+test('owned scan DTOs reject invalid basic types, enums and mismatched source or page context', async () => {
   await signIn()
   const signal = new AbortController().signal
   for (const task of [
+    null,
+    {},
     { ...scanTask, sourceId: 'someone-else' },
-    { ...scanTask, password: 'unexpected' },
+    { ...scanTask, id: '' },
     { ...scanTask, status: 'unknown' },
-    { ...scanTask, status: 'running' },
-    { ...scanTask, status: 'completed' },
-    { ...scanTask, finishedAt: '2026-10-03T06:31:00Z' },
     { ...scanTask, discoveredCount: -1 },
-    { ...scanTask, persistedCount: 1 },
+    { ...scanTask, persistedCount: '1' },
     { ...scanTask, directoryCount: 0.5 },
-    { ...scanTask, rootPaths: ['/TV', '/TV/nested'] },
-    { ...scanTask, rootPaths: ['/TV', '/TV'] },
-    { ...scanTask, rootPaths: [] },
-    { ...scanTask, rootPaths: ['/TV/../Movies'] },
-    { ...scanTask, createdAt: '2026-02-31T06:30:00Z' },
-    { ...scanTask, startedAt: '2026-10-03T14:30:00+08:00' },
+    { ...scanTask, rootPaths: null },
+    { ...scanTask, rootPaths: [42] },
+    { ...scanTask, errorCode: 42 },
+    { ...scanTask, errorMessage: undefined },
+    { ...scanTask, createdAt: 'invalid' },
+    { ...scanTask, startedAt: 'invalid' },
+    { ...scanTask, finishedAt: 42 },
   ]) {
     respond = async () => ok(task, 202)
     await assert.rejects(ownedScanService.startOwnedSourceScan(ownedSource.id, signal), /响应异常/)
   }
-  for (const tasks of [
-    [scanTask, scanTask],
-    Array.from({ length: 21 }, (_, i) => ({ ...scanTask, id: `task-${i}` })),
-  ]) {
+  for (const tasks of [null, {}, [null]]) {
     respond = async () => ok(tasks)
     await assert.rejects(ownedScanService.getOwnedSourceScans(ownedSource.id, signal), /响应异常/)
   }
   for (const resource of [
+    null,
+    {},
     { ...mediaResource, sourceId: 'someone-else' },
-    { ...mediaResource, resourceUrl: 'https://example.com/private' },
-    { ...mediaResource, name: 'wrong.mkv' },
-    { ...mediaResource, path: '/TV/%2F.mkv' },
+    { ...mediaResource, id: '' },
+    { ...mediaResource, name: undefined },
+    { ...mediaResource, path: null },
+    { ...mediaResource, path: 'TV/Movie.mkv' },
     { ...mediaResource, size: -1 },
     { ...mediaResource, size: Number.MAX_SAFE_INTEGER + 1 },
     { ...mediaResource, modifiedAt: 'invalid' },
@@ -2282,9 +2220,14 @@ test('owned scan DTOs reject foreign ownership, credentials, invalid states/coun
     )
   }
   for (const page of [
-    resourcesPage([mediaResource, mediaResource]),
+    null,
+    {},
+    { ...resourcesPage(), items: null },
+    { ...resourcesPage(), total: '1' },
+    { ...resourcesPage(), total: -1 },
     { ...resourcesPage(), page: 1 },
-    { ...resourcesPage(), total: 0 },
+    { ...resourcesPage(), page: '0' },
+    { ...resourcesPage(), pageSize: '50' },
   ]) {
     respond = async () => ok(page)
     await assert.rejects(
@@ -2295,9 +2238,10 @@ test('owned scan DTOs reject foreign ownership, credentials, invalid states/coun
   respond = async () => ok(resourcesPage([{ ...mediaResource, size: null, modifiedAt: null }]))
   const result = await ownedScanService.getOwnedSourceResources(ownedSource.id, 0, signal)
   assert.equal(result.items[0].size, null)
+  assert.equal(result.items[0].modifiedAt, null)
 })
 
-test('resource name candidates require the complete bounded DTO and do not replace file facts', async () => {
+test('resource name candidates require basic nullable fields and bounded integer years', async () => {
   await signIn()
   const signal = new AbortController().signal
   const candidate = { title: '某部电影', year: 2020 }
@@ -2314,15 +2258,7 @@ test('resource name candidates require the complete bounded DTO and do not repla
     'Movie',
     {},
     { title: 'Movie' },
-    { ...candidate, confidence: 0.9 },
-    { ...candidate, title: '' },
-    { ...candidate, title: '   ' },
-    { ...candidate, title: ' Movie ' },
-    { ...candidate, title: '\u00a0Movie' },
-    { ...candidate, title: 'Movie\u202f' },
-    { ...candidate, title: '\ufeffMovie' },
     { ...candidate, title: 42 },
-    { ...candidate, title: null },
     { ...candidate, year: 1887 },
     { ...candidate, year: 2100 },
     { ...candidate, year: 2020.5 },
@@ -2350,33 +2286,56 @@ test('resource name candidates require the complete bounded DTO and do not repla
   }
 })
 
-test('normalized candidates accept Unicode whitespace in file facts without failing the resource page', async () => {
+test('media DTO readers tolerate unused ordinary fields added by Spring Boot', async () => {
   await signIn()
   const signal = new AbortController().signal
-  const items = [mediaResource]
-  for (const [index, whitespace] of ['\u00a0', '\u202f', '\ufeff', '\u2003'].entries()) {
-    const names = [
-      `Film${whitespace}(2020).mkv`,
-      `${whitespace}Film.2020.mkv`,
-      `${whitespace}Film${whitespace}(2020)${whitespace}.mkv`,
-      'video.mkv',
-    ]
-    for (const [nameIndex, name] of names.entries()) {
-      const directory =
-        name === 'video.mkv' ? `/TV/${whitespace}Film${whitespace}(2020)${whitespace}` : '/TV'
-      items.push({
-        ...mediaResource,
-        id: `unicode-resource-${index}-${nameIndex}`,
-        path: `${directory}/${name}`,
-        name,
-        nameCandidate: { title: 'Film', year: 2020 },
-      })
-    }
-  }
-  respond = async () => ok(resourcesPage(items))
+  const extra = { serverNote: 'optional display metadata' }
+  respond = async () => ok([{ ...ownedSource, ...extra }])
+  assert.equal((await getOwnedSources(signal))[0].id, ownedSource.id)
+  respond = async () => ok({ ...ownedSource, ...extra }, 201)
+  assert.equal((await createOwnedSource(sourceInput, signal)).id, ownedSource.id)
+  respond = async () => ok({ testedAt: ownedSource.createdAt, ...extra })
+  assert.equal(
+    (await testOwnedSourceConnection(sourceInput, signal)).testedAt,
+    ownedSource.createdAt,
+  )
+  respond = async () => ok([{ ...ownedRoots[0], ...extra }])
+  assert.equal((await getOwnedSourceScanRoots(ownedSource.id, signal))[0].id, ownedRoots[0].id)
+  assert.equal(
+    (await saveOwnedSourceScanRoots(ownedSource.id, ['/Movies'], signal))[0].id,
+    ownedRoots[0].id,
+  )
+  respond = async () =>
+    ok({
+      path: '/',
+      entries: [{ name: 'Movies', path: '/Movies', kind: 'directory', ...extra }],
+      ...extra,
+    })
+  assert.equal(
+    (await getOwnedSourceDirectory(ownedSource.id, '/', signal)).entries[0].path,
+    '/Movies',
+  )
+  respond = async () => ok({ ...scanTask, ...extra }, 202)
+  assert.equal(
+    (await ownedScanService.startOwnedSourceScan(ownedSource.id, signal)).id,
+    scanTask.id,
+  )
+  respond = async () => ok([{ ...scanTask, ...extra }])
+  assert.equal(
+    (await ownedScanService.getOwnedSourceScans(ownedSource.id, signal))[0].id,
+    scanTask.id,
+  )
+  respond = async () =>
+    ok({
+      ...resourcesPage([
+        { ...mediaResource, nameCandidate: { ...mediaResource.nameCandidate, ...extra }, ...extra },
+      ]),
+      ...extra,
+    })
   const result = await ownedScanService.getOwnedSourceResources(ownedSource.id, 0, signal)
-  assert.deepEqual(result.items, items)
-  assert.equal(result.total, items.length)
+  assert.equal(result.items[0].id, mediaResource.id)
+  assert.equal(result.items[0].nameCandidate.title, mediaResource.nameCandidate.title)
+  assert.equal(result.total, 1)
 })
 
 test('scan result candidate text displays titles, optional years and unavailable names', async () => {
