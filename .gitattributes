@@ -1,0 +1,23 @@
+# Normalize text in the index and use LF in working trees on every platform.
+* text=auto eol=lf
+
+# Script line endings.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.sh text eol=lf
+mvnw text eol=lf
+
+# Binary assets must never undergo line-ending conversion.
+*.jpg -text
+*.jpeg -text
+*.png -text
+*.webp -text
+*.ico -text
+*.gif -text
+*.pdf -text
+*.zip -text
+*.jar -text
+*.woff -text
+*.woff2 -text
+*.ttf -text
+*.otf -text

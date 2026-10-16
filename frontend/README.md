@@ -25,11 +25,34 @@ TypeScript 工程与 IDE 配置可参考 [Vue 官方指南](https://vuejs.org/gu
 ### ESLint 与 Prettier
 
 - [eslint.config.js](eslint.config.js) 是唯一 ESLint 配置，采用 Flat Config。使用 JavaScript / TypeScript 推荐基础规则和 Vue 3 essential 规则，支持 `.ts`、`.vue` 和 `<script setup lang="ts">`；TypeScript 推荐配置的各子配置统一匹配 `.ts` / `.vue`，避免合法声明被 JavaScript 核心规则误报。浏览器源码与 Vite / Node 配置、现有 `.mjs` 测试分别使用对应 globals。基于现有 tsconfig 的 `projectService` 额外检查未处理的 Promise、Promise 误用和无效 `await`，不启用整套严格或风格规则。
-- [.prettierrc.json](.prettierrc.json) 是唯一 Prettier 配置，保持无分号、单引号和 100 字符目标行宽。[.prettierignore](.prettierignore) 排除 `node_modules`、`dist`、`dist-ssr`、`coverage`、`.vite`、类型构建缓存及自动生成的 `package-lock.json`；根目录文档、后端和 HTML 原型不属于本目录格式化命令的范围。
+- [.prettierrc.json](.prettierrc.json) 是唯一 Prettier 配置，保持无分号、单引号、100 字符目标行宽和 LF 换行。[.prettierignore](.prettierignore) 排除 `node_modules`、`dist`、`dist-ssr`、`coverage`、`.vite`、类型构建缓存及自动生成的 `package-lock.json`；根目录文档、后端和 HTML 原型不属于本目录格式化命令的范围。
 - `eslint-config-prettier` 放在 ESLint 配置末尾关闭冲突的格式规则；Prettier 使用独立命令，不通过 ESLint 插件执行。参考 [Vue 插件 Flat Config 指引](https://eslint.vuejs.org/user-guide/)与 [Prettier 集成说明](https://prettier.io/docs/integrating-with-linters)。
 - Vue 模板事件连续执行多条语句时，使用明确的函数块，例如 `() => { ... }`，或已有命名处理函数；避免内联语句的分号被格式化移除后，Vue 编译器将其当作单个表达式解析。
 
 已执行的验证结果、日期与验收限制统一见 [PROJECT_STATUS.md](../PROJECT_STATUS.md)。本文件维护命令与使用说明，不重复记录每轮迁移或清理过程。
+
+### 跨平台换行与 GitHub Desktop
+
+根目录 [.gitattributes](../.gitattributes) 规定普通文本在 Git 索引及 Windows / macOS 工作区使用 LF；`.cmd`、`.bat` 在工作区使用 CRLF，提交到 Git 时仍规范化为 LF。`.sh`、`mvnw` 使用 LF，图片、归档、字体等二进制文件禁止换行转换；SVG 仍是文本。`backend/.gitattributes` 的 Maven Wrapper 规则与根规则一致。
+
+根目录 [.editorconfig](../.editorconfig) 规定 UTF-8（无 BOM）和对应换行，不覆盖项目原有缩进、尾随空格或文件末尾换行规则。编辑器需启用 EditorConfig 支持；配置本身不会转码已有文件。
+
+Windows 和 macOS 均在各自仓库根目录执行以下命令，只设置本仓库，不修改全局 Git 配置。GitHub Desktop 与命令行应打开同一个仓库目录：
+
+```text
+git config --local core.autocrlf false
+git config --show-origin --get core.autocrlf
+git status --short
+git ls-files --eol
+```
+
+正常新检出应为普通文本 `i/lf w/lf`、Windows 脚本 `i/lf w/crlf`、二进制 `i/-text w/-text`；没有实际修改时，GitHub Desktop 应显示无待提交变更。优先用 Clone / Fetch / Pull 同步，避免压缩包覆盖造成工作区、索引、配置及权限元数据不一致。
+
+已有副本出现疑似换行差异时，先完整备份本地工作（包括未跟踪文件），分别检查 `git diff --summary`、`git diff --ignore-space-at-eol`、`git diff --cached --summary` 和 `git diff --cached --ignore-space-at-eol`。忽略行尾空白也会隐藏真实的行尾空格修改，不能单凭输出为空就丢弃文件；应逐文件核对仅将 CRLF 替换为 LF 后的字节是否相同，并排除权限、编码及其他内容变化。
+
+只有无其他未提交工作时，才可执行 `git add --renormalize .`，随后检查 `git diff --cached --stat`、`git diff --cached --summary` 和 `git diff --cached --ignore-space-at-eol`；该命令会暂存已跟踪文件，不会重写工作区物理换行。发现无法解释的变化时停止，不批量恢复或丢弃文件。
+
+拉取新属性不会自动重写所有已有文件。若需要统一物理换行，安全做法是保留旧目录，在相邻新目录 Clone 包含规则的同一提交，再迁移已确认的本地修改及必要本地配置；不要覆盖旧目录或在含未知修改的副本中整体恢复文件。
 
 ## 页面与路由
 
